@@ -1,0 +1,5 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/jobdog}
+    username: ${SPRING_DATASOURCE_USERNAME:jobdog}
+    password: ${SPRING_DATASOURCE_PASSWORD:jobdog}

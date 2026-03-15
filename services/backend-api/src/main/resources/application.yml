@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: backend-api
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/jobdog}
+    username: ${SPRING_DATASOURCE_USERNAME:jobdog}
+    password: ${SPRING_DATASOURCE_PASSWORD:jobdog}
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:change-me-in-env-change-me-in-env}
+    expiration: ${APP_JWT_EXPIRATION:PT12H}
+  r2:
+    endpoint: ${APP_R2_ENDPOINT:http://localhost:9000}
+    bucket: ${APP_R2_BUCKET:resumes}
+    access-key: ${APP_R2_ACCESS_KEY:change-me}
+    secret-key: ${APP_R2_SECRET_KEY:change-me}
+    region: ${APP_R2_REGION:auto}
+  openai:
+    api-key: ${APP_OPENAI_API_KEY:change-me}

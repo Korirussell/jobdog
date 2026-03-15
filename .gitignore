@@ -1,0 +1,8 @@
+services/backend-api/target/
+services/backend-api/.mvn/
+services/backend-api/mvnw
+services/backend-api/mvnw.cmd
+services/scraper-worker/bin/
+.env
+.idea/
+.vscode/

@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: jobdog-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jobdog
+      POSTGRES_USER: jobdog
+      POSTGRES_PASSWORD: jobdog
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobdog -d jobdog"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - jobdog-network
+
+  backend-api:
+    build:
+      context: ./services/backend-api
+      dockerfile: Dockerfile
+    container_name: jobdog-backend-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jobdog
+      SPRING_DATASOURCE_USERNAME: jobdog
+      SPRING_DATASOURCE_PASSWORD: jobdog
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
+      APP_JWT_EXPIRATION: ${APP_JWT_EXPIRATION:-PT12H}
+      APP_R2_ENDPOINT: ${APP_R2_ENDPOINT}
+      APP_R2_BUCKET: ${APP_R2_BUCKET:-resumes}
+      APP_R2_ACCESS_KEY: ${APP_R2_ACCESS_KEY}
+      APP_R2_SECRET_KEY: ${APP_R2_SECRET_KEY}
+      APP_R2_REGION: ${APP_R2_REGION:-auto}
+      APP_OPENAI_API_KEY: ${APP_OPENAI_API_KEY}
+    ports:
+      - "8080:8080"
+    networks:
+      - jobdog-network
+
+  scraper-worker:
+    build:
+      context: ./services/scraper-worker
+      dockerfile: Dockerfile
+    container_name: jobdog-scraper-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://jobdog:jobdog@postgres:5432/jobdog?sslmode=disable
+      DATABASE_USERNAME: jobdog
+      DATABASE_PASSWORD: jobdog
+      OPENAI_API_KEY: ${APP_OPENAI_API_KEY}
+      WORKDAY_COMPANY: ${WORKDAY_COMPANY:-}
+      WORKDAY_URL: ${WORKDAY_URL:-}
+    networks:
+      - jobdog-network
+
+networks:
+  jobdog-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
