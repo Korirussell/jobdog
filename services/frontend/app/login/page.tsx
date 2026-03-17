@@ -48,7 +48,7 @@ export default function LoginPage() {
         {/* OAuth Buttons */}
         <div className="mb-6 space-y-3">
           <a
-            href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/oauth2/authorization/google`}
+            href="/oauth2/authorization/google"
             className="
               flex w-full items-center justify-center gap-3
               border-2 border-black bg-white px-6 py-3
@@ -69,7 +69,7 @@ export default function LoginPage() {
           </a>
 
           <a
-            href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/oauth2/authorization/github`}
+            href="/oauth2/authorization/github"
             className="
               flex w-full items-center justify-center gap-3
               border-2 border-black bg-white px-6 py-3

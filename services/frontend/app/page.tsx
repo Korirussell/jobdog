@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import MorphingHeader from '@/components/MorphingHeader';
-import FilterBar from '@/components/FolderTabs';
+import FilterBar, { FilterState } from '@/components/FolderTabs';
 import JobListRow from '@/components/JobListRow';
-import { api } from '@/lib/api';
-import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useDebounce } from '@/hooks/useDebounce';
 
 interface Job {
@@ -26,10 +24,15 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [filters, setFilters] = useState<FilterState>({
+    remote: false,
+    employmentType: 'all',
+    location: '',
+    company: '',
+  });
   const [searchQuery, setSearchQuery] = useState('');
-  const [hasMore, setHasMore] = useState(true);
   const debouncedSearch = useDebounce(searchQuery, 500);
+  const pageSize = 50;
 
   useEffect(() => {
     async function fetchJobs() {
@@ -39,11 +42,23 @@ export default function Home() {
         // Build query params based on filters
         const params = new URLSearchParams({
           page: page.toString(),
-          size: '100',
+          size: pageSize.toString(),
         });
         
-        if (activeFilter === 'remote') {
+        if (filters.remote) {
           params.append('remote', 'true');
+        }
+        
+        if (filters.employmentType && filters.employmentType !== 'all') {
+          params.append('employmentType', filters.employmentType);
+        }
+        
+        if (filters.location) {
+          params.append('location', filters.location);
+        }
+        
+        if (filters.company) {
+          params.append('company', filters.company);
         }
         
         if (debouncedSearch) {
@@ -71,15 +86,8 @@ export default function Home() {
           applyUrl: item.applyUrl,
         }));
         
-        // For page 0 (filter change), replace jobs. For page > 0 (infinite scroll), append
-        if (page === 0) {
-          setJobs(mappedJobs);
-        } else {
-          setJobs(prev => [...prev, ...mappedJobs]);
-        }
-        
+        setJobs(mappedJobs);
         setTotal(data.total);
-        setHasMore(mappedJobs.length === 100);
         setError(null);
       } catch (err) {
         console.error('Failed to fetch jobs:', err);
@@ -92,15 +100,11 @@ export default function Home() {
     }
 
     fetchJobs();
-  }, [page, activeFilter, debouncedSearch]);
+  }, [page, filters, debouncedSearch]);
 
-  const loadMore = () => {
-    if (!loading && hasMore) {
-      setPage(prev => prev + 1);
-    }
-  };
-
-  const loadMoreRef = useInfiniteScroll(loadMore, hasMore, loading);
+  const totalPages = Math.ceil(total / pageSize);
+  const startResult = page * pageSize + 1;
+  const endResult = Math.min((page + 1) * pageSize, total);
 
   return (
     <div className="min-h-screen">
@@ -111,8 +115,8 @@ export default function Home() {
       <main id="main-content" className="mx-auto min-h-screen max-w-6xl px-6">
         {/* Filter Bar - Clean dividing line */}
         <FilterBar 
-          onFilterChange={(filter) => {
-            setActiveFilter(filter);
+          onFilterChange={(newFilters) => {
+            setFilters(newFilters);
             setPage(0); // Reset to first page when filter changes
           }}
           onSearchChange={(search) => {
@@ -133,7 +137,7 @@ export default function Home() {
             </p>
           ) : (
             <p className="font-mono text-xs font-bold uppercase text-text-secondary">
-              SHOWING <span className="text-text-primary">{jobs.length}</span> OF{' '}
+              SHOWING <span className="text-text-primary">{startResult}-{endResult}</span> OF{' '}
               <span className="text-text-primary">{total}</span> POSITIONS
             </p>
           )}
@@ -164,25 +168,48 @@ export default function Home() {
           </div>
         )}
 
-        {/* Infinite Scroll Sentinel */}
-        {hasMore && (
-          <div ref={loadMoreRef} className="border-t-2 border-black/10 py-8 text-center">
-            {loading ? (
-              <div className="font-mono text-sm text-text-secondary">
-                <span className="animate-pulse">█</span> LOADING_MORE...
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="border-t-2 border-black/10 py-6">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setPage(Math.max(0, page - 1))}
+                disabled={page === 0}
+                className="
+                  border-2 border-black/20 bg-white px-4 py-2
+                  font-mono text-xs font-bold uppercase text-text-primary
+                  transition-all hover:border-black hover:bg-background-secondary
+                  disabled:cursor-not-allowed disabled:opacity-50
+                "
+              >
+                ← PREV
+              </button>
+              
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs text-text-secondary">
+                  PAGE
+                </span>
+                <span className="font-mono text-sm font-bold text-text-primary">
+                  {page + 1}
+                </span>
+                <span className="font-mono text-xs text-text-secondary">
+                  OF {totalPages}
+                </span>
               </div>
-            ) : (
-              <div className="font-mono text-xs text-text-secondary">
-                SCROLL_FOR_MORE ▼
-              </div>
-            )}
-          </div>
-        )}
-        {!hasMore && jobs.length > 0 && (
-          <div className="border-t-2 border-black/10 py-8 text-center">
-            <p className="font-mono text-xs font-bold uppercase text-text-secondary">
-              END_OF_RESULTS
-            </p>
+              
+              <button
+                onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+                disabled={page >= totalPages - 1}
+                className="
+                  border-2 border-black/20 bg-white px-4 py-2
+                  font-mono text-xs font-bold uppercase text-text-primary
+                  transition-all hover:border-black hover:bg-background-secondary
+                  disabled:cursor-not-allowed disabled:opacity-50
+                "
+              >
+                NEXT →
+              </button>
+            </div>
           </div>
         )}
       </main>
