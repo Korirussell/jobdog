@@ -185,10 +185,8 @@ public class ApplicationService {
     }
 
     private int computePercentile(UUID jobId, int currentScore) {
-        List<ApplicationScoreEntity> scores = applicationScoreRepository.findByApplication_Job_IdOrderByMatchScoreDesc(jobId);
-        long lowerOrEqual = scores.stream().filter(score -> score.getMatchScore() <= currentScore).count() + 1;
-        long population = scores.size() + 1L;
-        return (int) Math.round((lowerOrEqual * 100.0) / population);
+        Integer percentile = applicationScoreRepository.computePercentile(jobId, currentScore);
+        return percentile != null ? percentile : 50;
     }
 
     private record ScoreComputation(int matchScore, Map<String, Object> matchBreakdown) {

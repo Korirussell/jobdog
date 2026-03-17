@@ -15,17 +15,20 @@ import (
 	"jobdog/scraper-worker/repository"
 
 	"github.com/rs/zerolog/log"
+	"golang.org/x/time/rate"
 )
 
 type GitHubScraper struct {
-	client *http.Client
-	repo   *repository.JobRepository
+	client  *http.Client
+	repo    *repository.JobRepository
+	limiter *rate.Limiter
 }
 
 func NewGitHubScraper(repo *repository.JobRepository) *GitHubScraper {
 	return &GitHubScraper{
-		client: &http.Client{Timeout: 30 * time.Second},
-		repo:   repo,
+		client:  &http.Client{Timeout: 30 * time.Second},
+		repo:    repo,
+		limiter: rate.NewLimiter(rate.Every(time.Second), 5), // 5 requests per second
 	}
 }
 
@@ -38,30 +41,30 @@ func (s *GitHubScraper) ScrapeSimplifyRepo(ctx context.Context) error {
 	}
 
 	jobs := s.parseMarkdownTable(content)
-	
+
 	log.Info().Int("count", len(jobs)).Msg("Parsed jobs from Simplify repo")
-	
+
 	for _, job := range jobs {
 		jobID, err := s.repo.UpsertJob(&job)
 		if err != nil {
 			log.Error().Err(err).Str("company", job.Company).Msg("Failed to upsert job")
 			continue
 		}
-		
+
 		required, preferred := ExtractSkills(job.DescriptionText)
-		
+
 		profile := &models.JobRequirementProfile{
 			JobID:            jobID,
 			RequiredSkills:   required,
 			PreferredSkills:  preferred,
 			ExtractionMethod: "KEYWORD",
 		}
-		
+
 		if err := s.repo.UpsertJobRequirementProfile(profile); err != nil {
 			log.Error().Err(err).Str("job_id", jobID).Msg("Failed to upsert requirement profile")
 		}
 	}
-	
+
 	log.Info().Msg("Completed Simplify repo scrape")
 	return nil
 }
@@ -73,6 +76,11 @@ func (s *GitHubScraper) fetchSimplifyReadme(ctx context.Context) (string, error)
 	}
 
 	for _, url := range urls {
+		// Rate limit
+		if err := s.limiter.Wait(ctx); err != nil {
+			return "", err
+		}
+
 		request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			return "", fmt.Errorf("failed to create simplify README request: %w", err)
@@ -153,7 +161,7 @@ func (s *GitHubScraper) parseMarkdownTable(content string) []models.Job {
 			EmploymentType:  "INTERNSHIP",
 			DescriptionText: fmt.Sprintf("%s at %s - %s", role, company, location),
 			Status:          "ACTIVE",
-			PostedAt:        timePtr(time.Now()),
+			PostedAt:        nil, // Set to nil until we can parse real dates
 		}
 
 		jobs = append(jobs, job)
@@ -202,7 +210,7 @@ func (s *GitHubScraper) parseHTMLTable(content string) []models.Job {
 			EmploymentType:  "INTERNSHIP",
 			DescriptionText: fmt.Sprintf("%s at %s - %s", role, company, location),
 			Status:          "ACTIVE",
-			PostedAt:        timePtr(time.Now()),
+			PostedAt:        nil, // Set to nil until we can parse real dates
 		}
 
 		jobs = append(jobs, job)

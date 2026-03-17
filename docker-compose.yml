@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     container_name: jobdog-postgres
     restart: unless-stopped
     environment:
@@ -10,15 +10,31 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - jobdog-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U jobdog -d jobdog"]
+      test: ["CMD-SHELL", "pg_isready -U jobdog"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: jobdog-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - jobdog-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
-    networks:
-      - jobdog-network
 
   backend-api:
     build:
@@ -28,6 +44,8 @@ services:
     restart: unless-stopped
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: docker
@@ -42,6 +60,8 @@ services:
       APP_R2_SECRET_KEY: ${APP_R2_SECRET_KEY}
       APP_R2_REGION: ${APP_R2_REGION:-auto}
       APP_OPENAI_API_KEY: ${APP_OPENAI_API_KEY}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     ports:
       - "8080:8080"
     networks:
@@ -71,4 +91,5 @@ networks:
     driver: bridge
 
 volumes:
-  postgres-data:
+  postgres_data:
+  redis_data:

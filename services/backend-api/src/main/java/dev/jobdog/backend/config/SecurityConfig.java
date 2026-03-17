@@ -19,7 +19,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, 
-                                                   JwtAuthenticationFilter jwtAuthenticationFilter, 
+                                                   JwtAuthenticationFilter jwtAuthenticationFilter,
+                                                   RateLimitFilter rateLimitFilter,
                                                    JsonAuthenticationEntryPoint authenticationEntryPoint, 
                                                    JsonAccessDeniedHandler accessDeniedHandler) throws Exception {
         http
@@ -32,10 +33,14 @@ public class SecurityConfig {
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler)
                 )
+                .oauth2Login(oauth2 -> oauth2
+                        .defaultSuccessUrl("/api/v1/auth/oauth2/success", true)
+                )
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/actuator/health", "/api/v1/system/health", "/api/v1/auth/**", "/api/v1/jobs", "/api/v1/jobs/*").permitAll()
+                        .requestMatchers("/actuator/health", "/api/v1/system/health", "/api/v1/auth/**", "/api/v1/jobs", "/api/v1/jobs/*", "/oauth2/**", "/login/oauth2/**").permitAll()
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .headers(headers -> headers.frameOptions(Customizer.withDefaults()));
 

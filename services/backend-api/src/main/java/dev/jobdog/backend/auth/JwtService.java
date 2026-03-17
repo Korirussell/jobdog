@@ -5,6 +5,7 @@ import dev.jobdog.backend.user.UserEntity;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -20,6 +21,17 @@ public class JwtService {
 
     public JwtService(AppJwtProperties properties) {
         this.properties = properties;
+    }
+
+    @PostConstruct
+    public void validateJwtSecret() {
+        String secret = properties.secret();
+        if (secret == null || secret.length() < 32) {
+            throw new IllegalStateException("JWT secret must be at least 32 characters long");
+        }
+        if (secret.contains("change-me")) {
+            throw new IllegalStateException("JWT secret must be changed from default value");
+        }
     }
 
     public String generateToken(UserEntity user) {

@@ -1,0 +1,171 @@
+@import "tailwindcss";
+
+/* Vercel-Modern meets Retro Theming */
+:root {
+  /* Retro Background - warm manila/beige */
+  --background: #F4F0EB;
+  --background-secondary: #EDE7E0;
+  
+  /* Primary - golden folder yellow */
+  --primary: #FFD166;
+  --primary-light: #FFF4D6;
+  --primary-dark: #E6BC5C;
+  
+  /* Secondary - dog fur brown (darkened for better contrast) */
+  --secondary: #B86A24;
+  --secondary-dark: #A55E1F;
+  
+  /* Text - retro brown/charcoal (high contrast) */
+  --text-primary: #3E2723;
+  --text-secondary: #6D4C41;
+  --text-tertiary: #8D6E63;
+  
+  /* Neutrals - beige-tinted grays */
+  --gray-50: #FAF8F6;
+  --gray-100: #F0EBE6;
+  --gray-200: #E0D7CF;
+  --gray-300: #C9BDB3;
+  --gray-400: #A89685;
+  --gray-500: #8A7968;
+  --gray-600: #6D5D4F;
+  --gray-700: #4E4139;
+  --gray-800: #3E2723;
+  --gray-900: #2C1810;
+  
+  /* Semantic colors */
+  --success: #10B981;
+  --danger: #EF4444;
+  --info: #3B82F6;
+  
+  /* Soft, modern shadows */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+@theme inline {
+  /* Colors */
+  --color-primary: var(--primary);
+  --color-primary-light: var(--primary-light);
+  --color-primary-dark: var(--primary-dark);
+  --color-white: var(--white);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  
+  /* Gray scale */
+  --color-gray-50: var(--gray-50);
+  --color-gray-100: var(--gray-100);
+  --color-gray-200: var(--gray-200);
+  --color-gray-300: var(--gray-300);
+  --color-gray-400: var(--gray-400);
+  --color-gray-500: var(--gray-500);
+  --color-gray-600: var(--gray-600);
+  --color-gray-700: var(--gray-700);
+  --color-gray-800: var(--gray-800);
+  --color-gray-900: var(--gray-900);
+  
+  /* Text colors */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  
+  /* Backgrounds */
+  --color-background: var(--background);
+  --color-background-secondary: var(--background-secondary);
+  
+  /* Secondary */
+  --color-secondary: var(--secondary);
+  
+  /* Font stack - Inter primary */
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), 'Fira Code', 'Courier New', monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Pixelated rendering for 8-bit assets */
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* Modern utility classes */
+.shadow-xs {
+  box-shadow: var(--shadow-xs);
+}
+
+.shadow-sm {
+  box-shadow: var(--shadow-sm);
+}
+
+.shadow-md {
+  box-shadow: var(--shadow-md);
+}
+
+.shadow-lg {
+  box-shadow: var(--shadow-lg);
+}
+
+.shadow-xl {
+  box-shadow: var(--shadow-xl);
+}
+
+/* Smooth transitions */
+.transition-smooth {
+  transition: all 200ms ease;
+}
+
+/* Card hover effect - subtle lift */
+.card-hover {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Backdrop blur utility */
+.backdrop-blur {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Skip link - hidden by default, visible on focus for accessibility */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--primary);
+  color: var(--text-primary);
+  padding: 8px 16px;
+  text-decoration: none;
+  font-weight: bold;
+  border: 2px solid black;
+  z-index: 100;
+  transition: top 0.2s;
+}
+
+.skip-link:focus {
+  top: 0;
+}

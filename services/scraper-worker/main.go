@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -9,8 +10,10 @@ import (
 
 	"jobdog/scraper-worker/config"
 	"jobdog/scraper-worker/database"
+	"jobdog/scraper-worker/health"
 	"jobdog/scraper-worker/repository"
 	"jobdog/scraper-worker/scraper"
+	"jobdog/scraper-worker/workerpool"
 
 	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog"
@@ -40,21 +43,52 @@ func main() {
 
 	githubScraper := scraper.NewGitHubScraper(jobRepo)
 	workdayScraper := scraper.NewWorkdayScraper(jobRepo)
+	greenhouseScraper := scraper.NewGreenhouseScraper(jobRepo)
 
 	c := cron.New()
 
 	_, err = c.AddFunc("@every 6h", func() {
-		ctx := context.Background()
-		log.Info().Msg("Running scheduled GitHub scrape")
-		if err := githubScraper.ScrapeSimplifyRepo(ctx); err != nil {
-			log.Error().Err(err).Msg("GitHub scrape failed")
-		}
-		for _, source := range cfg.WorkdaySources {
-			log.Info().Str("company", source.Company).Msg("Running scheduled Workday scrape")
-			if err := workdayScraper.ScrapeCompany(ctx, source.Company, source.URL); err != nil {
-				log.Error().Err(err).Str("company", source.Company).Msg("Workday scrape failed")
+		pool := workerpool.NewWorkerPool(10)
+		pool.Start()
+
+		// GitHub scraper
+		pool.Submit(func(ctx context.Context) error {
+			log.Info().Msg("Running scheduled GitHub scrape")
+			if err := githubScraper.ScrapeSimplifyRepo(ctx); err != nil {
+				log.Error().Err(err).Msg("GitHub scrape failed")
+				return err
 			}
+			return nil
+		})
+
+		// Workday scrapers
+		for _, source := range cfg.WorkdaySources {
+			s := source
+			pool.Submit(func(ctx context.Context) error {
+				log.Info().Str("company", s.Company).Msg("Running scheduled Workday scrape")
+				if err := workdayScraper.ScrapeCompany(ctx, s.Company, s.URL); err != nil {
+					log.Error().Err(err).Str("company", s.Company).Msg("Workday scrape failed")
+					return err
+				}
+				return nil
+			})
 		}
+
+		// Greenhouse scrapers
+		for _, source := range cfg.GreenhouseSources {
+			s := source
+			pool.Submit(func(ctx context.Context) error {
+				log.Info().Str("company", s.Company).Msg("Running scheduled Greenhouse scrape")
+				if err := greenhouseScraper.ScrapeCompany(ctx, s.Company, s.BoardToken); err != nil {
+					log.Error().Err(err).Str("company", s.Company).Msg("Greenhouse scrape failed")
+					return err
+				}
+				return nil
+			})
+		}
+
+		pool.Shutdown()
+		log.Info().Msg("All scheduled scrapers completed")
 	})
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to schedule GitHub scraper")
@@ -73,17 +107,57 @@ func main() {
 	c.Start()
 	log.Info().Msg("Cron scheduler started")
 
-	ctx := context.Background()
-	log.Info().Msg("Running initial GitHub scrape")
-	if err := githubScraper.ScrapeSimplifyRepo(ctx); err != nil {
-		log.Error().Err(err).Msg("Initial GitHub scrape failed")
-	}
-	for _, source := range cfg.WorkdaySources {
-		log.Info().Str("company", source.Company).Msg("Running initial Workday scrape")
-		if err := workdayScraper.ScrapeCompany(ctx, source.Company, source.URL); err != nil {
-			log.Error().Err(err).Str("company", source.Company).Msg("Initial Workday scrape failed")
+	// Start health check server
+	http.HandleFunc("/health", health.HealthHandler(db.DB))
+	go func() {
+		log.Info().Msg("Starting health check server on :8081")
+		if err := http.ListenAndServe(":8081", nil); err != nil {
+			log.Error().Err(err).Msg("Health check server failed")
 		}
+	}()
+
+	ctx := context.Background()
+	initialPool := workerpool.NewWorkerPool(10)
+	initialPool.Start()
+
+	// Initial GitHub scrape
+	initialPool.Submit(func(ctx context.Context) error {
+		log.Info().Msg("Running initial GitHub scrape")
+		if err := githubScraper.ScrapeSimplifyRepo(ctx); err != nil {
+			log.Error().Err(err).Msg("Initial GitHub scrape failed")
+			return err
+		}
+		return nil
+	})
+
+	// Initial Workday scrapes
+	for _, source := range cfg.WorkdaySources {
+		s := source
+		initialPool.Submit(func(ctx context.Context) error {
+			log.Info().Str("company", s.Company).Msg("Running initial Workday scrape")
+			if err := workdayScraper.ScrapeCompany(ctx, s.Company, s.URL); err != nil {
+				log.Error().Err(err).Str("company", s.Company).Msg("Initial Workday scrape failed")
+				return err
+			}
+			return nil
+		})
 	}
+
+	// Initial Greenhouse scrapes
+	for _, source := range cfg.GreenhouseSources {
+		s := source
+		initialPool.Submit(func(ctx context.Context) error {
+			log.Info().Str("company", s.Company).Msg("Running initial Greenhouse scrape")
+			if err := greenhouseScraper.ScrapeCompany(ctx, s.Company, s.BoardToken); err != nil {
+				log.Error().Err(err).Str("company", s.Company).Msg("Initial Greenhouse scrape failed")
+				return err
+			}
+			return nil
+		})
+	}
+
+	initialPool.Shutdown()
+	log.Info().Msg("All initial scrapers completed")
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
