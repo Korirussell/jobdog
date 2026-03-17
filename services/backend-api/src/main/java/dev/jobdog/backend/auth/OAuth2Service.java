@@ -31,9 +31,10 @@ public class OAuth2Service {
         UserEntity user = userRepository.findByEmail(email)
                 .orElseGet(() -> createUserFromOAuth2(email, name, provider));
 
-        String token = jwtService.generateToken(user.getId(), user.getEmail());
+        String token = jwtService.generateToken(user);
+        Instant expiresAt = jwtService.expirationInstant();
 
-        return new AuthResponse(token, user.getId(), user.getEmail());
+        return new AuthResponse(user.getId(), user.getEmail(), user.getEmail(), token, expiresAt);
     }
 
     private UserEntity createUserFromOAuth2(String email, String name, String provider) {
