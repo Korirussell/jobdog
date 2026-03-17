@@ -57,6 +57,6 @@ func (p *WorkerPool) Submit(task func(context.Context) error) {
 
 func (p *WorkerPool) Shutdown() {
 	close(p.taskQueue)
-	p.cancel()
 	p.wg.Wait()
+	p.cancel()
 }

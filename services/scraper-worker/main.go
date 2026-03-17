@@ -120,41 +120,52 @@ func main() {
 	initialPool.Start()
 
 	// Initial GitHub scrape
+	log.Info().Msg("Submitting initial GitHub scrape task")
 	initialPool.Submit(func(ctx context.Context) error {
-		log.Info().Msg("Running initial GitHub scrape")
+		log.Info().Msg("Starting initial GitHub scrape")
 		if err := githubScraper.ScrapeSimplifyRepo(ctx); err != nil {
 			log.Error().Err(err).Msg("Initial GitHub scrape failed")
 			return err
 		}
+		log.Info().Msg("Initial GitHub scrape completed successfully")
 		return nil
 	})
 
 	// Initial Workday scrapes
-	for _, source := range cfg.WorkdaySources {
-		s := source
-		initialPool.Submit(func(ctx context.Context) error {
-			log.Info().Str("company", s.Company).Msg("Running initial Workday scrape")
-			if err := workdayScraper.ScrapeCompany(ctx, s.Company, s.URL); err != nil {
-				log.Error().Err(err).Str("company", s.Company).Msg("Initial Workday scrape failed")
-				return err
-			}
-			return nil
-		})
+	if len(cfg.WorkdaySources) > 0 {
+		log.Info().Int("count", len(cfg.WorkdaySources)).Msg("Submitting Workday scrape tasks")
+		for _, source := range cfg.WorkdaySources {
+			s := source
+			initialPool.Submit(func(ctx context.Context) error {
+				log.Info().Str("company", s.Company).Msg("Starting initial Workday scrape")
+				if err := workdayScraper.ScrapeCompany(ctx, s.Company, s.URL); err != nil {
+					log.Error().Err(err).Str("company", s.Company).Msg("Initial Workday scrape failed")
+					return err
+				}
+				log.Info().Str("company", s.Company).Msg("Initial Workday scrape completed")
+				return nil
+			})
+		}
+	} else {
+		log.Info().Msg("No Workday sources configured, skipping Workday scrapes")
 	}
 
 	// Initial Greenhouse scrapes
+	log.Info().Int("count", len(cfg.GreenhouseSources)).Msg("Submitting Greenhouse scrape tasks")
 	for _, source := range cfg.GreenhouseSources {
 		s := source
 		initialPool.Submit(func(ctx context.Context) error {
-			log.Info().Str("company", s.Company).Msg("Running initial Greenhouse scrape")
+			log.Info().Str("company", s.Company).Msg("Starting initial Greenhouse scrape")
 			if err := greenhouseScraper.ScrapeCompany(ctx, s.Company, s.BoardToken); err != nil {
 				log.Error().Err(err).Str("company", s.Company).Msg("Initial Greenhouse scrape failed")
 				return err
 			}
+			log.Info().Str("company", s.Company).Msg("Initial Greenhouse scrape completed")
 			return nil
 		})
 	}
 
+	log.Info().Msg("Waiting for all initial scraper tasks to complete...")
 	initialPool.Shutdown()
 	log.Info().Msg("All initial scrapers completed")
 

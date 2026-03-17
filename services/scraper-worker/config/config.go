@@ -49,7 +49,7 @@ func Load() (*Config, error) {
 		{Company: "Figma", BoardToken: "figma"},
 	}
 
-	// Default Workday sources (can be overridden by env)
+	// Workday sources - disabled by default, only enabled if explicitly configured
 	workdayCompany := getEnv("WORKDAY_COMPANY", "")
 	workdayURL := getEnv("WORKDAY_URL", "")
 
@@ -59,10 +59,8 @@ func Load() (*Config, error) {
 			URL:     workdayURL,
 		}}
 	} else {
-		// Default Workday sources
-		cfg.WorkdaySources = []WorkdaySource{
-			// Add default Workday companies here if needed
-		}
+		// No default Workday sources - must be explicitly configured
+		cfg.WorkdaySources = []WorkdaySource{}
 	}
 
 	if cfg.DatabaseURL == "" {

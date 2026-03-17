@@ -104,10 +104,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      <a href="#main-content" className="skip-link">
-        Skip to main content
-      </a>
-      
       {/* Morphing Header - Hero that transforms into sticky nav */}
       <MorphingHeader />
 
