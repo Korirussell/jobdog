@@ -116,7 +116,6 @@ func main() {
 		}
 	}()
 
-	ctx := context.Background()
 	initialPool := workerpool.NewWorkerPool(10)
 	initialPool.Start()
 
