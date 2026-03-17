@@ -16,7 +16,7 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
 
     @Query("SELECT j FROM JobEntity j WHERE j.status = :status " +
            "AND (:location IS NULL OR LOWER(j.location) LIKE LOWER(CONCAT('%', :location, '%'))) " +
-           "AND (:remote IS NULL OR (LOWER(j.location) LIKE '%remote%') = :remote) " +
+           "AND (:remote IS NULL OR :remote = false OR LOWER(j.location) LIKE '%remote%') " +
            "AND (:company IS NULL OR LOWER(j.company) LIKE LOWER(CONCAT('%', :company, '%'))) " +
            "AND (:search IS NULL OR LOWER(j.title) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "     OR LOWER(j.descriptionText) LIKE LOWER(CONCAT('%', :search, '%')))")
