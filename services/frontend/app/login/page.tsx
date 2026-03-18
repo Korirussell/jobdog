@@ -21,6 +21,14 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, authLoading, router]);
 
+  // Show error if redirected back from a failed OAuth attempt
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('error') === 'oauth_failed') {
+      setError('OAuth login failed. Please try again or use email/password.');
+    }
+  }, []);
+
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">

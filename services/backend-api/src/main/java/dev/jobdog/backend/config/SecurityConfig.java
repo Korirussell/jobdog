@@ -1,8 +1,8 @@
 package dev.jobdog.backend.config;
 
 import dev.jobdog.backend.auth.JwtAuthenticationFilter;
-import dev.jobdog.backend.config.JsonAccessDeniedHandler;
-import dev.jobdog.backend.config.JsonAuthenticationEntryPoint;
+import dev.jobdog.backend.auth.OAuth2FailureHandler;
+import dev.jobdog.backend.auth.OAuth2SuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -18,25 +18,33 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, 
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    JwtAuthenticationFilter jwtAuthenticationFilter,
                                                    RateLimitFilter rateLimitFilter,
-                                                   JsonAuthenticationEntryPoint authenticationEntryPoint, 
-                                                   JsonAccessDeniedHandler accessDeniedHandler) throws Exception {
+                                                   JsonAuthenticationEntryPoint authenticationEntryPoint,
+                                                   JsonAccessDeniedHandler accessDeniedHandler,
+                                                   OAuth2SuccessHandler oAuth2SuccessHandler,
+                                                   OAuth2FailureHandler oAuth2FailureHandler) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
-                // OAuth2 login needs a temporary session for auth request state.
+                // OAuth2 needs a session to store the PKCE/state between the authorization
+                // request and the callback. IF_REQUIRED creates one only when needed.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler)
                 )
                 .oauth2Login(oauth2 -> oauth2
-                        .redirectionEndpoint(redirection -> redirection.baseUri("/api/v1/auth/oauth2/callback/*"))
-                        .defaultSuccessUrl("/api/v1/auth/oauth2/success", true)
+                        // Spring Security listens on this URI for the provider callback
+                        .redirectionEndpoint(redirection ->
+                                redirection.baseUri("/api/v1/auth/oauth2/callback/*"))
+                        // Our handler runs in the same request — no second hop needed
+                        .successHandler(oAuth2SuccessHandler)
+                        // On failure, send the browser to the frontend login page
+                        .failureHandler(oAuth2FailureHandler)
                 )
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
@@ -44,9 +52,10 @@ public class SecurityConfig {
                                 "/api/v1/system/health",
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login",
+                                "/api/v1/auth/me",
                                 "/api/v1/auth/oauth2/**",
                                 "/api/v1/jobs",
-                                "/api/v1/jobs/*",
+                                "/api/v1/jobs/**",
                                 "/api/v1/ghost-score",
                                 "/ws/**",
                                 "/oauth2/**",
