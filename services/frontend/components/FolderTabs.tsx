@@ -71,10 +71,8 @@ export default function FilterBar({ onFilterChange, onSearchChange, searchInputR
               value={searchValue}
               onChange={(e) => {
                 setSearchValue(e.target.value);
-                const timeoutId = setTimeout(() => {
-                  onSearchChange?.(e.target.value);
-                }, 300);
-                return () => clearTimeout(timeoutId);
+                // Fire immediately — debouncing happens in the parent via useDebounce
+                onSearchChange?.(e.target.value);
               }}
               placeholder="Search jobs, companies..."
               className="

@@ -72,135 +72,90 @@ const JobListRow = memo(function JobListRow({
   return (
     <div
       className={`
-        group flex flex-col gap-3 border-b-2 border-black/10
-        px-4 py-5 transition-all
-        hover:border-black/20 hover:bg-background-secondary
-        ${isNew ? 'border-l-4 border-l-primary bg-primary/5' : ''}
-        ${isClosed ? 'opacity-60' : ''}
+        group relative flex items-center gap-4 border-b border-black/8
+        px-4 py-4 transition-colors
+        hover:bg-black/[0.02]
+        ${isNew ? 'border-l-[3px] border-l-primary' : ''}
+        ${isClosed ? 'opacity-50' : ''}
       `}
     >
-      {/* Top Row: Company & Metadata */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h3 className="text-xl font-bold text-text-primary">
-            {company}
-          </h3>
-          <p className="font-mono text-sm font-medium text-text-secondary">
-            {title}
-          </p>
-        </div>
-
-        {/* Right: Time & Match Badge */}
-        <div className="flex flex-col items-end gap-1">
-          <div className="flex items-center gap-1.5">
-            {isNew && (
-              <span className="animate-pulse font-mono text-sm font-bold text-primary">*</span>
-            )}
-            {isClosed ? (
-              <span className="font-mono text-xs font-bold uppercase text-danger">CLOSED</span>
-            ) : (
-              <span
-                className="font-mono text-xs font-bold uppercase text-text-secondary"
-                title={!postedAt ? `Discovered: ${discoveredLabel}` : undefined}
-              >
-                {!postedAt ? `~${discoveredLabel}` : timeLabel}
-                {!postedAt && timeLabel !== 'UNKNOWN' && (
-                  <span className="ml-0.5 text-text-tertiary" title="Estimated from discovery date">~</span>
-                )}
-              </span>
-            )}
-          </div>
-          {matchPercentile !== undefined && (
-            <div className="flex items-center gap-1 rounded border-2 border-primary bg-primary-light px-2 py-0.5">
-              <span className="font-mono text-sm font-bold text-text-primary">{matchPercentile}%</span>
-              <span className="font-mono text-[10px] font-bold uppercase text-text-secondary">MATCH</span>
-            </div>
-          )}
-          {alreadyApplied && (
-            <span className="font-mono text-[10px] font-bold uppercase text-success">✓ APPLIED</span>
-          )}
-        </div>
-      </div>
-
-      {/* Bottom Row: Location, Type, Actions */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-3 font-mono text-xs uppercase text-text-secondary">
-          <span className="flex items-center gap-1">
-            <span>📍</span>
-            <span>{location}</span>
+      {/* NEW pulse dot */}
+      {isNew && (
+        <span className="absolute left-1 top-1/2 -translate-y-1/2">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
           </span>
-          <span>•</span>
-          <span className="flex items-center gap-1">
-            <span>💼</span>
-            <span>{employmentType}</span>
-          </span>
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex items-center gap-2">
-          {onApply && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (canApply) onApply(jobId);
-              }}
-              disabled={!canApply}
-              title={
-                isClosed ? 'This position is no longer active'
-                : alreadyApplied ? 'You have already applied'
-                : 'Track this application'
-              }
-              className={`
-                border-2 px-3 py-1 font-mono text-xs font-bold uppercase
-                transition-all
-                ${canApply
-                  ? 'border-black bg-primary text-text-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]'
-                  : 'cursor-not-allowed border-black/20 bg-background text-text-tertiary'
-                }
-              `}
-            >
-              {alreadyApplied ? '✓ APPLIED' : isClosed ? 'CLOSED' : '> APPLY'}
-            </button>
-          )}
-          <a
-            href={applyUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            aria-label={`View ${title} at ${company} on company site`}
-            className="
-              border-2 border-black/20 bg-white px-3 py-1
-              font-mono text-xs font-bold uppercase text-text-secondary
-              transition-all hover:border-black hover:text-text-primary
-            "
-          >
-            VIEW ↗
-          </a>
-        </div>
-      </div>
-
-      {/* Tech Stack Tags */}
-      {techStack.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {techStack.slice(0, 5).map((tech) => (
-            <span
-              key={tech}
-              className="
-                border-2 border-black/20 bg-white px-2 py-1
-                font-mono text-xs font-bold uppercase text-text-primary
-                shadow-[1px_1px_0px_0px_rgba(0,0,0,0.2)]
-              "
-            >
-              {tech}
-            </span>
-          ))}
-          {techStack.length > 5 && (
-            <span className="font-mono text-xs font-bold text-text-tertiary">
-              +{techStack.length - 5}
-            </span>
-          )}
-        </div>
+        </span>
       )}
+
+      {/* Main content */}
+      <div className="min-w-0 flex-1">
+        {/* Company + title */}
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span className="font-mono text-sm font-bold text-text-primary">{company}</span>
+          <span className="text-black/20">·</span>
+          <span className="font-mono text-sm text-text-secondary">{title}</span>
+        </div>
+
+        {/* Meta row */}
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-text-tertiary">
+          <span>{location}</span>
+          <span className="text-black/20">·</span>
+          <span>{employmentType}</span>
+          {alreadyApplied && (
+            <>
+              <span className="text-black/20">·</span>
+              <span className="font-bold text-emerald-600">✓ applied</span>
+            </>
+          )}
+          {isClosed && (
+            <>
+              <span className="text-black/20">·</span>
+              <span className="font-bold text-red-500">closed</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Right side: time + actions */}
+      <div className="flex shrink-0 items-center gap-2">
+        {/* Time */}
+        <span
+          className="hidden font-mono text-xs text-text-tertiary sm:block"
+          title={!postedAt ? `Discovered: ${discoveredLabel}` : undefined}
+        >
+          {isClosed ? '' : (!postedAt ? `~${discoveredLabel}` : timeLabel)}
+        </span>
+
+        {/* Match badge */}
+        {matchPercentile !== undefined && (
+          <span className="border border-primary bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-text-primary">
+            {matchPercentile}% match
+          </span>
+        )}
+
+        {/* Apply button */}
+        {onApply && canApply && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onApply(jobId); }}
+            className="border-2 border-black bg-primary px-3 py-1 font-mono text-xs font-bold uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
+          >
+            Apply
+          </button>
+        )}
+
+        {/* View link */}
+        <a
+          href={applyUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="border border-black/15 bg-white px-3 py-1 font-mono text-xs font-bold text-text-secondary transition-all hover:border-black/40 hover:text-text-primary"
+        >
+          View ↗
+        </a>
+      </div>
     </div>
   );
 }, (prevProps, nextProps) => {

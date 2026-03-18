@@ -37,8 +37,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(Exception exception,
                                                              HttpServletRequest request) {
-        LOGGER.error("Unhandled exception for path {}", request.getRequestURI(), exception);
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error", request.getRequestURI());
+        // Log the full stack trace so it appears in docker logs
+        LOGGER.error("Unhandled exception for path {}: {} — {}",
+                request.getRequestURI(),
+                exception.getClass().getSimpleName(),
+                exception.getMessage(),
+                exception);
+
+        // Include root cause in the message so it's visible in the API response
+        // (helps diagnose issues without needing server SSH access)
+        Throwable root = exception;
+        while (root.getCause() != null) root = root.getCause();
+        String detail = root.getClass().getSimpleName() + ": " + root.getMessage();
+
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Server error — " + detail,
+                request.getRequestURI());
     }
 
     private ResponseEntity<ApiErrorResponse> buildResponse(HttpStatus status, String message, String path) {

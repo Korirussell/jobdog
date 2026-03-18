@@ -55,8 +55,10 @@ export default function Home() {
     hideApplied: false,
   });
   const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearch = useDebounce(searchQuery, 500);
-  const pageSize = 50;
+  const debouncedSearch = useDebounce(searchQuery, 400);
+  // Instant client-side search on the loaded page — no API round-trip needed
+  const [liveSearch, setLiveSearch] = useState('');
+  const pageSize = 100;
   const wsRef = useRef<WebSocket | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -191,6 +193,18 @@ export default function Home() {
   const startResult = page * pageSize + 1;
   const endResult = Math.min((page + 1) * pageSize, total);
 
+  // Client-side filtering: instant search + hideApplied on the loaded page
+  const q = liveSearch.trim().toLowerCase();
+  const visibleJobs = jobs.filter((job) => {
+    if (filters.hideApplied && appliedJobIds.has(job.jobId)) return false;
+    if (!q) return true;
+    return (
+      job.title.toLowerCase().includes(q) ||
+      job.company.toLowerCase().includes(q) ||
+      job.location.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div className="min-h-screen">
       <TopBar onSearchFocus={focusSearch} />
@@ -215,6 +229,9 @@ export default function Home() {
             setPage(0);
           }}
           onSearchChange={(search) => {
+            // Instant client-side filter on current page
+            setLiveSearch(search);
+            // Also trigger API fetch (debounced) for cross-page results
             setSearchQuery(search);
             setPage(0);
           }}
@@ -223,55 +240,96 @@ export default function Home() {
         {/* Job Count + Last Sync */}
         <div className="flex items-center justify-between border-b-2 border-black/10 py-2">
           {loading ? (
-            <p className="font-mono text-xs font-bold uppercase text-text-secondary">
-              LOADING POSITIONS...
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+              <p className="font-mono text-xs font-bold uppercase text-text-secondary">
+                LOADING POSITIONS...
+              </p>
+            </div>
           ) : error ? (
-            <p className="font-mono text-xs font-bold uppercase text-secondary">
+            <p className="font-mono text-xs font-bold uppercase text-red-600">
               ⚠ {error}
             </p>
           ) : (
             <p className="font-mono text-xs font-bold uppercase text-text-secondary">
-              SHOWING <span className="text-text-primary">{startResult}-{endResult}</span> OF{' '}
-              <span className="text-text-primary">{total}</span> POSITIONS
+              {q ? (
+                <>
+                  <span className="text-text-primary">{visibleJobs.length}</span> results for{' '}
+                  <span className="text-primary">"{liveSearch}"</span>
+                </>
+              ) : (
+                <>
+                  SHOWING <span className="text-text-primary">{startResult}–{endResult}</span> OF{' '}
+                  <span className="text-text-primary">{total.toLocaleString()}</span> POSITIONS
+                </>
+              )}
             </p>
           )}
           {lastSync && !loading && (
             <p className="font-mono text-xs text-text-tertiary" title={new Date(lastSync).toLocaleString()}>
-              LAST_SYNC: {formatSyncTime(lastSync)}
+              synced {formatSyncTime(lastSync)}
             </p>
           )}
         </div>
 
-        {/* Job Rows - Unbounded, continuous list */}
+        {/* Job Rows */}
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="font-mono text-sm text-text-secondary">
-              <span className="animate-pulse">█</span> FETCHING_JOBS.EXE
-            </div>
+          // Skeleton loading — 8 placeholder rows
+          <div>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="border-b-2 border-black/10 px-4 py-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-1 flex-col gap-2">
+                    <div className="h-5 w-32 animate-pulse rounded bg-black/8" />
+                    <div className="h-4 w-64 animate-pulse rounded bg-black/5" />
+                  </div>
+                  <div className="h-4 w-16 animate-pulse rounded bg-black/5" />
+                </div>
+                <div className="mt-3 flex gap-3">
+                  <div className="h-3 w-24 animate-pulse rounded bg-black/5" />
+                  <div className="h-3 w-20 animate-pulse rounded bg-black/5" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : visibleJobs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="mb-4 text-4xl">{q ? '🔍' : '📭'}</div>
+            <p className="font-mono text-base font-bold text-text-secondary">
+              {q ? `No jobs matching "${liveSearch}"` : 'No jobs found'}
+            </p>
+            <p className="mt-2 font-mono text-sm text-text-tertiary">
+              {q ? 'Try a different search term or clear filters' : 'Check back soon — jobs are updated regularly'}
+            </p>
+            {q && (
+              <button
+                onClick={() => { setLiveSearch(''); setSearchQuery(''); if (searchInputRef.current) searchInputRef.current.value = ''; }}
+                className="mt-4 border-2 border-black bg-primary px-4 py-2 font-mono text-xs font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
+              >
+                Clear search
+              </button>
+            )}
           </div>
         ) : (
           <div>
-            {jobs
-              .filter((job) => !(filters.hideApplied && appliedJobIds.has(job.jobId)))
-              .map((job) => (
-                <JobListRow
-                  key={job.jobId}
-                  jobId={job.jobId}
-                  company={job.company}
-                  title={job.title}
-                  location={job.location}
-                  employmentType={job.employmentType}
-                  techStack={job.techStack}
-                  postedAt={job.postedAt}
-                  scrapedAt={job.scrapedAt}
-                  jobStatus={job.jobStatus}
-                  matchPercentile={job.matchPercentile}
-                  applyUrl={job.applyUrl}
-                  alreadyApplied={appliedJobIds.has(job.jobId)}
-                  onApply={isAuthenticated ? handleApply : undefined}
-                />
-              ))}
+            {visibleJobs.map((job) => (
+              <JobListRow
+                key={job.jobId}
+                jobId={job.jobId}
+                company={job.company}
+                title={job.title}
+                location={job.location}
+                employmentType={job.employmentType}
+                techStack={job.techStack}
+                postedAt={job.postedAt}
+                scrapedAt={job.scrapedAt}
+                jobStatus={job.jobStatus}
+                matchPercentile={job.matchPercentile}
+                applyUrl={job.applyUrl}
+                alreadyApplied={appliedJobIds.has(job.jobId)}
+                onApply={isAuthenticated ? handleApply : undefined}
+              />
+            ))}
           </div>
         )}
 

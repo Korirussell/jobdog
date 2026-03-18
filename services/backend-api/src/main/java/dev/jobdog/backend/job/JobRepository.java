@@ -24,8 +24,8 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
            "AND (:location IS NULL OR LOWER(j.location) LIKE LOWER(CONCAT('%', :location, '%'))) " +
            "AND (:remote IS NULL OR :remote = false OR LOWER(j.location) LIKE '%remote%') " +
            "AND (:company IS NULL OR LOWER(j.company) LIKE LOWER(CONCAT('%', :company, '%'))) " +
-           "AND (:search IS NULL OR LOWER(j.title) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "     OR LOWER(j.descriptionText) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "AND (:search IS NULL OR (LOWER(j.title) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "     OR LOWER(j.company) LIKE LOWER(CONCAT('%', :search, '%')))) " +
            "ORDER BY COALESCE(j.postedAt, j.scrapedAt) DESC")
     Page<JobEntity> findByFilters(
             @Param("status") JobStatus status,
