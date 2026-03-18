@@ -1,15 +1,26 @@
 import type { NextConfig } from "next";
 
+const BACKEND_URL = process.env.BACKEND_URL || 'http://134.122.7.82:8080';
+
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
   async rewrites() {
     return [
       {
-        // When the browser asks Vercel for /api/something...
         source: '/api/:path*',
-        // ...Vercel secretly fetches it from your DigitalOcean server
-        destination: 'http://134.122.7.82:8080/api/:path*', 
+        destination: `${BACKEND_URL}/api/:path*`,
+      },
+      {
+        source: '/oauth2/:path*',
+        destination: `${BACKEND_URL}/oauth2/:path*`,
+      },
+      {
+        source: '/login/oauth2/:path*',
+        destination: `${BACKEND_URL}/login/oauth2/:path*`,
+      },
+      {
+        source: '/ws/:path*',
+        destination: `${BACKEND_URL}/ws/:path*`,
       },
     ]
   },

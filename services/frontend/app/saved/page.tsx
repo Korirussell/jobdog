@@ -3,9 +3,42 @@
 import { useEffect, useState } from 'react';
 import MorphingHeader from '@/components/MorphingHeader';
 import JobListRow from '@/components/JobListRow';
+import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface SavedJob {
+  jobId: string;
+  title: string;
+  company: string;
+  location: string;
+  employmentType: string;
+  postedAt: string;
+  applyUrl: string;
+  savedAt: string;
+}
 
 export default function SavedPage() {
-  const [savedJobs, setSavedJobs] = useState<any[]>([]);
+  const { isAuthenticated } = useAuth();
+  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+    api.getSavedJobs()
+      .then((res) => setSavedJobs(res.items))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [isAuthenticated]);
+
+  const handleUnsave = async (jobId: string) => {
+    try {
+      await api.unsaveJob(jobId);
+      setSavedJobs((prev) => prev.filter((j) => j.jobId !== jobId));
+    } catch {}
+  };
 
   return (
     <div className="min-h-screen">
@@ -14,7 +47,7 @@ export default function SavedPage() {
       <main className="mx-auto min-h-screen max-w-6xl px-6 pt-8">
         <div className="mb-6">
           <h1 className="mb-2 font-mono text-2xl font-bold text-text-primary">
-            📁 SAVED_JOBS/
+            SAVED_JOBS/
           </h1>
           <p className="font-mono text-sm text-text-secondary">
             Your bookmarked opportunities
@@ -27,20 +60,47 @@ export default function SavedPage() {
           </p>
         </div>
 
-        {savedJobs.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="font-mono text-sm text-text-secondary">
+              <span className="animate-pulse">|</span> LOADING_SAVED.EXE
+            </div>
+          </div>
+        ) : !isAuthenticated ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="mb-4 text-6xl">📂</div>
-            <p className="font-mono text-sm text-text-secondary">
+            <p className="font-mono text-sm text-text-secondary">LOGIN_REQUIRED.ERR</p>
+            <a href="/login" className="mt-4 border-2 border-black bg-primary px-6 py-3 font-mono text-sm font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+              LOGIN.EXE
+            </a>
+          </div>
+        ) : savedJobs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <p className="mb-2 font-mono text-sm text-text-secondary">
               NO_SAVED_JOBS.TXT
             </p>
-            <p className="mt-2 text-sm text-text-tertiary">
-              Start saving jobs to build your collection
+            <p className="text-sm text-text-tertiary">
+              Save jobs from the conveyor belt or job listings
             </p>
           </div>
         ) : (
           <div>
             {savedJobs.map((job) => (
-              <JobListRow key={job.jobId} {...job} />
+              <div key={job.jobId} className="group relative">
+                <JobListRow
+                  company={job.company}
+                  title={job.title}
+                  location={job.location}
+                  employmentType={job.employmentType}
+                  scrapedAt={job.postedAt}
+                  applyUrl={job.applyUrl}
+                />
+                <button
+                  onClick={() => handleUnsave(job.jobId)}
+                  className="absolute right-4 top-4 border-2 border-black/20 bg-white px-2 py-1 font-mono text-xs font-bold text-danger opacity-0 transition-opacity group-hover:opacity-100 hover:border-danger hover:bg-danger/10"
+                >
+                  UNSAVE
+                </button>
+              </div>
             ))}
           </div>
         )}

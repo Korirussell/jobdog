@@ -1,4 +1,3 @@
-// Use relative path for proxy mode (production), full URL for local development
 const API_BASE = process.env.NODE_ENV === 'production' ? '' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080');
 
 export class ApiClient {
@@ -62,7 +61,7 @@ export class ApiClient {
 
   // Auth
   async register(email: string, password: string, displayName: string) {
-    const data = await this.request<{ token: string; userId: string; email: string; displayName: string }>('/api/v1/auth/register', {
+    const data = await this.request<{ userId: string; email: string; displayName: string; token: string }>('/api/v1/auth/register', {
       method: 'POST',
       body: JSON.stringify({ email, password, displayName }),
     });
@@ -71,7 +70,7 @@ export class ApiClient {
   }
 
   async login(email: string, password: string) {
-    const data = await this.request<{ token: string; userId: string; email: string; displayName: string }>('/api/v1/auth/login', {
+    const data = await this.request<{ userId: string; email: string; displayName: string; token: string }>('/api/v1/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
@@ -79,8 +78,17 @@ export class ApiClient {
     return data;
   }
 
+  async me() {
+    return this.request<{ userId: string; email: string; displayName: string }>('/api/v1/auth/me');
+  }
+
+  logout() {
+    this.clearToken();
+  }
+
   // Jobs
-  async getJobs() {
+  async getJobs(params?: URLSearchParams) {
+    const qs = params ? `?${params.toString()}` : '';
     return this.request<{
       items: Array<{
         jobId: string;
@@ -94,7 +102,7 @@ export class ApiClient {
       page: number;
       size: number;
       total: number;
-    }>('/api/v1/jobs');
+    }>(`/api/v1/jobs${qs}`);
   }
 
   // Resumes
@@ -104,7 +112,7 @@ export class ApiClient {
     if (label) formData.append('label', label);
 
     const token = this.getToken();
-    const response = await fetch(`${API_BASE}/api/v1/resumes/upload`, {
+    const response = await fetch(`${API_BASE}/api/v1/resumes`, {
       method: 'POST',
       headers: {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -135,13 +143,13 @@ export class ApiClient {
   async createApplication(jobId: string, resumeId: string) {
     return this.request<{
       applicationId: string;
-      jobId: string;
-      resumeId: string;
-      status: string;
       matchScore: number;
-    }>('/api/v1/applications', {
+      benchmarkState: string;
+      percentile: number | null;
+      applicantCount: number;
+    }>(`/api/v1/jobs/${jobId}/applications`, {
       method: 'POST',
-      body: JSON.stringify({ jobId, resumeId }),
+      body: JSON.stringify({ resumeId }),
     });
   }
 
@@ -149,13 +157,69 @@ export class ApiClient {
     return this.request<{
       items: Array<{
         applicationId: string;
+        jobId: string;
         jobTitle: string;
         company: string;
         status: string;
         matchScore: number;
+        percentile: number | null;
+        applicantCount: number;
         appliedAt: string;
       }>;
     }>('/api/v1/applications');
+  }
+
+  // Saved Jobs
+  async saveJob(jobId: string) {
+    return this.request<{ savedJobId: string; jobId: string }>('/api/v1/saved-jobs', {
+      method: 'POST',
+      body: JSON.stringify({ jobId }),
+    });
+  }
+
+  async unsaveJob(jobId: string) {
+    return this.request<void>(`/api/v1/saved-jobs/${jobId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getSavedJobs() {
+    return this.request<{
+      items: Array<{
+        jobId: string;
+        title: string;
+        company: string;
+        location: string;
+        employmentType: string;
+        postedAt: string;
+        applyUrl: string;
+        savedAt: string;
+      }>;
+    }>('/api/v1/saved-jobs');
+  }
+
+  // Resume Roaster
+  async roastResume(resumeId: string, jobId: string) {
+    return this.request<{
+      brutalRoastText: string;
+      missingDependencies: string[];
+      topDogRank: number;
+      tierName: string;
+    }>('/api/v1/roast', {
+      method: 'POST',
+      body: JSON.stringify({ resumeId, jobId }),
+    });
+  }
+
+  // Ghost Score
+  async getGhostScore(company: string) {
+    return this.request<{
+      company: string;
+      ghostScore: number;
+      avgDaysOpen: number;
+      ghostReports: number;
+      totalJobs: number;
+    }>(`/api/v1/ghost-score?company=${encodeURIComponent(company)}`);
   }
 }
 

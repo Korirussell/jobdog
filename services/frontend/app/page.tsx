@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import MorphingHeader from '@/components/MorphingHeader';
 import FilterBar, { FilterState } from '@/components/FolderTabs';
 import JobListRow from '@/components/JobListRow';
+import ConveyorBelt from '@/components/ConveyorBelt';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
 
 interface Job {
   jobId: string;
@@ -19,11 +22,13 @@ interface Job {
 }
 
 export default function Home() {
+  const { isAuthenticated } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
+  const [conveyorJobs, setConveyorJobs] = useState<Array<{ jobId: string; company: string; title: string }>>([]);
   const [filters, setFilters] = useState<FilterState>({
     remote: false,
     employmentType: 'all',
@@ -33,13 +38,51 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 500);
   const pageSize = 50;
+  const wsRef = useRef<WebSocket | null>(null);
+
+  // WebSocket connection for real-time job updates
+  useEffect(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = process.env.NEXT_PUBLIC_API_URL
+      ? `${protocol}//${new URL(process.env.NEXT_PUBLIC_API_URL).host}/ws`
+      : `${protocol}//${window.location.host}/ws`;
+
+    try {
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onmessage = (event) => {
+        try {
+          const job = JSON.parse(event.data);
+          setConveyorJobs((prev) => [...prev.slice(-19), {
+            jobId: job.jobId,
+            company: job.company,
+            title: job.title,
+          }]);
+        } catch {}
+      };
+
+      ws.onerror = () => {};
+      ws.onclose = () => {};
+
+      return () => ws.close();
+    } catch {
+      return;
+    }
+  }, []);
+
+  const handleSaveJob = useCallback(async (jobId: string) => {
+    if (!isAuthenticated) return;
+    try {
+      await api.saveJob(jobId);
+    } catch {}
+  }, [isAuthenticated]);
 
   useEffect(() => {
     async function fetchJobs() {
       try {
         setLoading(true);
         
-        // Build query params based on filters
         const params = new URLSearchParams({
           page: page.toString(),
           size: pageSize.toString(),
@@ -73,16 +116,15 @@ export default function Home() {
         
         const data = await response.json();
         
-        // Map backend response to frontend format
         const mappedJobs: Job[] = data.items.map((item: any) => ({
           jobId: item.jobId,
           title: item.title,
           company: item.company,
           location: item.location,
           employmentType: item.employmentType,
-          techStack: [], // Backend doesn't provide this yet
-          scrapedAt: item.postedAt, // Using actual posted time, not scrape time
-          matchPercentile: undefined, // Backend doesn't provide this yet
+          techStack: [],
+          scrapedAt: item.postedAt,
+          matchPercentile: undefined,
           applyUrl: item.applyUrl,
         }));
         
@@ -170,7 +212,7 @@ export default function Home() {
 
         {/* Pagination Controls */}
         {totalPages > 1 && (
-          <div className="border-t-2 border-black/10 py-6">
+          <div className="border-t-2 border-black/10 py-6 pb-24">
             <div className="flex items-center justify-between">
               <button
                 onClick={() => setPage(Math.max(0, page - 1))}
@@ -213,6 +255,13 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {/* Zero-Day Conveyor Belt */}
+      <ConveyorBelt
+        jobs={conveyorJobs}
+        onSaveJob={handleSaveJob}
+        visible={conveyorJobs.length > 0}
+      />
     </div>
   );
 }
