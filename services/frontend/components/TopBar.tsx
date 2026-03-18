@@ -23,24 +23,44 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
   const { user, isAuthenticated, loading, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  // Track button position so the dropdown can be fixed-positioned
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Recalculate dropdown position whenever it opens
+  useEffect(() => {
+    if (menuOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + 6,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [menuOpen]);
 
   // Close dropdown on outside click
   useEffect(() => {
+    if (!menuOpen) return;
     const handler = (e: MouseEvent) => {
       if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(e.target as Node)
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+        buttonRef.current && !buttonRef.current.contains(e.target as Node)
       ) {
         setMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  }, [menuOpen]);
+
+  // Close on scroll (dropdown is fixed so it'd float otherwise)
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = () => setMenuOpen(false);
+    window.addEventListener('scroll', handler, { passive: true });
+    return () => window.removeEventListener('scroll', handler);
+  }, [menuOpen]);
 
   // Close on route change
   useEffect(() => {
@@ -48,13 +68,12 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
     setMenuOpen(false);
   }, [pathname]);
 
-  // ⌘K / Ctrl+K global shortcut → focus search
+  // ⌘K / Ctrl+K → focus search
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         onSearchFocus?.();
-        // Also scroll to top so search is visible
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     };
@@ -75,90 +94,84 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
   const visibleLinks = NAV_LINKS.filter((l) => !l.authOnly || isAuthenticated);
 
   return (
-    // overflow-visible is critical — without it, the dropdown gets clipped
-    <header className="sticky top-0 z-[100] overflow-visible border-b-2 border-black/10 bg-white/98 backdrop-blur-sm">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+    <>
+      <header className="sticky top-0 z-[100] border-b-2 border-black/10 bg-white/98 backdrop-blur-sm">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
 
-        {/* ── Left: Logo ── */}
-        <Link href="/" className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-80">
-          <Image
-            src="/assets/jobdog.png"
-            alt="JobDog"
-            width={40}
-            height={40}
-            className="pixelated"
-            priority
-          />
-          <div className="flex flex-col leading-none">
-            <span className="font-mono text-base font-bold text-text-primary">jobdog.dev</span>
-            <span className="font-mono text-[10px] text-text-tertiary">intern jobs · new grad</span>
-          </div>
-        </Link>
+          {/* ── Left: Logo ── */}
+          <Link href="/" className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-80">
+            <Image
+              src="/assets/jobdog.png"
+              alt="JobDog"
+              width={40}
+              height={40}
+              className="pixelated"
+              priority
+            />
+            <div className="flex flex-col leading-none">
+              <span className="font-mono text-base font-bold text-text-primary">jobdog.dev</span>
+              <span className="font-mono text-[10px] text-text-tertiary">intern jobs · new grad</span>
+            </div>
+          </Link>
 
-        {/* ── Center: Nav links (desktop) ── */}
-        <nav className="hidden items-center gap-0.5 md:flex">
-          {visibleLinks.map(({ href, label }) => {
-            const active = pathname === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`
-                  relative px-3 py-2 font-mono text-sm font-bold transition-colors
-                  ${active
-                    ? 'text-text-primary'
-                    : 'text-text-secondary hover:text-text-primary'
-                  }
-                `}
+          {/* ── Center: Nav links (desktop) ── */}
+          <nav className="hidden items-center gap-0.5 md:flex">
+            {visibleLinks.map(({ href, label }) => {
+              const active = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`
+                    relative px-3 py-2 font-mono text-sm font-bold transition-colors
+                    ${active ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}
+                  `}
+                >
+                  {label}
+                  {active && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* ── Right: Search hint + Auth ── */}
+          <div className="flex shrink-0 items-center gap-2">
+
+            {/* ⌘K search hint */}
+            {onSearchFocus && (
+              <button
+                onClick={() => {
+                  onSearchFocus();
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="hidden items-center gap-1.5 border border-black/10 bg-background px-2.5 py-1.5 font-mono text-xs text-text-tertiary transition-colors hover:border-black/30 hover:text-text-secondary sm:flex"
+                title="Search jobs (⌘K)"
               >
-                {label}
-                {/* PostHog-style active underline indicator */}
-                {active && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <span>Search</span>
+                <kbd className="ml-1 rounded bg-white px-1 py-0.5 text-[10px] font-bold shadow-sm ring-1 ring-black/10">⌘K</kbd>
+              </button>
+            )}
 
-        {/* ── Right: Search hint + Auth ── */}
-        <div className="flex shrink-0 items-center gap-2">
-
-          {/* ⌘K search hint — PostHog-style */}
-          {onSearchFocus && (
+            {/* Mobile hamburger */}
             <button
-              onClick={() => {
-                onSearchFocus();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              className="hidden items-center gap-1.5 border border-black/10 bg-background px-2.5 py-1.5 font-mono text-xs text-text-tertiary transition-colors hover:border-black/30 hover:text-text-secondary sm:flex"
-              title="Search jobs (⌘K)"
+              onClick={() => setMobileOpen((v) => !v)}
+              className="flex h-8 w-8 flex-col items-center justify-center gap-1.5 md:hidden"
+              aria-label="Toggle menu"
             >
-              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <span>Search</span>
-              <kbd className="ml-1 rounded bg-white px-1 py-0.5 text-[10px] font-bold shadow-sm ring-1 ring-black/10">⌘K</kbd>
+              <span className={`block h-0.5 w-5 bg-text-primary transition-all duration-200 ${mobileOpen ? 'translate-y-2 rotate-45' : ''}`} />
+              <span className={`block h-0.5 w-5 bg-text-primary transition-all duration-200 ${mobileOpen ? 'opacity-0' : ''}`} />
+              <span className={`block h-0.5 w-5 bg-text-primary transition-all duration-200 ${mobileOpen ? '-translate-y-2 -rotate-45' : ''}`} />
             </button>
-          )}
 
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setMobileOpen((v) => !v)}
-            className="flex h-8 w-8 flex-col items-center justify-center gap-1.5 md:hidden"
-            aria-label="Toggle menu"
-          >
-            <span className={`block h-0.5 w-5 bg-text-primary transition-all duration-200 ${mobileOpen ? 'translate-y-2 rotate-45' : ''}`} />
-            <span className={`block h-0.5 w-5 bg-text-primary transition-all duration-200 ${mobileOpen ? 'opacity-0' : ''}`} />
-            <span className={`block h-0.5 w-5 bg-text-primary transition-all duration-200 ${mobileOpen ? '-translate-y-2 -rotate-45' : ''}`} />
-          </button>
-
-          {/* Auth section */}
-          {!loading && (
-            <>
-              {isAuthenticated ? (
-                // Wrapper div — overflow-visible so dropdown escapes the header
-                <div className="relative overflow-visible">
+            {/* Auth */}
+            {!loading && (
+              <>
+                {isAuthenticated ? (
                   <button
                     ref={buttonRef}
                     onClick={() => setMenuOpen((v) => !v)}
@@ -166,7 +179,6 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
                     aria-expanded={menuOpen}
                     aria-haspopup="true"
                   >
-                    {/* Avatar */}
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center bg-primary font-mono text-[10px] font-bold text-text-primary">
                       {initials}
                     </span>
@@ -180,139 +192,138 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
-
-                  {/* Dropdown — rendered in a portal-like position using fixed positioning */}
-                  {menuOpen && (
-                    <div
-                      ref={dropdownRef}
-                      className="absolute right-0 top-[calc(100%+6px)] z-[200] w-60 border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                      style={{ position: 'absolute' }}
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/login"
+                      className="border-2 border-black/20 bg-white px-3 py-1.5 font-mono text-xs font-bold text-text-secondary transition-all hover:border-black hover:text-text-primary"
                     >
-                      {/* User info header */}
-                      <div className="border-b-2 border-black/10 bg-background px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-primary font-mono text-xs font-bold">
-                            {initials}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="truncate font-mono text-xs font-bold text-text-primary">{user?.displayName}</p>
-                            <p className="truncate font-mono text-[10px] text-text-tertiary">{user?.email}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Nav items */}
-                      <div className="py-1">
-                        {[
-                          { href: '/', label: 'Jobs', icon: '💼' },
-                          { href: '/vault', label: 'Resume Vault', icon: '📁' },
-                          { href: '/saved', label: 'Saved Jobs', icon: '★' },
-                          { href: '/applications', label: 'Applications', icon: '📋' },
-                          { href: '/settings', label: 'Settings', icon: '⚙' },
-                        ].map(({ href, label, icon }) => (
-                          <Link
-                            key={href}
-                            href={href}
-                            onClick={() => setMenuOpen(false)}
-                            className={`
-                              flex items-center gap-2.5 px-4 py-2.5 font-mono text-xs font-bold
-                              transition-colors hover:bg-background-secondary
-                              ${pathname === href
-                                ? 'bg-primary/10 text-text-primary'
-                                : 'text-text-secondary hover:text-text-primary'
-                              }
-                            `}
-                          >
-                            <span className="w-4 text-center">{icon}</span>
-                            {label}
-                            {pathname === href && (
-                              <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
-                            )}
-                          </Link>
-                        ))}
-                      </div>
-
-                      {/* Logout */}
-                      <div className="border-t-2 border-black/10 py-1">
-                        <button
-                          onClick={handleLogout}
-                          className="flex w-full items-center gap-2.5 px-4 py-2.5 font-mono text-xs font-bold text-red-600 transition-colors hover:bg-red-50"
-                        >
-                          <span className="w-4 text-center">⏻</span>
-                          Logout
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Link
-                    href="/login"
-                    className="border-2 border-black/20 bg-white px-3 py-1.5 font-mono text-xs font-bold text-text-secondary transition-all hover:border-black hover:text-text-primary"
-                  >
-                    Log in
-                  </Link>
-                  <Link
-                    href="/login"
-                    className="border-2 border-black bg-primary px-3 py-1.5 font-mono text-xs font-bold text-text-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
-                  >
-                    Sign up →
-                  </Link>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* ── Mobile nav drawer ── */}
-      {mobileOpen && (
-        <div className="border-t-2 border-black/10 bg-white px-4 pb-4 md:hidden">
-          <nav className="flex flex-col gap-1 pt-3">
-            {visibleLinks.map(({ href, label }) => {
-              const active = pathname === href;
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`
-                    flex items-center justify-between border-l-4 px-4 py-3 font-mono text-sm font-bold
-                    transition-colors
-                    ${active
-                      ? 'border-l-primary bg-primary/10 text-text-primary'
-                      : 'border-l-transparent text-text-secondary hover:border-l-black/20 hover:bg-background-secondary hover:text-text-primary'
-                    }
-                  `}
-                >
-                  {label}
-                  {active && <span className="h-2 w-2 rounded-full bg-primary" />}
-                </Link>
-              );
-            })}
-            {isAuthenticated && (
-              <>
-                <Link
-                  href="/settings"
-                  className={`flex items-center border-l-4 px-4 py-3 font-mono text-sm font-bold transition-colors ${
-                    pathname === '/settings'
-                      ? 'border-l-primary bg-primary/10 text-text-primary'
-                      : 'border-l-transparent text-text-secondary hover:border-l-black/20 hover:bg-background-secondary hover:text-text-primary'
-                  }`}
-                >
-                  Settings
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="border-l-4 border-l-transparent px-4 py-3 text-left font-mono text-sm font-bold text-red-600 transition-colors hover:border-l-red-300 hover:bg-red-50"
-                >
-                  Logout
-                </button>
+                      Log in
+                    </Link>
+                    <Link
+                      href="/login"
+                      className="border-2 border-black bg-primary px-3 py-1.5 font-mono text-xs font-bold text-text-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
+                    >
+                      Sign up →
+                    </Link>
+                  </div>
+                )}
               </>
             )}
-          </nav>
+          </div>
+        </div>
+
+        {/* ── Mobile nav drawer ── */}
+        {mobileOpen && (
+          <div className="border-t-2 border-black/10 bg-white px-4 pb-4 md:hidden">
+            <nav className="flex flex-col gap-1 pt-3">
+              {visibleLinks.map(({ href, label }) => {
+                const active = pathname === href;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`
+                      flex items-center justify-between border-l-4 px-4 py-3 font-mono text-sm font-bold transition-colors
+                      ${active
+                        ? 'border-l-primary bg-primary/10 text-text-primary'
+                        : 'border-l-transparent text-text-secondary hover:border-l-black/20 hover:bg-background-secondary hover:text-text-primary'
+                      }
+                    `}
+                  >
+                    {label}
+                    {active && <span className="h-2 w-2 rounded-full bg-primary" />}
+                  </Link>
+                );
+              })}
+              {isAuthenticated && (
+                <>
+                  <Link
+                    href="/settings"
+                    className={`flex items-center border-l-4 px-4 py-3 font-mono text-sm font-bold transition-colors ${
+                      pathname === '/settings'
+                        ? 'border-l-primary bg-primary/10 text-text-primary'
+                        : 'border-l-transparent text-text-secondary hover:border-l-black/20 hover:bg-background-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    Settings
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="border-l-4 border-l-transparent px-4 py-3 text-left font-mono text-sm font-bold text-red-600 transition-colors hover:border-l-red-300 hover:bg-red-50"
+                  >
+                    Logout
+                  </button>
+                </>
+              )}
+            </nav>
+          </div>
+        )}
+      </header>
+
+      {/* ── Profile dropdown — rendered as a fixed portal so it's NEVER clipped ── */}
+      {menuOpen && dropdownPos && (
+        <div
+          ref={dropdownRef}
+          className="fixed z-[9999] w-60 border-2 border-black bg-white/95 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] backdrop-blur-md"
+          style={{ top: dropdownPos.top, right: dropdownPos.right }}
+        >
+          {/* User info */}
+          <div className="border-b-2 border-black/10 bg-background/80 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-primary font-mono text-xs font-bold">
+                {initials}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate font-mono text-xs font-bold text-text-primary">{user?.displayName}</p>
+                <p className="truncate font-mono text-[10px] text-text-tertiary">{user?.email}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Nav items */}
+          <div className="py-1">
+            {[
+              { href: '/', label: 'Jobs', icon: '💼' },
+              { href: '/vault', label: 'Resume Vault', icon: '📁' },
+              { href: '/saved', label: 'Saved Jobs', icon: '★' },
+              { href: '/applications', label: 'Applications', icon: '📋' },
+              { href: '/settings', label: 'Settings', icon: '⚙' },
+            ].map(({ href, label, icon }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setMenuOpen(false)}
+                className={`
+                  flex items-center gap-2.5 px-4 py-2.5 font-mono text-xs font-bold
+                  transition-colors hover:bg-background-secondary
+                  ${pathname === href
+                    ? 'bg-primary/10 text-text-primary'
+                    : 'text-text-secondary hover:text-text-primary'
+                  }
+                `}
+              >
+                <span className="w-4 text-center">{icon}</span>
+                {label}
+                {pathname === href && (
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                )}
+              </Link>
+            ))}
+          </div>
+
+          {/* Logout */}
+          <div className="border-t-2 border-black/10 py-1">
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 font-mono text-xs font-bold text-red-600 transition-colors hover:bg-red-50"
+            >
+              <span className="w-4 text-center">⏻</span>
+              Logout
+            </button>
+          </div>
         </div>
       )}
-    </header>
+    </>
   );
 }
