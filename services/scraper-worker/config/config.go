@@ -43,7 +43,7 @@ func Load() (*Config, error) {
 		ScrapeInterval:   6 * time.Hour,
 	}
 
-	// Default Greenhouse sources (popular tech companies)
+	// Default Greenhouse sources - intern-heavy tech companies
 	cfg.GreenhouseSources = []GreenhouseSource{
 		{Company: "Stripe", BoardToken: "stripe"},
 		{Company: "Airbnb", BoardToken: "airbnb"},
@@ -53,15 +53,61 @@ func Load() (*Config, error) {
 		{Company: "Plaid", BoardToken: "plaid"},
 		{Company: "Databricks", BoardToken: "databricks"},
 		{Company: "Figma", BoardToken: "figma"},
+		{Company: "Brex", BoardToken: "brex"},
+		{Company: "Scale AI", BoardToken: "scaleai"},
+		{Company: "Airtable", BoardToken: "airtable"},
+		{Company: "Benchling", BoardToken: "benchling"},
+		{Company: "Checkr", BoardToken: "checkr"},
+		{Company: "Chime", BoardToken: "chime"},
+		{Company: "Confluent", BoardToken: "confluent"},
+		{Company: "Coursera", BoardToken: "coursera"},
+		{Company: "Discord", BoardToken: "discord"},
+		{Company: "Duolingo", BoardToken: "duolingo"},
+		{Company: "Faire", BoardToken: "faire"},
+		{Company: "Gem", BoardToken: "gem"},
+		{Company: "HashiCorp", BoardToken: "hashicorp"},
+		{Company: "Instacart", BoardToken: "instacart"},
+		{Company: "Lattice", BoardToken: "lattice"},
+		{Company: "Lyft", BoardToken: "lyft"},
+		{Company: "Marqeta", BoardToken: "marqeta"},
+		{Company: "Mixpanel", BoardToken: "mixpanel"},
+		{Company: "MongoDB", BoardToken: "mongodb"},
+		{Company: "Navan", BoardToken: "tripactions"},
+		{Company: "Okta", BoardToken: "okta"},
+		{Company: "Pagerduty", BoardToken: "pagerduty"},
+		{Company: "Palantir", BoardToken: "palantir"},
+		{Company: "Reddit", BoardToken: "reddit"},
+		{Company: "Rippling", BoardToken: "rippling"},
+		{Company: "Samsara", BoardToken: "samsara"},
+		{Company: "Segment", BoardToken: "segment"},
+		{Company: "Snowflake", BoardToken: "snowflake"},
+		{Company: "Twilio", BoardToken: "twilio"},
+		{Company: "Zendesk", BoardToken: "zendesk"},
+		{Company: "Zoom", BoardToken: "zoom"},
 	}
 
-	// Default Lever sources (popular tech companies)
+	// Default Lever sources - intern-heavy tech companies
 	cfg.LeverSources = []LeverSource{
 		{Company: "Cloudflare", Slug: "cloudflare"},
 		{Company: "Notion", Slug: "notion"},
 		{Company: "Figma", Slug: "figma"},
 		{Company: "Verkada", Slug: "verkada"},
 		{Company: "Ramp", Slug: "ramp"},
+		{Company: "Anduril", Slug: "anduril"},
+		{Company: "Benchling", Slug: "benchling"},
+		{Company: "Carta", Slug: "carta"},
+		{Company: "Coda", Slug: "coda"},
+		{Company: "Cockroach Labs", Slug: "cockroach-labs"},
+		{Company: "dbt Labs", Slug: "dbtlabs"},
+		{Company: "Figma", Slug: "figma"},
+		{Company: "Gem", Slug: "gem"},
+		{Company: "Gusto", Slug: "gusto"},
+		{Company: "Ironclad", Slug: "ironclad"},
+		{Company: "Loom", Slug: "loom"},
+		{Company: "Mercury", Slug: "mercury"},
+		{Company: "Retool", Slug: "retool"},
+		{Company: "Rippling", Slug: "rippling"},
+		{Company: "Superhuman", Slug: "superhuman"},
 	}
 
 	// Workday sources - disabled by default, only enabled if explicitly configured

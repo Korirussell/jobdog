@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { api } from '@/lib/api';
 
 interface User {
@@ -15,6 +15,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => void;
+  setUserFromOAuth: (user: User) => void;
   isAuthenticated: boolean;
 }
 
@@ -67,12 +68,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const setUserFromOAuth = useCallback((oauthUser: User) => {
+    setUser(oauthUser);
+  }, []);
+
   const value: AuthContextType = {
     user,
     loading,
     login,
     register,
     logout,
+    setUserFromOAuth,
     isAuthenticated: !!user,
   };
 

@@ -64,6 +64,8 @@ app:
   jwt:
     secret: ${APP_JWT_SECRET:change-me-in-env-change-me-in-env}
     expiration: ${APP_JWT_EXPIRATION:PT12H}
+  oauth:
+    frontend-base-url: ${APP_FRONTEND_BASE_URL:http://localhost:3000}
   r2:
     endpoint: ${APP_R2_ENDPOINT:http://localhost:9000}
     bucket: ${APP_R2_BUCKET:resumes}

@@ -1,20 +1,119 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function MorphingHeader() {
   const [scrolled, setScrolled] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const { user, isAuthenticated, logout, loading } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
       const heroHeight = window.innerHeight * 0.7;
       setScrolled(window.scrollY > heroHeight);
     };
-
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const initials = user?.displayName
+    ? user.displayName.trim().split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+    : '??';
+
+  const AuthCorner = ({ compact = false }: { compact?: boolean }) => {
+    if (loading) return null;
+
+    if (!isAuthenticated) {
+      return (
+        <a
+          href="/login"
+          className={`
+            px-2 py-1 font-mono font-bold text-text-secondary
+            transition-colors hover:text-text-primary
+            ${compact ? 'text-xs' : 'text-sm sm:text-sm'}
+          `}
+        >
+          LOGIN
+        </a>
+      );
+    }
+
+    return (
+      <div className="relative" ref={dropdownRef}>
+        <button
+          onClick={() => setProfileOpen((v) => !v)}
+          className={`
+            flex items-center gap-2 border-2 border-black/20 bg-white
+            font-mono font-bold text-text-primary
+            transition-all hover:border-black hover:bg-background-secondary
+            ${compact ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'}
+          `}
+          aria-label="Open profile menu"
+        >
+          <span
+            className={`
+              flex items-center justify-center rounded-none bg-primary font-mono font-bold text-text-primary
+              ${compact ? 'h-5 w-5 text-[10px]' : 'h-6 w-6 text-xs'}
+            `}
+          >
+            {initials}
+          </span>
+          <span className={compact ? 'hidden sm:inline' : ''}>{user?.displayName?.split(' ')[0] ?? 'USER'}</span>
+          <span className="text-text-tertiary">▾</span>
+        </button>
+
+        {profileOpen && (
+          <div className="absolute right-0 top-full z-50 mt-1 w-52 border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <div className="border-b-2 border-black/10 px-4 py-3">
+              <p className="font-mono text-xs font-bold text-text-primary truncate">{user?.displayName}</p>
+              <p className="font-mono text-xs text-text-tertiary truncate">{user?.email}</p>
+            </div>
+            <nav className="py-1">
+              {[
+                { href: '/vault', label: '📁 VAULT' },
+                { href: '/saved', label: '★ SAVED JOBS' },
+                { href: '/applications', label: '⚙ APPLIED' },
+                { href: '/settings', label: '⚙ SETTINGS' },
+              ].map(({ href, label }) => (
+                <a
+                  key={href}
+                  href={href}
+                  onClick={() => setProfileOpen(false)}
+                  className="block px-4 py-2 font-mono text-xs font-bold text-text-secondary transition-colors hover:bg-background-secondary hover:text-text-primary"
+                >
+                  {label}
+                </a>
+              ))}
+            </nav>
+            <div className="border-t-2 border-black/10 py-1">
+              <button
+                onClick={() => {
+                  logout();
+                  setProfileOpen(false);
+                }}
+                className="w-full px-4 py-2 text-left font-mono text-xs font-bold text-secondary transition-colors hover:bg-secondary/10"
+              >
+                ⏻ LOGOUT
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -28,28 +127,21 @@ export default function MorphingHeader() {
       >
         {/* Top-Right Utility Nav */}
         <div className="absolute right-3 top-3 flex items-center gap-2 sm:right-6 sm:top-6 sm:gap-4">
-          <a
-            href="/login"
-            className="
-              px-2 py-1 font-mono text-xs font-bold text-text-secondary
-              transition-colors hover:text-text-primary
-              sm:px-0 sm:text-sm
-            "
-          >
-            LOGIN
-          </a>
-          <a
-            href="/vault"
-            className="
-              flex items-center gap-1 border-2 border-black/20 bg-white px-2 py-1
-              font-mono text-xs font-bold text-text-primary
-              transition-all hover:border-black hover:bg-background-secondary
-              sm:gap-2 sm:px-3 sm:py-1.5
-            "
-          >
-            <span>📁</span>
-            <span className="hidden sm:inline">VAULT</span>
-          </a>
+          {!isAuthenticated && (
+            <a
+              href="/vault"
+              className="
+                flex items-center gap-1 border-2 border-black/20 bg-white px-2 py-1
+                font-mono text-xs font-bold text-text-primary
+                transition-all hover:border-black hover:bg-background-secondary
+                sm:gap-2 sm:px-3 sm:py-1.5
+              "
+            >
+              <span>📁</span>
+              <span className="hidden sm:inline">VAULT</span>
+            </a>
+          )}
+          <AuthCorner />
         </div>
 
         <div className="mb-8">
@@ -71,7 +163,6 @@ export default function MorphingHeader() {
           The high-speed SWE internship aggregator.
         </p>
 
-        {/* Primary CTA */}
         <button
           onClick={() => {
             const jobList = document.querySelector('main');
@@ -122,8 +213,7 @@ export default function MorphingHeader() {
         `}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-2">
-          {/* Left Side - Current Location Indicator */}
-          <a 
+          <a
             href="/"
             className="flex items-center gap-2 transition-opacity hover:opacity-70"
           >
@@ -143,41 +233,34 @@ export default function MorphingHeader() {
             </div>
           </a>
 
-          {/* Right Side - Action Buttons */}
-          <nav className="flex items-center gap-2">
-            <a
-              href="/saved"
-              className="
-                border-2 border-transparent px-4 py-2
-                font-mono text-sm font-bold uppercase text-text-secondary
-                transition-all
-                hover:border-black hover:bg-white hover:text-text-primary
-              "
-            >
-              SAVED
-            </a>
-            <a
-              href="/applications"
-              className="
-                border-2 border-transparent px-4 py-2
-                font-mono text-sm font-bold uppercase text-text-secondary
-                transition-all
-                hover:border-black hover:bg-white hover:text-text-primary
-              "
-            >
-              APPLIED
-            </a>
-            <a
-              href="/settings"
-              className="
-                border-2 border-transparent px-4 py-2
-                font-mono text-sm font-bold uppercase text-text-secondary
-                transition-all
-                hover:border-black hover:bg-white hover:text-text-primary
-              "
-            >
-              SETTINGS
-            </a>
+          <nav className="flex items-center gap-1 sm:gap-2">
+            {isAuthenticated && (
+              <>
+                <a
+                  href="/saved"
+                  className="
+                    border-2 border-transparent px-2 py-1.5 sm:px-4 sm:py-2
+                    font-mono text-xs sm:text-sm font-bold uppercase text-text-secondary
+                    transition-all
+                    hover:border-black hover:bg-white hover:text-text-primary
+                  "
+                >
+                  SAVED
+                </a>
+                <a
+                  href="/applications"
+                  className="
+                    border-2 border-transparent px-2 py-1.5 sm:px-4 sm:py-2
+                    font-mono text-xs sm:text-sm font-bold uppercase text-text-secondary
+                    transition-all
+                    hover:border-black hover:bg-white hover:text-text-primary
+                  "
+                >
+                  APPLIED
+                </a>
+              </>
+            )}
+            <AuthCorner compact />
           </nav>
         </div>
       </div>

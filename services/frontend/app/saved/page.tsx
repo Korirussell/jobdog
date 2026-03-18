@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import MorphingHeader from '@/components/MorphingHeader';
+import AuthGuard from '@/components/AuthGuard';
 import JobListRow from '@/components/JobListRow';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,6 +42,7 @@ export default function SavedPage() {
   };
 
   return (
+    <AuthGuard>
     <div className="min-h-screen">
       <MorphingHeader />
       
@@ -65,13 +67,6 @@ export default function SavedPage() {
             <div className="font-mono text-sm text-text-secondary">
               <span className="animate-pulse">|</span> LOADING_SAVED.EXE
             </div>
-          </div>
-        ) : !isAuthenticated ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <p className="font-mono text-sm text-text-secondary">LOGIN_REQUIRED.ERR</p>
-            <a href="/login" className="mt-4 border-2 border-black bg-primary px-6 py-3 font-mono text-sm font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-              LOGIN.EXE
-            </a>
           </div>
         ) : savedJobs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
@@ -106,5 +101,6 @@ export default function SavedPage() {
         )}
       </main>
     </div>
+    </AuthGuard>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import MorphingHeader from '@/components/MorphingHeader';
+import AuthGuard from '@/components/AuthGuard';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -71,6 +72,7 @@ export default function VaultPage() {
   }
 
   return (
+    <AuthGuard>
     <div className="min-h-screen">
       <MorphingHeader />
       
@@ -92,14 +94,6 @@ export default function VaultPage() {
           </div>
 
           <div className="p-6">
-            {!isAuthenticated ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <p className="font-mono text-sm text-text-secondary">ACCESS_DENIED.ERR</p>
-                <a href="/login" className="mt-4 border-2 border-black bg-primary px-6 py-3 font-mono text-sm font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                  LOGIN.EXE
-                </a>
-              </div>
-            ) : (
               <div className="space-y-6">
                 {/* Upload Section */}
                 <div className="border-2 border-black/10 bg-background p-4">
@@ -211,10 +205,10 @@ export default function VaultPage() {
                   </div>
                 )}
               </div>
-            )}
           </div>
         </div>
       </main>
     </div>
+    </AuthGuard>
   );
 }
