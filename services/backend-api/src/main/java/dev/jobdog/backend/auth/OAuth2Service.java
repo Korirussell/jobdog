@@ -35,13 +35,16 @@ public class OAuth2Service {
         String token = jwtService.generateToken(user);
         Instant expiresAt = jwtService.expirationInstant();
 
-        return new AuthResponse(user.getId(), user.getEmail(), user.getEmail(), token, expiresAt);
+        return new AuthResponse(user.getId(), user.getEmail(), user.getDisplayName(), token, expiresAt);
     }
 
     private UserEntity createUserFromOAuth2(String email, String name, String provider) {
         UserEntity user = new UserEntity();
         user.setEmail(email);
-        user.setPasswordHash(""); // OAuth users don't have passwords
+        String displayName = (name != null && !name.isBlank()) ? name : email.split("@")[0];
+        user.setDisplayName(displayName);
+        // OAuth users don't use password login; set a non-empty sentinel.
+        user.setPasswordHash("OAUTH2_LOGIN");
         return userRepository.save(user);
     }
 

@@ -1,7 +1,9 @@
 package dev.jobdog.backend.auth;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,13 +20,25 @@ public class OAuth2Controller {
         this.oAuth2Service = oAuth2Service;
     }
 
+    // Callback route is handled by Spring Security OAuth2 filter.
+    // This endpoint only exists to prevent 404 when hit directly.
     @GetMapping("/callback/{provider}")
+    public ResponseEntity<String> callbackInfo(@PathVariable String provider) {
+        return ResponseEntity.ok("OAuth2 callback received for provider: " + provider);
+    }
+
+    @GetMapping("/success")
     public ResponseEntity<AuthResponse> handleOAuth2Callback(
-            @PathVariable String provider,
+            Authentication authentication,
             @AuthenticationPrincipal OAuth2User oAuth2User
     ) {
         if (oAuth2User == null) {
             throw new IllegalStateException("OAuth2 authentication failed");
+        }
+
+        String provider = "oauth2";
+        if (authentication instanceof OAuth2AuthenticationToken token) {
+            provider = token.getAuthorizedClientRegistrationId();
         }
 
         AuthResponse response = oAuth2Service.processOAuth2Login(provider, oAuth2User);

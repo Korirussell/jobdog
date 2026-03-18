@@ -28,16 +28,30 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // OAuth2 login needs a temporary session for auth request state.
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler)
                 )
                 .oauth2Login(oauth2 -> oauth2
+                        .redirectionEndpoint(redirection -> redirection.baseUri("/api/v1/auth/oauth2/callback/*"))
                         .defaultSuccessUrl("/api/v1/auth/oauth2/success", true)
                 )
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/actuator/health", "/api/v1/system/health", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/jobs", "/api/v1/jobs/*", "/api/v1/ghost-score", "/ws/**", "/oauth2/**", "/login/oauth2/**").permitAll()
+                        .requestMatchers(
+                                "/actuator/health",
+                                "/api/v1/system/health",
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/oauth2/**",
+                                "/api/v1/jobs",
+                                "/api/v1/jobs/*",
+                                "/api/v1/ghost-score",
+                                "/ws/**",
+                                "/oauth2/**",
+                                "/login/oauth2/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
