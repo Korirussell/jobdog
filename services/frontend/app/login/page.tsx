@@ -42,12 +42,13 @@ export default function LoginPage() {
       } else {
         await register(email, password, displayName);
       }
-      router.push('/');
+      // Use replace so the login page isn't in browser history
+      router.replace('/');
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
-    } finally {
       setLoading(false);
     }
+    // Don't set loading=false on success — page is navigating away
   };
 
   return (
