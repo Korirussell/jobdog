@@ -228,11 +228,11 @@ export default function TerminalDecryptor({ onCommand }: TerminalDecryptorProps)
               disabled={isTyping}
               spellCheck={false}
               autoComplete="off"
-              className="
+              className={`
                 w-full bg-transparent text-[12px] text-[#4ade80] caret-transparent
                 outline-none placeholder:text-[#22c55e]/30
                 disabled:opacity-50
-              "
+              `}
               placeholder={isTyping ? '' : 'type a command...'}
             />
             {/* Fake blinking block cursor */}
