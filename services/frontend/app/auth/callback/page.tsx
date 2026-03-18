@@ -1,23 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { setUserFromOAuth } = useAuth();
   const [status, setStatus] = useState<'processing' | 'error'>('processing');
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    const userId = searchParams.get('userId');
-    const email = searchParams.get('email');
-    const displayName = searchParams.get('displayName');
-    const error = searchParams.get('error');
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const userId = params.get('userId');
+    const email = params.get('email');
+    const displayName = params.get('displayName');
+    const error = params.get('error');
 
     if (error) {
       setErrorMsg('OAuth login failed. Please try again.');
@@ -34,7 +38,7 @@ export default function AuthCallbackPage() {
     api.setToken(token);
     setUserFromOAuth({ userId, email, displayName: displayName || email.split('@')[0] });
     router.replace('/');
-  }, [searchParams, router, setUserFromOAuth]);
+  }, [router, setUserFromOAuth]);
 
   if (status === 'error') {
     return (
