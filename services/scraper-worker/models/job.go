@@ -18,6 +18,7 @@ type Job struct {
 	Status                  string
 	MinimumYearsExperience  *int
 	EducationLevel          *string
+	SalaryRaw               *string
 	PostedAt                *time.Time
 	ScrapedAt               time.Time
 }

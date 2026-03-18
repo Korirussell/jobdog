@@ -7,6 +7,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 @Service
 public class AuthService {
 
@@ -50,5 +54,17 @@ public class AuthService {
 
         String token = jwtService.generateToken(user);
         return new AuthResponse(user.getId(), user.getEmail(), user.getDisplayName(), token, jwtService.expirationInstant());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getUserProfile(UUID userId) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        Map<String, Object> profile = new HashMap<>();
+        profile.put("userId", user.getId());
+        profile.put("email", user.getEmail());
+        profile.put("displayName", user.getDisplayName());
+        profile.put("profileVisibility", user.getProfileVisibility());
+        return profile;
     }
 }

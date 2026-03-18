@@ -24,6 +24,9 @@ public class UserEntity extends BaseEntity {
     @Column(nullable = false, length = 32)
     private UserRole role = UserRole.USER;
 
+    @Column(nullable = false, length = 16)
+    private String profileVisibility = "PRIVATE";
+
     public String getEmail() {
         return email;
     }
@@ -54,5 +57,13 @@ public class UserEntity extends BaseEntity {
 
     public void setRole(UserRole role) {
         this.role = role;
+    }
+
+    public String getProfileVisibility() {
+        return profileVisibility;
+    }
+
+    public void setProfileVisibility(String profileVisibility) {
+        this.profileVisibility = profileVisibility;
     }
 }

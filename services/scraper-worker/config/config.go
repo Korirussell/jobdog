@@ -16,6 +16,11 @@ type GreenhouseSource struct {
 	BoardToken string
 }
 
+type LeverSource struct {
+	Company string
+	Slug    string
+}
+
 type Config struct {
 	DatabaseURL       string
 	DatabaseUser      string
@@ -25,6 +30,7 @@ type Config struct {
 	ScrapeInterval    time.Duration
 	WorkdaySources    []WorkdaySource
 	GreenhouseSources []GreenhouseSource
+	LeverSources      []LeverSource
 }
 
 func Load() (*Config, error) {
@@ -47,6 +53,15 @@ func Load() (*Config, error) {
 		{Company: "Plaid", BoardToken: "plaid"},
 		{Company: "Databricks", BoardToken: "databricks"},
 		{Company: "Figma", BoardToken: "figma"},
+	}
+
+	// Default Lever sources (popular tech companies)
+	cfg.LeverSources = []LeverSource{
+		{Company: "Cloudflare", Slug: "cloudflare"},
+		{Company: "Notion", Slug: "notion"},
+		{Company: "Figma", Slug: "figma"},
+		{Company: "Verkada", Slug: "verkada"},
+		{Company: "Ramp", Slug: "ramp"},
 	}
 
 	// Workday sources - disabled by default, only enabled if explicitly configured

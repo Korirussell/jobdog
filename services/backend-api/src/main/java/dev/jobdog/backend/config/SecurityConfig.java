@@ -37,7 +37,7 @@ public class SecurityConfig {
                         .defaultSuccessUrl("/api/v1/auth/oauth2/success", true)
                 )
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/actuator/health", "/api/v1/system/health", "/api/v1/auth/**", "/api/v1/jobs", "/api/v1/jobs/*", "/oauth2/**", "/login/oauth2/**").permitAll()
+                        .requestMatchers("/actuator/health", "/api/v1/system/health", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/jobs", "/api/v1/jobs/*", "/api/v1/ghost-score", "/ws/**", "/oauth2/**", "/login/oauth2/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)

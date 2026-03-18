@@ -44,6 +44,7 @@ func main() {
 	githubScraper := scraper.NewGitHubScraper(jobRepo)
 	workdayScraper := scraper.NewWorkdayScraper(jobRepo)
 	greenhouseScraper := scraper.NewGreenhouseScraper(jobRepo)
+	leverScraper := scraper.NewLeverScraper(jobRepo)
 
 	c := cron.New()
 
@@ -87,6 +88,19 @@ func main() {
 			})
 		}
 
+		// Lever scrapers
+		for _, source := range cfg.LeverSources {
+			s := source
+			pool.Submit(func(ctx context.Context) error {
+				log.Info().Str("company", s.Company).Msg("Running scheduled Lever scrape")
+				if err := leverScraper.ScrapeCompany(ctx, s.Company, s.Slug); err != nil {
+					log.Error().Err(err).Str("company", s.Company).Msg("Lever scrape failed")
+					return err
+				}
+				return nil
+			})
+		}
+
 		pool.Shutdown()
 		log.Info().Msg("All scheduled scrapers completed")
 	})
@@ -94,10 +108,17 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to schedule GitHub scraper")
 	}
 
+	urlChecker := scraper.NewURLChecker(jobRepo)
+
 	_, err = c.AddFunc("@every 12h", func() {
 		log.Info().Msg("Marking stale jobs as closed")
 		if err := jobRepo.MarkStaleJobsAsClosed(30 * 24 * time.Hour); err != nil {
 			log.Error().Err(err).Msg("Failed to mark stale jobs")
+		}
+
+		log.Info().Msg("Running URL liveness check")
+		if err := urlChecker.CheckAndPruneURLs(context.Background()); err != nil {
+			log.Error().Err(err).Msg("URL liveness check failed")
 		}
 	})
 	if err != nil {
@@ -161,6 +182,21 @@ func main() {
 				return err
 			}
 			log.Info().Str("company", s.Company).Msg("Initial Greenhouse scrape completed")
+			return nil
+		})
+	}
+
+	// Initial Lever scrapes
+	log.Info().Int("count", len(cfg.LeverSources)).Msg("Submitting Lever scrape tasks")
+	for _, source := range cfg.LeverSources {
+		s := source
+		initialPool.Submit(func(ctx context.Context) error {
+			log.Info().Str("company", s.Company).Msg("Starting initial Lever scrape")
+			if err := leverScraper.ScrapeCompany(ctx, s.Company, s.Slug); err != nil {
+				log.Error().Err(err).Str("company", s.Company).Msg("Initial Lever scrape failed")
+				return err
+			}
+			log.Info().Str("company", s.Company).Msg("Initial Lever scrape completed")
 			return nil
 		})
 	}

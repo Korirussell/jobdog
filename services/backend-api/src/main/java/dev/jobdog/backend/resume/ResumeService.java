@@ -12,6 +12,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -81,6 +82,10 @@ public class ResumeService {
         String safeName = (originalFilename == null || originalFilename.isBlank() ? "resume.pdf" : originalFilename)
                 .replaceAll("[^a-zA-Z0-9._-]", "-");
         return "resumes/" + userId + "/" + UUID.randomUUID() + "-" + safeName;
+    }
+
+    public List<ResumeEntity> listResumes(UUID userId) {
+        return resumeRepository.findByUser_IdOrderByUploadedAtDesc(userId);
     }
 
     private String sha256(byte[] bytes) {

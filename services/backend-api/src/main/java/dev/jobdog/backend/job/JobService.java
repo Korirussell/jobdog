@@ -51,7 +51,7 @@ public class JobService {
                         job.getCompany(),
                         job.getLocation(),
                         job.getEmploymentType(),
-                        job.getPostedAt(),
+                        job.getPostedAt() != null ? job.getPostedAt() : job.getScrapedAt(),
                         job.getSourceUrl()
                 ))
                 .toList();

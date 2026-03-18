@@ -30,4 +30,7 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
     );
 
     Optional<JobEntity> findBySourceUrl(String sourceUrl);
+
+    @Query("SELECT j FROM JobEntity j WHERE LOWER(j.company) = LOWER(:company)")
+    List<JobEntity> findByCompanyIgnoreCase(@Param("company") String company);
 }

@@ -132,6 +132,47 @@ func (r *JobRepository) MarkStaleJobsAsClosed(olderThan time.Duration) error {
 	return nil
 }
 
+type ActiveJob struct {
+	ID        string
+	SourceURL string
+}
+
+func (r *JobRepository) GetActiveJobURLs() ([]ActiveJob, error) {
+	query := `SELECT id, source_url FROM jobs WHERE status = 'ACTIVE'`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query active job URLs: %w", err)
+	}
+	defer rows.Close()
+
+	var jobs []ActiveJob
+	for rows.Next() {
+		var j ActiveJob
+		if err := rows.Scan(&j.ID, &j.SourceURL); err != nil {
+			return nil, fmt.Errorf("failed to scan active job row: %w", err)
+		}
+		jobs = append(jobs, j)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating active job rows: %w", err)
+	}
+
+	return jobs, nil
+}
+
+func (r *JobRepository) MarkJobInactive(id string) error {
+	query := `UPDATE jobs SET status = 'INACTIVE', updated_at = $1 WHERE id = $2`
+
+	_, err := r.db.Exec(query, time.Now(), id)
+	if err != nil {
+		return fmt.Errorf("failed to mark job inactive: %w", err)
+	}
+
+	return nil
+}
+
 func hashDescription(text string) string {
 	hash := sha256.Sum256([]byte(text))
 	return hex.EncodeToString(hash[:])
