@@ -1,6 +1,6 @@
 -- Add sample jobs to test frontend
 -- Run this command: docker compose exec postgres psql -U jobdog -d jobdog -f add_sample_jobs.sql
-
+-- adding comment for no reason 
 INSERT INTO jobs (
     job_id, 
     source, 
