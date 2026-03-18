@@ -72,10 +72,9 @@ export default function VaultPage() {
   }
 
   return (
-    <AuthGuard>
     <div className="min-h-screen">
       <MorphingHeader />
-      
+      <AuthGuard>
       <main className="mx-auto min-h-screen max-w-6xl px-6 pt-8">
         {/* Window Frame: The Vault */}
         <div className="border-[3px] border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
@@ -208,7 +207,7 @@ export default function VaultPage() {
           </div>
         </div>
       </main>
+      </AuthGuard>
     </div>
-    </AuthGuard>
   );
 }

@@ -12,6 +12,7 @@ export interface FilterState {
   employmentType: string;
   location: string;
   company: string;
+  hideApplied: boolean;
 }
 
 export default function FilterBar({ onFilterChange, onSearchChange }: FilterBarProps) {
@@ -22,6 +23,7 @@ export default function FilterBar({ onFilterChange, onSearchChange }: FilterBarP
     employmentType: 'all',
     location: '',
     company: '',
+    hideApplied: false,
   });
 
   const updateFilter = (key: keyof FilterState, value: any) => {
@@ -35,6 +37,7 @@ export default function FilterBar({ onFilterChange, onSearchChange }: FilterBarP
     filters.employmentType !== 'all',
     filters.location,
     filters.company,
+    filters.hideApplied,
   ].filter(Boolean).length;
 
   return (
@@ -166,6 +169,27 @@ export default function FilterBar({ onFilterChange, onSearchChange }: FilterBarP
                 "
               />
             </div>
+
+            {/* Hide Applied */}
+            <div>
+              <label className="mb-2 block font-mono text-xs font-bold uppercase text-text-secondary">
+                APPLIED_JOBS
+              </label>
+              <button
+                onClick={() => updateFilter('hideApplied', !filters.hideApplied)}
+                className={`
+                  w-full border-2 px-4 py-2 font-mono text-xs font-bold uppercase
+                  transition-all
+                  ${
+                    filters.hideApplied
+                      ? 'border-black bg-primary text-text-primary'
+                      : 'border-black/20 bg-white text-text-secondary hover:border-black'
+                  }
+                `}
+              >
+                {filters.hideApplied ? '✓ HIDE_APPLIED' : 'SHOW_ALL'}
+              </button>
+            </div>
           </div>
 
           {/* Clear Filters */}
@@ -177,6 +201,7 @@ export default function FilterBar({ onFilterChange, onSearchChange }: FilterBarP
                   employmentType: 'all',
                   location: '',
                   company: '',
+                  hideApplied: false,
                 };
                 setFilters(clearedFilters);
                 onFilterChange?.(clearedFilters);

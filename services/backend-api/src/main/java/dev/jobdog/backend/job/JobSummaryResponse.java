@@ -10,6 +10,8 @@ public record JobSummaryResponse(
         String location,
         String employmentType,
         Instant postedAt,
+        Instant scrapedAt,
+        String jobStatus,
         String applyUrl
 ) {
 }

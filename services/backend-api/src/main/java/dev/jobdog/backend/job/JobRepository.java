@@ -12,6 +12,12 @@ import java.util.UUID;
 
 public interface JobRepository extends JpaRepository<JobEntity, UUID> {
 
+    @Query("SELECT j FROM JobEntity j WHERE j.status = :status ORDER BY COALESCE(j.postedAt, j.scrapedAt) DESC")
+    Page<JobEntity> findByStatusOrderByEffectiveDateDesc(
+            @Param("status") JobStatus status,
+            Pageable pageable
+    );
+
     Page<JobEntity> findByStatus(JobStatus status, Pageable pageable);
 
     @Query("SELECT j FROM JobEntity j WHERE j.status = :status " +
@@ -19,7 +25,8 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
            "AND (:remote IS NULL OR :remote = false OR LOWER(j.location) LIKE '%remote%') " +
            "AND (:company IS NULL OR LOWER(j.company) LIKE LOWER(CONCAT('%', :company, '%'))) " +
            "AND (:search IS NULL OR LOWER(j.title) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "     OR LOWER(j.descriptionText) LIKE LOWER(CONCAT('%', :search, '%')))")
+           "     OR LOWER(j.descriptionText) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "ORDER BY COALESCE(j.postedAt, j.scrapedAt) DESC")
     Page<JobEntity> findByFilters(
             @Param("status") JobStatus status,
             @Param("location") String location,
@@ -33,4 +40,7 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
 
     @Query("SELECT j FROM JobEntity j WHERE LOWER(j.company) = LOWER(:company)")
     List<JobEntity> findByCompanyIgnoreCase(@Param("company") String company);
+
+    @Query("SELECT MAX(COALESCE(j.postedAt, j.scrapedAt)) FROM JobEntity j WHERE j.status = dev.jobdog.backend.job.JobStatus.ACTIVE")
+    java.time.Instant findLatestEffectiveDateForActiveJobs();
 }

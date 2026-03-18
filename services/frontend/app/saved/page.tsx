@@ -13,7 +13,9 @@ interface SavedJob {
   company: string;
   location: string;
   employmentType: string;
-  postedAt: string;
+  postedAt: string | null;
+  scrapedAt: string;
+  jobStatus: string;
   applyUrl: string;
   savedAt: string;
 }
@@ -42,10 +44,9 @@ export default function SavedPage() {
   };
 
   return (
-    <AuthGuard>
     <div className="min-h-screen">
       <MorphingHeader />
-      
+      <AuthGuard>
       <main className="mx-auto min-h-screen max-w-6xl px-6 pt-8">
         <div className="mb-6">
           <h1 className="mb-2 font-mono text-2xl font-bold text-text-primary">
@@ -82,11 +83,14 @@ export default function SavedPage() {
             {savedJobs.map((job) => (
               <div key={job.jobId} className="group relative">
                 <JobListRow
+                  jobId={job.jobId}
                   company={job.company}
                   title={job.title}
                   location={job.location}
                   employmentType={job.employmentType}
-                  scrapedAt={job.postedAt}
+                  postedAt={job.postedAt}
+                  scrapedAt={job.scrapedAt}
+                  jobStatus={job.jobStatus}
                   applyUrl={job.applyUrl}
                 />
                 <button
@@ -100,7 +104,7 @@ export default function SavedPage() {
           </div>
         )}
       </main>
+      </AuthGuard>
     </div>
-    </AuthGuard>
   );
 }

@@ -3,10 +3,10 @@ package dev.jobdog.backend.job;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -20,14 +20,11 @@ public class JobService {
 
     @Transactional(readOnly = true)
     public JobListResponse listActiveJobs(JobFilterRequest filter) {
-        Pageable pageable = PageRequest.of(
-                filter.page(),
-                filter.size(),
-                Sort.by(Sort.Direction.DESC, "postedAt")
-        );
+        // Pageable without sort — ordering is handled by COALESCE in the JPQL queries
+        Pageable pageable = PageRequest.of(filter.page(), filter.size());
 
         Page<JobEntity> jobPage;
-        
+
         if (hasFilters(filter)) {
             jobPage = jobRepository.findByFilters(
                     JobStatus.ACTIVE,
@@ -38,7 +35,7 @@ public class JobService {
                     pageable
             );
         } else {
-            jobPage = jobRepository.findByStatus(JobStatus.ACTIVE, pageable);
+            jobPage = jobRepository.findByStatusOrderByEffectiveDateDesc(JobStatus.ACTIVE, pageable);
         }
 
         List<JobSummaryResponse> items = jobPage.getContent()
@@ -49,12 +46,16 @@ public class JobService {
                         job.getCompany(),
                         job.getLocation(),
                         job.getEmploymentType(),
-                        job.getPostedAt() != null ? job.getPostedAt() : job.getScrapedAt(),
+                        job.getPostedAt(),
+                        job.getScrapedAt(),
+                        job.getStatus().name(),
                         job.getSourceUrl()
                 ))
                 .toList();
 
-        return new JobListResponse(items, filter.page(), filter.size(), jobPage.getTotalElements());
+        Instant lastSync = jobRepository.findLatestEffectiveDateForActiveJobs();
+
+        return new JobListResponse(items, filter.page(), filter.size(), jobPage.getTotalElements(), lastSync);
     }
 
     private boolean hasFilters(JobFilterRequest filter) {

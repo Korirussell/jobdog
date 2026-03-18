@@ -58,10 +58,9 @@ export default function ApplicationsPage() {
   };
 
   return (
-    <AuthGuard>
     <div className="min-h-screen">
       <MorphingHeader />
-      
+      <AuthGuard>
       <main className="mx-auto min-h-screen max-w-6xl px-6 pt-8">
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -76,7 +75,7 @@ export default function ApplicationsPage() {
           />
         )}
       </main>
+      </AuthGuard>
     </div>
-    </AuthGuard>
   );
 }

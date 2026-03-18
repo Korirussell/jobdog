@@ -5,6 +5,7 @@ import MorphingHeader from '@/components/MorphingHeader';
 import FilterBar, { FilterState } from '@/components/FolderTabs';
 import JobListRow from '@/components/JobListRow';
 import ConveyorBelt from '@/components/ConveyorBelt';
+import ApplyModal from '@/components/ApplyModal';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
@@ -16,9 +17,23 @@ interface Job {
   location: string;
   employmentType: string;
   techStack?: string[];
+  postedAt: string | null;
   scrapedAt: string;
+  jobStatus: string;
   matchPercentile?: number;
   applyUrl: string;
+}
+
+function formatSyncTime(dateString: string): string {
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'UNKNOWN';
+  const diffMs = Date.now() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'JUST_NOW';
+  if (diffMins < 60) return `${diffMins}M_AGO`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}H_AGO`;
+  return `${Math.floor(diffHours / 24)}D_AGO`;
 }
 
 export default function Home() {
@@ -29,11 +44,15 @@ export default function Home() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [conveyorJobs, setConveyorJobs] = useState<Array<{ jobId: string; company: string; title: string }>>([]);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+  const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
+  const [applyModal, setApplyModal] = useState<{ jobId: string; title: string; company: string } | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     remote: false,
     employmentType: 'all',
     location: '',
     company: '',
+    hideApplied: false,
   });
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 500);
@@ -81,6 +100,18 @@ export default function Home() {
     } catch {}
   }, [isAuthenticated]);
 
+  const handleApply = useCallback((jobId: string) => {
+    if (!isAuthenticated) return;
+    const job = jobs.find((j) => j.jobId === jobId);
+    if (job) {
+      setApplyModal({ jobId, title: job.title, company: job.company });
+    }
+  }, [isAuthenticated, jobs]);
+
+  const handleApplySuccess = useCallback((jobId: string) => {
+    setAppliedJobIds((prev) => new Set(prev).add(jobId));
+  }, []);
+
   useEffect(() => {
     async function fetchJobs() {
       try {
@@ -126,13 +157,16 @@ export default function Home() {
           location: item.location,
           employmentType: item.employmentType,
           techStack: [],
-          scrapedAt: item.postedAt,
+          postedAt: item.postedAt ?? null,
+          scrapedAt: item.scrapedAt,
+          jobStatus: item.jobStatus ?? 'ACTIVE',
           matchPercentile: undefined,
           applyUrl: item.applyUrl,
         }));
-        
+
         setJobs(mappedJobs);
         setTotal(data.total);
+        if (data.lastSync) setLastSync(data.lastSync);
         setError(null);
       } catch (err) {
         console.error('Failed to fetch jobs:', err);
@@ -170,8 +204,8 @@ export default function Home() {
           }}
         />
 
-        {/* Job Count */}
-        <div className="border-b-2 border-black/10 py-2">
+        {/* Job Count + Last Sync */}
+        <div className="flex items-center justify-between border-b-2 border-black/10 py-2">
           {loading ? (
             <p className="font-mono text-xs font-bold uppercase text-text-secondary">
               LOADING POSITIONS...
@@ -186,6 +220,11 @@ export default function Home() {
               <span className="text-text-primary">{total}</span> POSITIONS
             </p>
           )}
+          {lastSync && !loading && (
+            <p className="font-mono text-xs text-text-tertiary" title={new Date(lastSync).toLocaleString()}>
+              LAST_SYNC: {formatSyncTime(lastSync)}
+            </p>
+          )}
         </div>
 
         {/* Job Rows - Unbounded, continuous list */}
@@ -197,19 +236,26 @@ export default function Home() {
           </div>
         ) : (
           <div>
-            {jobs.map((job) => (
-              <JobListRow
-                key={job.jobId}
-                company={job.company}
-                title={job.title}
-                location={job.location}
-                employmentType={job.employmentType}
-                techStack={job.techStack}
-                scrapedAt={job.scrapedAt}
-                matchPercentile={job.matchPercentile}
-                applyUrl={job.applyUrl}
-              />
-            ))}
+            {jobs
+              .filter((job) => !(filters.hideApplied && appliedJobIds.has(job.jobId)))
+              .map((job) => (
+                <JobListRow
+                  key={job.jobId}
+                  jobId={job.jobId}
+                  company={job.company}
+                  title={job.title}
+                  location={job.location}
+                  employmentType={job.employmentType}
+                  techStack={job.techStack}
+                  postedAt={job.postedAt}
+                  scrapedAt={job.scrapedAt}
+                  jobStatus={job.jobStatus}
+                  matchPercentile={job.matchPercentile}
+                  applyUrl={job.applyUrl}
+                  alreadyApplied={appliedJobIds.has(job.jobId)}
+                  onApply={isAuthenticated ? handleApply : undefined}
+                />
+              ))}
           </div>
         )}
 
@@ -258,6 +304,17 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {/* Apply Modal */}
+      {applyModal && (
+        <ApplyModal
+          jobId={applyModal.jobId}
+          jobTitle={applyModal.title}
+          company={applyModal.company}
+          onClose={() => setApplyModal(null)}
+          onSuccess={handleApplySuccess}
+        />
+      )}
 
       {/* Zero-Day Conveyor Belt */}
       <ConveyorBelt

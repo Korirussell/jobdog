@@ -41,8 +41,11 @@ func (r *JobRepository) UpsertJob(job *models.Job) (string, error) {
 			title = EXCLUDED.title,
 			company = EXCLUDED.company,
 			location = EXCLUDED.location,
+			employment_type = EXCLUDED.employment_type,
 			description_text = EXCLUDED.description_text,
 			description_hash = EXCLUDED.description_hash,
+			status = 'ACTIVE',
+			posted_at = COALESCE(jobs.posted_at, EXCLUDED.posted_at),
 			scraped_at = EXCLUDED.scraped_at,
 			updated_at = EXCLUDED.updated_at
 		RETURNING id
@@ -163,7 +166,7 @@ func (r *JobRepository) GetActiveJobURLs() ([]ActiveJob, error) {
 }
 
 func (r *JobRepository) MarkJobInactive(id string) error {
-	query := `UPDATE jobs SET status = 'INACTIVE', updated_at = $1 WHERE id = $2`
+	query := `UPDATE jobs SET status = 'CLOSED', updated_at = $1 WHERE id = $2`
 
 	_, err := r.db.Exec(query, time.Now(), id)
 	if err != nil {

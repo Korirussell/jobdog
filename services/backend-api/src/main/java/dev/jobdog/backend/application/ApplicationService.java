@@ -7,6 +7,7 @@ import dev.jobdog.backend.job.JobEntity;
 import dev.jobdog.backend.job.JobRepository;
 import dev.jobdog.backend.job.JobRequirementProfileEntity;
 import dev.jobdog.backend.job.JobRequirementProfileRepository;
+import dev.jobdog.backend.job.JobStatus;
 import dev.jobdog.backend.resume.ResumeEntity;
 import dev.jobdog.backend.resume.ResumeProfileEntity;
 import dev.jobdog.backend.resume.ResumeProfileRepository;
@@ -64,14 +65,18 @@ public class ApplicationService {
         JobEntity job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found"));
 
+        if (job.getStatus() != JobStatus.ACTIVE) {
+            throw new IllegalArgumentException("Job is no longer active and cannot accept applications");
+        }
+
         if (!resume.getUser().getId().equals(user.getId())) {
             throw new IllegalArgumentException("Resume does not belong to user");
         }
 
         ResumeProfileEntity resumeProfile = resumeProfileRepository.findByResume_Id(resume.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Resume profile not found"));
+                .orElse(null);
         JobRequirementProfileEntity jobProfile = jobRequirementProfileRepository.findByJob_Id(job.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Job requirement profile not found"));
+                .orElse(null);
 
         ApplicationEntity application = new ApplicationEntity();
         application.setUser(user);
@@ -81,39 +86,52 @@ public class ApplicationService {
         application.setAppliedAt(Instant.now());
         ApplicationEntity savedApplication = applicationRepository.save(application);
 
-        ScoreComputation scoreComputation = computeScore(resumeProfile, jobProfile, job);
-        long existingApplicantCount = applicationScoreRepository.countByApplication_Job_Id(jobId);
-        int applicantCount = Math.toIntExact(existingApplicantCount + 1);
+        // Only score if both profiles exist; otherwise record as APPLIED without a score
+        if (resumeProfile != null && jobProfile != null) {
+            ScoreComputation scoreComputation = computeScore(resumeProfile, jobProfile, job);
+            long existingApplicantCount = applicationScoreRepository.countByApplication_Job_Id(jobId);
+            int applicantCount = Math.toIntExact(existingApplicantCount + 1);
 
-        ApplicationScoreEntity scoreEntity = new ApplicationScoreEntity();
-        scoreEntity.setApplication(savedApplication);
-        scoreEntity.setMatchScore(scoreComputation.matchScore());
-        scoreEntity.setMatchBreakdown(scoreComputation.matchBreakdown());
-        scoreEntity.setApplicantCount(applicantCount);
-        scoreEntity.setScoredAt(Instant.now());
+            ApplicationScoreEntity scoreEntity = new ApplicationScoreEntity();
+            scoreEntity.setApplication(savedApplication);
+            scoreEntity.setMatchScore(scoreComputation.matchScore());
+            scoreEntity.setMatchBreakdown(scoreComputation.matchBreakdown());
+            scoreEntity.setApplicantCount(applicantCount);
+            scoreEntity.setScoredAt(Instant.now());
 
-        if (applicantCount < 5) {
-            scoreEntity.setBenchmarkState(BenchmarkState.EARLY_APPLICANT);
-            scoreEntity.setPercentile(null);
-        } else {
-            int percentile = computePercentile(jobId, scoreComputation.matchScore());
-            scoreEntity.setBenchmarkState(BenchmarkState.PERCENTILE_READY);
-            scoreEntity.setPercentile(percentile);
+            if (applicantCount < 5) {
+                scoreEntity.setBenchmarkState(BenchmarkState.EARLY_APPLICANT);
+                scoreEntity.setPercentile(null);
+            } else {
+                int percentile = computePercentile(jobId, scoreComputation.matchScore());
+                scoreEntity.setBenchmarkState(BenchmarkState.PERCENTILE_READY);
+                scoreEntity.setPercentile(percentile);
+            }
+
+            applicationScoreRepository.save(scoreEntity);
+            savedApplication.setStatus(ApplicationStatus.SCORED);
+
+            return new ApplicationResponse(
+                    savedApplication.getId(),
+                    scoreEntity.getMatchScore(),
+                    scoreEntity.getMatchBreakdown(),
+                    scoreEntity.getBenchmarkState(),
+                    scoreEntity.getBenchmarkState() == BenchmarkState.EARLY_APPLICANT
+                            ? "Congrats, you are one of the first 5 applicants!"
+                            : null,
+                    scoreEntity.getPercentile(),
+                    scoreEntity.getApplicantCount()
+            );
         }
-
-        applicationScoreRepository.save(scoreEntity);
-        savedApplication.setStatus(ApplicationStatus.SCORED);
 
         return new ApplicationResponse(
                 savedApplication.getId(),
-                scoreEntity.getMatchScore(),
-                scoreEntity.getMatchBreakdown(),
-                scoreEntity.getBenchmarkState(),
-                scoreEntity.getBenchmarkState() == BenchmarkState.EARLY_APPLICANT
-                        ? "Congrats, you are one of the first 5 applicants!"
-                        : null,
-                scoreEntity.getPercentile(),
-                scoreEntity.getApplicantCount()
+                0,
+                Map.of(),
+                BenchmarkState.EARLY_APPLICANT,
+                "Application tracked! Upload a resume to get a match score.",
+                null,
+                0
         );
     }
 

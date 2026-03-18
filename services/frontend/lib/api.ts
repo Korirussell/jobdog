@@ -200,7 +200,9 @@ export class ApiClient {
         company: string;
         location: string;
         employmentType: string;
-        postedAt: string;
+        postedAt: string | null;
+        scrapedAt: string;
+        jobStatus: string;
         applyUrl: string;
         savedAt: string;
       }>;

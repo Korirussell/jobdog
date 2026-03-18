@@ -63,10 +63,9 @@ export default function SettingsPage() {
   };
 
   return (
-    <AuthGuard>
     <div className="min-h-screen">
       <MorphingHeader />
-      
+      <AuthGuard>
       <main className="mx-auto min-h-screen max-w-6xl px-6 pt-8">
         <div className="space-y-6">
           {/* Account Section */}
@@ -110,7 +109,7 @@ export default function SettingsPage() {
           <TerminalDecryptor onCommand={handleTerminalCommand} />
         </div>
       </main>
+      </AuthGuard>
     </div>
-    </AuthGuard>
   );
 }
