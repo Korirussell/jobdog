@@ -210,7 +210,7 @@ export class ApiClient {
   }
 
   // Resume Roaster
-  async roastResume(resumeId: string, jobId: string) {
+  async roastResume(resumeId: string, jobId?: string) {
     return this.request<{
       brutalRoastText: string;
       missingDependencies: string[];
@@ -218,7 +218,7 @@ export class ApiClient {
       tierName: string;
     }>('/api/v1/roast', {
       method: 'POST',
-      body: JSON.stringify({ resumeId, jobId }),
+      body: JSON.stringify({ resumeId, jobId: jobId ?? null }),
     });
   }
 

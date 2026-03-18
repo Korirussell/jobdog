@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import MorphingHeader from '@/components/MorphingHeader';
+import TopBar from '@/components/TopBar';
 import AuthGuard from '@/components/AuthGuard';
 import JobListRow from '@/components/JobListRow';
 import { api } from '@/lib/api';
@@ -45,7 +45,7 @@ export default function SavedPage() {
 
   return (
     <div className="min-h-screen">
-      <MorphingHeader />
+      <TopBar />
       <AuthGuard>
       <main className="mx-auto min-h-screen max-w-6xl px-6 pt-8">
         <div className="mb-6">

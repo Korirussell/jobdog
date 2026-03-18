@@ -1,14 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import MorphingHeader from '@/components/MorphingHeader';
+import { useRouter } from 'next/navigation';
+import TopBar from '@/components/TopBar';
 import AuthGuard from '@/components/AuthGuard';
 import TerminalDecryptor from '@/components/TerminalDecryptor';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SettingsPage() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, logout } = useAuth();
+  const router = useRouter();
   const [visibility, setVisibility] = useState('PRIVATE');
 
   const handleTerminalCommand = async (command: string): Promise<string> => {
@@ -64,7 +66,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen">
-      <MorphingHeader />
+      <TopBar />
       <AuthGuard>
       <main className="mx-auto min-h-screen max-w-6xl px-6 pt-8">
         <div className="space-y-6">
@@ -96,10 +98,10 @@ export default function SettingsPage() {
                   </select>
                 </div>
                 <button
-                  onClick={logout}
-                  className="border-2 border-danger bg-white px-6 py-2 font-mono text-sm font-bold text-danger transition-all hover:bg-danger hover:text-white"
+                  onClick={() => { logout(); router.replace('/'); }}
+                  className="border-2 border-red-500 bg-white px-6 py-2 font-mono text-sm font-bold text-red-600 transition-all hover:bg-red-500 hover:text-white"
                 >
-                  LOGOUT.EXE
+                  Logout
                 </button>
               </div>
             </div>

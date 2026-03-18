@@ -33,7 +33,8 @@ public class RoastController {
     public ResponseEntity<Map<String, Object>> roastResume(@RequestBody Map<String, String> body) {
         var userId = currentUser.require().userId();
         UUID resumeId = UUID.fromString(body.get("resumeId"));
-        UUID jobId = UUID.fromString(body.get("jobId"));
+        String jobIdStr = body.get("jobId");
+        UUID jobId = (jobIdStr != null && !jobIdStr.isBlank()) ? UUID.fromString(jobIdStr) : null;
 
         RoastHistoryEntity roast = roastService.roast(userId, resumeId, jobId);
 
@@ -53,8 +54,8 @@ public class RoastController {
         List<Map<String, Object>> items = history.stream().map(r -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("roastId", r.getId());
-            m.put("jobTitle", r.getJob().getTitle());
-            m.put("company", r.getJob().getCompany());
+            m.put("jobTitle", r.getJob() != null ? r.getJob().getTitle() : "General Roast");
+            m.put("company", r.getJob() != null ? r.getJob().getCompany() : "—");
             m.put("topDogRank", r.getTopDogRank());
             m.put("tierName", r.getTierName());
             m.put("roastedAt", r.getRoastedAt());

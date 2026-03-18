@@ -28,8 +28,8 @@ public class RoastHistoryEntity extends BaseEntity {
     @JoinColumn(name = "resume_id", nullable = false)
     private ResumeEntity resume;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "job_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "job_id", nullable = true)
     private JobEntity job;
 
     @Column(nullable = false, columnDefinition = "TEXT")

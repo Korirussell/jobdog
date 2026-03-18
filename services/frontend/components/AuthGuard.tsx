@@ -14,7 +14,7 @@ interface AuthGuardProps {
  * When unauthenticated, redirects to /login.
  *
  * IMPORTANT: wrap only the page *content* with this, not the entire page
- * (keep MorphingHeader outside so the user always has home navigation).
+ * (TopBar is rendered outside so the user always has home navigation).
  */
 export default function AuthGuard({ children }: AuthGuardProps) {
   const { isAuthenticated, loading } = useAuth();

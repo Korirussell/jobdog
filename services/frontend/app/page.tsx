@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import MorphingHeader from '@/components/MorphingHeader';
+import TopBar from '@/components/TopBar';
 import FilterBar, { FilterState } from '@/components/FolderTabs';
 import JobListRow from '@/components/JobListRow';
 import ConveyorBelt from '@/components/ConveyorBelt';
@@ -187,10 +187,19 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      {/* Morphing Header - Hero that transforms into sticky nav */}
-      <MorphingHeader />
+      <TopBar />
 
-      {/* Main Content Area - Center-aligned, unbounded */}
+      {/* Hero banner — compact, always below the nav */}
+      <div className="border-b-2 border-black/10 bg-background px-6 py-8 text-center">
+        <h1 className="mb-1 font-mono text-2xl font-bold text-text-primary sm:text-3xl">
+          Intern &amp; New Grad Jobs
+        </h1>
+        <p className="font-mono text-sm text-text-secondary">
+          {total > 0 ? `${total.toLocaleString()} active positions` : 'Loading positions...'} · updated {lastSync ? formatSyncTime(lastSync) : 'recently'}
+        </p>
+      </div>
+
+      {/* Main Content Area */}
       <main id="main-content" className="mx-auto min-h-screen max-w-6xl px-6">
         {/* Filter Bar - Clean dividing line */}
         <FilterBar 

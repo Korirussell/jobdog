@@ -57,18 +57,24 @@ public class RoastService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         ResumeEntity resume = resumeRepository.findById(resumeId)
                 .orElseThrow(() -> new IllegalArgumentException("Resume not found"));
-        JobEntity job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new IllegalArgumentException("Job not found"));
 
         if (!resume.getUser().getId().equals(userId)) {
             throw new IllegalArgumentException("Resume does not belong to user");
         }
 
+        // jobId is optional — null means a general "intern/new-grad SWE" roast
+        JobEntity job = null;
+        if (jobId != null) {
+            job = jobRepository.findById(jobId)
+                    .orElseThrow(() -> new IllegalArgumentException("Job not found"));
+        }
+
         byte[] pdfBytes = storageService.getObject(resume.getStorageKey());
         String resumeText = pdfTextExtractor.extractText(pdfBytes);
-        String jobDescription = job.getDescriptionText();
 
-        String prompt = buildRoastPrompt(resumeText, jobDescription, job.getTitle(), job.getCompany());
+        String prompt = (job != null)
+                ? buildRoastPrompt(resumeText, job.getDescriptionText(), job.getTitle(), job.getCompany())
+                : buildGeneralRoastPrompt(resumeText);
 
         ChatCompletionRequest request = ChatCompletionRequest.builder()
                 .model("gpt-4o-mini")
@@ -105,7 +111,7 @@ public class RoastService {
             RoastHistoryEntity roast = new RoastHistoryEntity();
             roast.setUser(user);
             roast.setResume(resume);
-            roast.setJob(job);
+            if (job != null) roast.setJob(job);
             roast.setBrutalRoastText(brutalRoastText);
             roast.setMissingDependencies(missingDependencies);
             roast.setTopDogRank(topDogRank);
@@ -125,6 +131,31 @@ public class RoastService {
         if (rank >= 40) return "HOUSE_TRAINED";
         if (rank >= 20) return "LOST_PUPPY";
         return "POUND_CANDIDATE";
+    }
+
+    private String buildGeneralRoastPrompt(String resumeText) {
+        String truncatedResume = resumeText.substring(0, Math.min(resumeText.length(), 3000));
+        return String.format("""
+                CANDIDATE RESUME:
+                %s
+                
+                Analyze this resume as a general SWE intern / new-grad candidate. Return ONLY valid JSON:
+                {
+                  "brutal_roast_text": "A 2-3 paragraph brutal but funny roast of this resume for a typical SWE internship at a top tech company. Be cynical. Reference specific gaps, overinflated claims, and what's missing.",
+                  "missing_dependencies": ["skill1", "skill2", "technology3"],
+                  "top_dog_rank": 0-100
+                }
+                
+                Scoring guide for top_dog_rank (for a general SWE intern role at a top company):
+                - 90-100: Ready to interview at FAANG right now.
+                - 75-89: Strong candidate, minor polish needed.
+                - 60-74: Decent but clear gaps for top companies.
+                - 40-59: Needs significant work.
+                - 20-39: Major gaps.
+                - 0-19: Start over.
+                
+                Return ONLY the JSON object.
+                """, truncatedResume);
     }
 
     private String buildRoastPrompt(String resumeText, String jobDescription, String jobTitle, String company) {
