@@ -43,9 +43,8 @@ export default function Home() {
   // WebSocket connection for real-time job updates
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = process.env.NEXT_PUBLIC_API_URL
-      ? `${protocol}//${new URL(process.env.NEXT_PUBLIC_API_URL).host}/ws`
-      : `${protocol}//${window.location.host}/ws`;
+    // Always connect through the frontend origin so Vercel rewrites/proxy rules apply.
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
 
     try {
       const ws = new WebSocket(wsUrl);

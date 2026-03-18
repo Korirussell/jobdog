@@ -52,8 +52,17 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: response.statusText }));
-      throw new Error(error.message || `API error: ${response.statusText}`);
+      const responseText = await response.text().catch(() => "");
+      let message = `API ${response.status}: ${response.statusText}`;
+      if (responseText) {
+        try {
+          const parsed = JSON.parse(responseText);
+          message = parsed.message || parsed.error || message;
+        } catch {
+          message = responseText.slice(0, 300) || message;
+        }
+      }
+      throw new Error(message);
     }
 
     return response.json();
