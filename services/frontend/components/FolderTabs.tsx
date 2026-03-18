@@ -5,6 +5,7 @@ import { useState } from 'react';
 interface FilterBarProps {
   onFilterChange?: (filters: FilterState) => void;
   onSearchChange?: (search: string) => void;
+  searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 export interface FilterState {
@@ -15,7 +16,7 @@ export interface FilterState {
   hideApplied: boolean;
 }
 
-export default function FilterBar({ onFilterChange, onSearchChange }: FilterBarProps) {
+export default function FilterBar({ onFilterChange, onSearchChange, searchInputRef }: FilterBarProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [filters, setFilters] = useState<FilterState>({
@@ -63,25 +64,41 @@ export default function FilterBar({ onFilterChange, onSearchChange }: FilterBarP
 
         {/* Search on right */}
         <div className="ml-auto flex w-full items-center sm:w-auto">
-          <input
-            type="text"
-            value={searchValue}
-            onChange={(e) => {
-              setSearchValue(e.target.value);
-              const timeoutId = setTimeout(() => {
-                onSearchChange?.(e.target.value);
-              }, 300);
-              return () => clearTimeout(timeoutId);
-            }}
-            placeholder="SEARCH..."
-            className="
-              w-full border-2 border-black/10 bg-white px-3 py-1.5
-              font-mono text-xs text-text-primary
-              placeholder-text-tertiary
-              focus:border-primary focus:outline-none
-              sm:w-56
-            "
-          />
+          <div className="relative w-full sm:w-64">
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchValue}
+              onChange={(e) => {
+                setSearchValue(e.target.value);
+                const timeoutId = setTimeout(() => {
+                  onSearchChange?.(e.target.value);
+                }, 300);
+                return () => clearTimeout(timeoutId);
+              }}
+              placeholder="Search jobs, companies..."
+              className="
+                w-full border-2 border-black/10 bg-white py-1.5 pl-3 pr-16
+                font-mono text-xs text-text-primary
+                placeholder-text-tertiary
+                focus:border-primary focus:outline-none
+              "
+            />
+            {/* ⌘K hint — PostHog-style */}
+            {!searchValue && (
+              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-text-tertiary">
+                ⌘K
+              </span>
+            )}
+            {searchValue && (
+              <button
+                onClick={() => { setSearchValue(''); onSearchChange?.(''); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-xs text-text-tertiary hover:text-text-primary"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

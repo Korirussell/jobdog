@@ -58,6 +58,12 @@ export default function Home() {
   const debouncedSearch = useDebounce(searchQuery, 500);
   const pageSize = 50;
   const wsRef = useRef<WebSocket | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const focusSearch = useCallback(() => {
+    searchInputRef.current?.focus();
+    searchInputRef.current?.select();
+  }, []);
 
   // WebSocket connection for real-time job updates
   useEffect(() => {
@@ -187,7 +193,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      <TopBar />
+      <TopBar onSearchFocus={focusSearch} />
 
       {/* Hero banner — compact, always below the nav */}
       <div className="border-b-2 border-black/10 bg-background px-6 py-8 text-center">
@@ -201,15 +207,16 @@ export default function Home() {
 
       {/* Main Content Area */}
       <main id="main-content" className="mx-auto min-h-screen max-w-6xl px-6">
-        {/* Filter Bar - Clean dividing line */}
-        <FilterBar 
+        {/* Filter Bar */}
+        <FilterBar
+          searchInputRef={searchInputRef}
           onFilterChange={(newFilters) => {
             setFilters(newFilters);
-            setPage(0); // Reset to first page when filter changes
+            setPage(0);
           }}
           onSearchChange={(search) => {
             setSearchQuery(search);
-            setPage(0); // Reset to first page when search changes
+            setPage(0);
           }}
         />
 

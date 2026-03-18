@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -13,18 +13,28 @@ const NAV_LINKS = [
   { href: '/vault', label: 'Vault', authOnly: true },
 ];
 
-export default function TopBar() {
+interface TopBarProps {
+  onSearchFocus?: () => void;
+}
+
+export default function TopBar({ onSearchFocus }: TopBarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated, loading, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // Close dropdown when clicking outside
+  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target as Node)
+      ) {
         setMenuOpen(false);
       }
     };
@@ -32,36 +42,61 @@ export default function TopBar() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Close mobile menu on route change
+  // Close on route change
   useEffect(() => {
     setMobileOpen(false);
     setMenuOpen(false);
   }, [pathname]);
 
+  // ⌘K / Ctrl+K global shortcut → focus search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        onSearchFocus?.();
+        // Also scroll to top so search is visible
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onSearchFocus]);
+
   const initials = user?.displayName
     ? user.displayName.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()
     : '?';
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     logout();
     setMenuOpen(false);
     router.replace('/');
-  };
+  }, [logout, router]);
 
   const visibleLinks = NAV_LINKS.filter((l) => !l.authOnly || isAuthenticated);
 
   return (
-    <header className="sticky top-0 z-50 border-b-2 border-black/10 bg-white/95 backdrop-blur-sm">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+    // overflow-visible is critical — without it, the dropdown gets clipped
+    <header className="sticky top-0 z-[100] overflow-visible border-b-2 border-black/10 bg-white/98 backdrop-blur-sm">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
 
-        {/* Left: Logo */}
-        <Link href="/" className="flex shrink-0 items-center gap-2 transition-opacity hover:opacity-80">
-          <Image src="/assets/jobdog.png" alt="JobDog" width={28} height={28} className="pixelated" />
-          <span className="font-mono text-sm font-bold text-text-primary">jobdog.dev</span>
+        {/* ── Left: Logo ── */}
+        <Link href="/" className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-80">
+          <Image
+            src="/assets/jobdog.png"
+            alt="JobDog"
+            width={40}
+            height={40}
+            className="pixelated"
+            priority
+          />
+          <div className="flex flex-col leading-none">
+            <span className="font-mono text-base font-bold text-text-primary">jobdog.dev</span>
+            <span className="font-mono text-[10px] text-text-tertiary">intern jobs · new grad</span>
+          </div>
         </Link>
 
-        {/* Center: Nav links (desktop) */}
-        <nav className="hidden items-center gap-1 md:flex">
+        {/* ── Center: Nav links (desktop) ── */}
+        <nav className="hidden items-center gap-0.5 md:flex">
           {visibleLinks.map(({ href, label }) => {
             const active = pathname === href;
             return (
@@ -69,85 +104,130 @@ export default function TopBar() {
                 key={href}
                 href={href}
                 className={`
-                  rounded-none border-2 px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wide
-                  transition-all
+                  relative px-3 py-2 font-mono text-sm font-bold transition-colors
                   ${active
-                    ? 'border-black bg-primary text-text-primary'
-                    : 'border-transparent text-text-secondary hover:border-black/20 hover:bg-background-secondary hover:text-text-primary'
+                    ? 'text-text-primary'
+                    : 'text-text-secondary hover:text-text-primary'
                   }
                 `}
               >
                 {label}
+                {/* PostHog-style active underline indicator */}
+                {active && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+                )}
               </Link>
             );
           })}
         </nav>
 
-        {/* Right: Auth */}
+        {/* ── Right: Search hint + Auth ── */}
         <div className="flex shrink-0 items-center gap-2">
+
+          {/* ⌘K search hint — PostHog-style */}
+          {onSearchFocus && (
+            <button
+              onClick={() => {
+                onSearchFocus();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="hidden items-center gap-1.5 border border-black/10 bg-background px-2.5 py-1.5 font-mono text-xs text-text-tertiary transition-colors hover:border-black/30 hover:text-text-secondary sm:flex"
+              title="Search jobs (⌘K)"
+            >
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span>Search</span>
+              <kbd className="ml-1 rounded bg-white px-1 py-0.5 text-[10px] font-bold shadow-sm ring-1 ring-black/10">⌘K</kbd>
+            </button>
+          )}
+
           {/* Mobile hamburger */}
           <button
             onClick={() => setMobileOpen((v) => !v)}
             className="flex h-8 w-8 flex-col items-center justify-center gap-1.5 md:hidden"
             aria-label="Toggle menu"
           >
-            <span className={`block h-0.5 w-5 bg-text-primary transition-all ${mobileOpen ? 'translate-y-2 rotate-45' : ''}`} />
-            <span className={`block h-0.5 w-5 bg-text-primary transition-all ${mobileOpen ? 'opacity-0' : ''}`} />
-            <span className={`block h-0.5 w-5 bg-text-primary transition-all ${mobileOpen ? '-translate-y-2 -rotate-45' : ''}`} />
+            <span className={`block h-0.5 w-5 bg-text-primary transition-all duration-200 ${mobileOpen ? 'translate-y-2 rotate-45' : ''}`} />
+            <span className={`block h-0.5 w-5 bg-text-primary transition-all duration-200 ${mobileOpen ? 'opacity-0' : ''}`} />
+            <span className={`block h-0.5 w-5 bg-text-primary transition-all duration-200 ${mobileOpen ? '-translate-y-2 -rotate-45' : ''}`} />
           </button>
 
+          {/* Auth section */}
           {!loading && (
             <>
               {isAuthenticated ? (
-                <div className="relative" ref={dropdownRef}>
+                // Wrapper div — overflow-visible so dropdown escapes the header
+                <div className="relative overflow-visible">
                   <button
+                    ref={buttonRef}
                     onClick={() => setMenuOpen((v) => !v)}
                     className="flex items-center gap-2 border-2 border-black/20 bg-white px-2.5 py-1.5 font-mono text-xs font-bold text-text-primary transition-all hover:border-black hover:bg-background-secondary"
                     aria-expanded={menuOpen}
                     aria-haspopup="true"
                   >
-                    <span className="flex h-6 w-6 items-center justify-center bg-primary font-mono text-[10px] font-bold text-text-primary">
+                    {/* Avatar */}
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center bg-primary font-mono text-[10px] font-bold text-text-primary">
                       {initials}
                     </span>
                     <span className="hidden max-w-[80px] truncate sm:block">
                       {user?.displayName?.split(' ')[0] ?? 'USER'}
                     </span>
                     <svg
-                      className={`h-3 w-3 text-text-tertiary transition-transform ${menuOpen ? 'rotate-180' : ''}`}
+                      className={`h-3 w-3 shrink-0 text-text-tertiary transition-transform duration-200 ${menuOpen ? 'rotate-180' : ''}`}
                       fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
 
+                  {/* Dropdown — rendered in a portal-like position using fixed positioning */}
                   {menuOpen && (
-                    <div className="absolute right-0 top-full z-50 mt-1 w-56 border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                      {/* User info */}
-                      <div className="border-b-2 border-black/10 px-4 py-3">
-                        <p className="truncate font-mono text-xs font-bold text-text-primary">{user?.displayName}</p>
-                        <p className="truncate font-mono text-xs text-text-tertiary">{user?.email}</p>
+                    <div
+                      ref={dropdownRef}
+                      className="absolute right-0 top-[calc(100%+6px)] z-[200] w-60 border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                      style={{ position: 'absolute' }}
+                    >
+                      {/* User info header */}
+                      <div className="border-b-2 border-black/10 bg-background px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-primary font-mono text-xs font-bold">
+                            {initials}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate font-mono text-xs font-bold text-text-primary">{user?.displayName}</p>
+                            <p className="truncate font-mono text-[10px] text-text-tertiary">{user?.email}</p>
+                          </div>
+                        </div>
                       </div>
 
                       {/* Nav items */}
                       <div className="py-1">
                         {[
-                          { href: '/', label: '🏠 Home' },
-                          { href: '/vault', label: '📁 Vault' },
-                          { href: '/saved', label: '★ Saved Jobs' },
-                          { href: '/applications', label: '📋 Applications' },
-                          { href: '/settings', label: '⚙ Settings' },
-                        ].map(({ href, label }) => (
+                          { href: '/', label: 'Jobs', icon: '💼' },
+                          { href: '/vault', label: 'Resume Vault', icon: '📁' },
+                          { href: '/saved', label: 'Saved Jobs', icon: '★' },
+                          { href: '/applications', label: 'Applications', icon: '📋' },
+                          { href: '/settings', label: 'Settings', icon: '⚙' },
+                        ].map(({ href, label, icon }) => (
                           <Link
                             key={href}
                             href={href}
                             onClick={() => setMenuOpen(false)}
                             className={`
-                              flex items-center px-4 py-2.5 font-mono text-xs font-bold
+                              flex items-center gap-2.5 px-4 py-2.5 font-mono text-xs font-bold
                               transition-colors hover:bg-background-secondary
-                              ${pathname === href ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}
+                              ${pathname === href
+                                ? 'bg-primary/10 text-text-primary'
+                                : 'text-text-secondary hover:text-text-primary'
+                              }
                             `}
                           >
+                            <span className="w-4 text-center">{icon}</span>
                             {label}
+                            {pathname === href && (
+                              <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                            )}
                           </Link>
                         ))}
                       </div>
@@ -156,9 +236,10 @@ export default function TopBar() {
                       <div className="border-t-2 border-black/10 py-1">
                         <button
                           onClick={handleLogout}
-                          className="flex w-full items-center px-4 py-2.5 font-mono text-xs font-bold text-danger transition-colors hover:bg-danger/10"
+                          className="flex w-full items-center gap-2.5 px-4 py-2.5 font-mono text-xs font-bold text-red-600 transition-colors hover:bg-red-50"
                         >
-                          ⏻ Logout
+                          <span className="w-4 text-center">⏻</span>
+                          Logout
                         </button>
                       </div>
                     </div>
@@ -176,7 +257,7 @@ export default function TopBar() {
                     href="/login"
                     className="border-2 border-black bg-primary px-3 py-1.5 font-mono text-xs font-bold text-text-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
                   >
-                    Sign up
+                    Sign up →
                   </Link>
                 </div>
               )}
@@ -185,7 +266,7 @@ export default function TopBar() {
         </div>
       </div>
 
-      {/* Mobile nav drawer */}
+      {/* ── Mobile nav drawer ── */}
       {mobileOpen && (
         <div className="border-t-2 border-black/10 bg-white px-4 pb-4 md:hidden">
           <nav className="flex flex-col gap-1 pt-3">
@@ -196,25 +277,34 @@ export default function TopBar() {
                   key={href}
                   href={href}
                   className={`
-                    border-2 px-4 py-2.5 font-mono text-sm font-bold uppercase
+                    flex items-center justify-between border-l-4 px-4 py-3 font-mono text-sm font-bold
+                    transition-colors
                     ${active
-                      ? 'border-black bg-primary text-text-primary'
-                      : 'border-transparent text-text-secondary hover:border-black/20 hover:bg-background-secondary hover:text-text-primary'
+                      ? 'border-l-primary bg-primary/10 text-text-primary'
+                      : 'border-l-transparent text-text-secondary hover:border-l-black/20 hover:bg-background-secondary hover:text-text-primary'
                     }
                   `}
                 >
                   {label}
+                  {active && <span className="h-2 w-2 rounded-full bg-primary" />}
                 </Link>
               );
             })}
             {isAuthenticated && (
               <>
-                <Link href="/settings" className="border-2 border-transparent px-4 py-2.5 font-mono text-sm font-bold uppercase text-text-secondary hover:border-black/20 hover:bg-background-secondary hover:text-text-primary">
+                <Link
+                  href="/settings"
+                  className={`flex items-center border-l-4 px-4 py-3 font-mono text-sm font-bold transition-colors ${
+                    pathname === '/settings'
+                      ? 'border-l-primary bg-primary/10 text-text-primary'
+                      : 'border-l-transparent text-text-secondary hover:border-l-black/20 hover:bg-background-secondary hover:text-text-primary'
+                  }`}
+                >
                   Settings
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="border-2 border-transparent px-4 py-2.5 text-left font-mono text-sm font-bold uppercase text-danger hover:border-danger/20 hover:bg-danger/10"
+                  className="border-l-4 border-l-transparent px-4 py-3 text-left font-mono text-sm font-bold text-red-600 transition-colors hover:border-l-red-300 hover:bg-red-50"
                 >
                   Logout
                 </button>
