@@ -48,6 +48,7 @@ export default function Home() {
   const [page, setPage] = useState(0);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
+  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [applyModal, setApplyModal] = useState<{ jobId: string; title: string; company: string } | null>(null);
   const [conveyorJobs, setConveyorJobs] = useState<Array<{ jobId: string; company: string; title: string }>>([]);
 
@@ -87,9 +88,23 @@ export default function Home() {
     } catch { return; }
   }, []);
 
-  const handleSaveJob = useCallback(async (jobId: string) => {
+  // Load saved job IDs when authenticated
+  useEffect(() => {
     if (!isAuthenticated) return;
-    try { await api.saveJob(jobId); } catch {}
+    api.getSavedJobs()
+      .then((res) => setSavedJobIds(new Set(res.items.map((j) => j.jobId))))
+      .catch(() => {});
+  }, [isAuthenticated]);
+
+  const handleSaveJob = useCallback(async (jobId: string, save: boolean) => {
+    if (!isAuthenticated) return;
+    if (save) {
+      setSavedJobIds((prev) => new Set(prev).add(jobId));
+      try { await api.saveJob(jobId); } catch { setSavedJobIds((prev) => { const s = new Set(prev); s.delete(jobId); return s; }); }
+    } else {
+      setSavedJobIds((prev) => { const s = new Set(prev); s.delete(jobId); return s; });
+      try { await api.unsaveJob(jobId); } catch { setSavedJobIds((prev) => new Set(prev).add(jobId)); }
+    }
   }, [isAuthenticated]);
 
   const handleApply = useCallback((jobId: string) => {
@@ -292,7 +307,9 @@ export default function Home() {
                 matchPercentile={job.matchPercentile}
                 applyUrl={job.applyUrl}
                 alreadyApplied={appliedJobIds.has(job.jobId)}
+                isSaved={savedJobIds.has(job.jobId)}
                 onApply={isAuthenticated ? handleApply : undefined}
+                onSave={isAuthenticated ? handleSaveJob : undefined}
               />
             ))}
           </div>
@@ -336,7 +353,7 @@ export default function Home() {
       {/* Conveyor Belt */}
       <ConveyorBelt
         jobs={conveyorJobs}
-        onSaveJob={handleSaveJob}
+        onSaveJob={(jobId) => handleSaveJob(jobId, true)}
         visible={conveyorJobs.length > 0}
       />
     </div>

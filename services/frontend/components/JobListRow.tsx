@@ -1,6 +1,6 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useState } from 'react';
 
 interface JobListRowProps {
   jobId: string;
@@ -15,7 +15,9 @@ interface JobListRowProps {
   matchPercentile?: number;
   applyUrl: string;
   alreadyApplied?: boolean;
+  isSaved?: boolean;
   onApply?: (jobId: string) => void;
+  onSave?: (jobId: string, saved: boolean) => void;
 }
 
 function formatTimeAgo(dateString: string | null | undefined): string {
@@ -46,11 +48,31 @@ const JobListRow = memo(function JobListRow({
   matchPercentile,
   applyUrl,
   alreadyApplied = false,
+  isSaved = false,
   onApply,
+  onSave,
 }: JobListRowProps) {
+  const [saved, setSaved] = useState(isSaved);
+  const [savePending, setSavePending] = useState(false);
+
   const timeLabel = formatTimeAgo(postedAt) || (scrapedAt ? `~${formatTimeAgo(scrapedAt)}` : '');
   const isClosed = jobStatus === 'CLOSED';
   const canApply = !isClosed && !alreadyApplied;
+
+  const handleSave = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onSave || savePending) return;
+    setSavePending(true);
+    const next = !saved;
+    setSaved(next);
+    try {
+      await onSave(jobId, next);
+    } catch {
+      setSaved(!next); // revert on error
+    } finally {
+      setSavePending(false);
+    }
+  };
 
   const isNew = (() => {
     const d = postedAt ? new Date(postedAt) : new Date(scrapedAt);
@@ -142,6 +164,30 @@ const JobListRow = memo(function JobListRow({
           )}
 
           <div className="flex items-center gap-2">
+            {/* Save / bookmark */}
+            {onSave && (
+              <button
+                onClick={handleSave}
+                disabled={savePending}
+                title={saved ? 'Unsave job' : 'Save job'}
+                className={`flex h-8 w-8 items-center justify-center border transition-all
+                  ${saved
+                    ? 'border-primary bg-primary/10 text-text-primary hover:bg-primary/20'
+                    : 'border-black/20 bg-white text-text-tertiary hover:border-black/40 hover:text-text-primary'
+                  }
+                  disabled:opacity-40`}
+              >
+                <svg
+                  className="h-3.5 w-3.5"
+                  fill={saved ? 'currentColor' : 'none'}
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              </button>
+            )}
             {onApply && canApply && (
               <button
                 onClick={(e) => { e.stopPropagation(); onApply(jobId); }}
@@ -168,7 +214,8 @@ const JobListRow = memo(function JobListRow({
   prev.applyUrl === next.applyUrl &&
   prev.postedAt === next.postedAt &&
   prev.alreadyApplied === next.alreadyApplied &&
-  prev.jobStatus === next.jobStatus
+  prev.jobStatus === next.jobStatus &&
+  prev.isSaved === next.isSaved
 );
 
 export default JobListRow;

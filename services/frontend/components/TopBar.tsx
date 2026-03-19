@@ -136,26 +136,8 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
             })}
           </nav>
 
-          {/* ── Right: Search hint + Auth ── */}
+          {/* ── Right: Auth ── */}
           <div className="flex shrink-0 items-center gap-2">
-
-            {/* ⌘K search hint */}
-            {onSearchFocus && (
-              <button
-                onClick={() => {
-                  onSearchFocus();
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="hidden items-center gap-1.5 border border-black/10 bg-background px-2.5 py-1.5 font-mono text-xs text-text-tertiary transition-colors hover:border-black/30 hover:text-text-secondary sm:flex"
-                title="Search jobs (⌘K)"
-              >
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <span>Search</span>
-                <kbd className="ml-1 rounded bg-white px-1 py-0.5 text-[10px] font-bold shadow-sm ring-1 ring-black/10">⌘K</kbd>
-              </button>
-            )}
 
             {/* Mobile hamburger */}
             <button

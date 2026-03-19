@@ -37,6 +37,12 @@ export default function ApplyModal({ jobId, jobTitle, company, onClose, onSucces
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
   const handleSubmit = async () => {
     if (!selectedResumeId) {
       setError('Please select a resume.');
@@ -61,7 +67,7 @@ export default function ApplyModal({ jobId, jobTitle, company, onClose, onSucces
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="w-full max-w-md border-[3px] border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
