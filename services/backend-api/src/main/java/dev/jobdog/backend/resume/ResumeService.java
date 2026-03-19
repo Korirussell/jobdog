@@ -50,7 +50,19 @@ public class ResumeService {
         byte[] bytes = readBytes(file);
         String checksum = sha256(bytes);
         String storageKey = buildStorageKey(user.getId(), file.getOriginalFilename());
-        storageService.putObject(storageKey, file.getContentType(), bytes);
+
+        // Upload to R2 — if it fails, log the error but continue so the user
+        // can still get their resume parsed and roasted (bytes are passed directly
+        // to the async parser, so R2 is not needed for that flow).
+        try {
+            storageService.putObject(storageKey, file.getContentType(), bytes);
+        } catch (Exception storageEx) {
+            org.slf4j.LoggerFactory.getLogger(ResumeService.class)
+                    .error("R2 upload failed for user {} — continuing without remote storage: {}",
+                            user.getId(), storageEx.getMessage(), storageEx);
+            // Mark the key with a prefix so we know it was never persisted to R2
+            storageKey = "local-fallback/" + storageKey;
+        }
 
         ResumeEntity resume = new ResumeEntity();
         resume.setUser(user);

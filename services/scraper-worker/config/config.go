@@ -40,7 +40,7 @@ func Load() (*Config, error) {
 		DatabasePassword: getEnv("DATABASE_PASSWORD", "jobdog"),
 		OpenAIAPIKey:     getEnv("OPENAI_API_KEY", ""),
 		LogLevel:         getEnv("LOG_LEVEL", "info"),
-		ScrapeInterval:   6 * time.Hour,
+		ScrapeInterval:   2 * time.Hour,
 	}
 
 	// Default Greenhouse sources - intern-heavy tech companies

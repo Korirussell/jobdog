@@ -48,7 +48,7 @@ func main() {
 
 	c := cron.New()
 
-	_, err = c.AddFunc("@every 6h", func() {
+	_, err = c.AddFunc("@every 2h", func() {
 		pool := workerpool.NewWorkerPool(10)
 		pool.Start()
 

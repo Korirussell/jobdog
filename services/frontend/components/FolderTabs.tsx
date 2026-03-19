@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+export type JobTab = 'intern' | 'newgrad';
+
 interface FilterBarProps {
   onFilterChange?: (filters: FilterState) => void;
   onSearchChange?: (search: string) => void;
@@ -9,227 +11,194 @@ interface FilterBarProps {
 }
 
 export interface FilterState {
+  tab: JobTab;
   remote: boolean;
-  employmentType: string;
   location: string;
-  company: string;
   hideApplied: boolean;
 }
 
 export default function FilterBar({ onFilterChange, onSearchChange, searchInputRef }: FilterBarProps) {
-  const [showFilters, setShowFilters] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [filters, setFilters] = useState<FilterState>({
+    tab: 'intern',
     remote: false,
-    employmentType: 'all',
     location: '',
-    company: '',
     hideApplied: false,
   });
+  const [showMore, setShowMore] = useState(false);
 
-  const updateFilter = (key: keyof FilterState, value: any) => {
-    const newFilters = { ...filters, [key]: value };
-    setFilters(newFilters);
-    onFilterChange?.(newFilters);
+  const update = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
+    const next = { ...filters, [key]: value };
+    setFilters(next);
+    onFilterChange?.(next);
   };
 
-  const activeFilterCount = [
-    filters.remote,
-    filters.employmentType !== 'all',
-    filters.location,
-    filters.company,
-    filters.hideApplied,
-  ].filter(Boolean).length;
+  const hasExtraFilters = filters.remote || !!filters.location || filters.hideApplied;
 
   return (
-    <div className="border-b-2 border-black/10 bg-background">
-      <div className="flex flex-wrap items-center gap-2 py-3 sm:gap-3">
-        {/* Filters Button */}
+    <div className="border-b border-black/10 bg-white">
+      {/* ── Main bar ── */}
+      <div className="flex flex-wrap items-center gap-2 px-1 py-2">
+
+        {/* Intern / New Grad tabs */}
+        <div className="flex border border-black/15">
+          {(['intern', 'newgrad'] as JobTab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => update('tab', tab)}
+              className={`
+                px-4 py-1.5 font-mono text-xs font-bold transition-colors
+                ${filters.tab === tab
+                  ? 'bg-primary text-text-primary'
+                  : 'bg-white text-text-secondary hover:bg-black/5 hover:text-text-primary'
+                }
+              `}
+            >
+              {tab === 'intern' ? 'Internships' : 'New Grad'}
+            </button>
+          ))}
+        </div>
+
+        {/* More filters toggle */}
         <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="
-            flex items-center gap-2 border-2 border-black/20 bg-white px-4 py-1.5
-            font-mono text-xs font-bold uppercase text-text-primary
-            transition-all hover:border-black hover:bg-background-secondary
-          "
+          onClick={() => setShowMore((v) => !v)}
+          className={`
+            flex items-center gap-1.5 border px-3 py-1.5 font-mono text-xs font-bold transition-colors
+            ${hasExtraFilters || showMore
+              ? 'border-black/40 bg-black/5 text-text-primary'
+              : 'border-black/15 bg-white text-text-secondary hover:border-black/30 hover:text-text-primary'
+            }
+          `}
         >
-          <span>📁</span>
-          <span>FILTERS</span>
-          {activeFilterCount > 0 && (
-            <span className="ml-1 rounded-full bg-primary px-2 py-0.5 text-[10px]">
-              {activeFilterCount}
+          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M6 12h12M9 20h6" />
+          </svg>
+          Filters
+          {hasExtraFilters && (
+            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-text-primary">
+              {[filters.remote, !!filters.location, filters.hideApplied].filter(Boolean).length}
             </span>
           )}
         </button>
 
-        {/* Search on right */}
-        <div className="ml-auto flex w-full items-center sm:w-auto">
-          <div className="relative w-full sm:w-64">
+        {/* Active filter pills */}
+        {filters.remote && (
+          <span className="flex items-center gap-1 border border-black/20 bg-black/5 px-2 py-1 font-mono text-[10px] font-bold">
+            Remote only
+            <button onClick={() => update('remote', false)} className="ml-0.5 text-text-tertiary hover:text-text-primary">✕</button>
+          </span>
+        )}
+        {filters.location && (
+          <span className="flex items-center gap-1 border border-black/20 bg-black/5 px-2 py-1 font-mono text-[10px] font-bold">
+            📍 {filters.location}
+            <button onClick={() => update('location', '')} className="ml-0.5 text-text-tertiary hover:text-text-primary">✕</button>
+          </span>
+        )}
+        {filters.hideApplied && (
+          <span className="flex items-center gap-1 border border-black/20 bg-black/5 px-2 py-1 font-mono text-[10px] font-bold">
+            Hide applied
+            <button onClick={() => update('hideApplied', false)} className="ml-0.5 text-text-tertiary hover:text-text-primary">✕</button>
+          </span>
+        )}
+
+        {/* Search — right side */}
+        <div className="ml-auto">
+          <div className="relative">
+            <svg className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
             <input
               ref={searchInputRef}
               type="text"
               value={searchValue}
               onChange={(e) => {
                 setSearchValue(e.target.value);
-                // Fire immediately — debouncing happens in the parent via useDebounce
                 onSearchChange?.(e.target.value);
               }}
-              placeholder="Search jobs, companies..."
-              className="
-                w-full border-2 border-black/10 bg-white py-1.5 pl-3 pr-16
-                font-mono text-xs text-text-primary
-                placeholder-text-tertiary
-                focus:border-primary focus:outline-none
-              "
+              placeholder="Search..."
+              className="w-48 border border-black/15 bg-white py-1.5 pl-8 pr-8 font-mono text-xs text-text-primary placeholder-text-tertiary focus:border-black/40 focus:outline-none sm:w-56"
             />
-            {/* ⌘K hint — PostHog-style */}
-            {!searchValue && (
-              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-text-tertiary">
-                ⌘K
-              </span>
-            )}
-            {searchValue && (
+            {searchValue ? (
               <button
                 onClick={() => { setSearchValue(''); onSearchChange?.(''); }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-xs text-text-tertiary hover:text-text-primary"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary"
               >
-                ✕
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
+            ) : (
+              <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded bg-black/5 px-1 py-0.5 font-mono text-[9px] text-text-tertiary">⌘K</kbd>
             )}
           </div>
         </div>
       </div>
 
-      {/* Filter Panel */}
-      {showFilters && (
-        <div className="border-t-2 border-black/10 bg-background-secondary p-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Remote Toggle */}
+      {/* ── Expanded filter panel ── */}
+      {showMore && (
+        <div className="border-t border-black/8 bg-black/[0.02] px-4 py-3">
+          <div className="flex flex-wrap items-end gap-4">
+
+            {/* Remote toggle */}
             <div>
-              <label className="mb-2 block font-mono text-xs font-bold uppercase text-text-secondary">
-                LOCATION_TYPE
-              </label>
+              <p className="mb-1.5 font-mono text-[10px] font-bold uppercase text-text-tertiary">Location type</p>
               <button
-                onClick={() => updateFilter('remote', !filters.remote)}
+                onClick={() => update('remote', !filters.remote)}
                 className={`
-                  w-full border-2 px-4 py-2 font-mono text-xs font-bold uppercase
-                  transition-all
-                  ${
-                    filters.remote
-                      ? 'border-black bg-primary text-text-primary'
-                      : 'border-black/20 bg-white text-text-secondary hover:border-black'
+                  flex items-center gap-1.5 border px-3 py-1.5 font-mono text-xs font-bold transition-colors
+                  ${filters.remote
+                    ? 'border-black bg-primary text-text-primary'
+                    : 'border-black/20 bg-white text-text-secondary hover:border-black/40'
                   }
                 `}
               >
-                {filters.remote ? '✓ REMOTE_ONLY' : 'ALL_LOCATIONS'}
+                {filters.remote ? '✓ Remote only' : 'All locations'}
               </button>
             </div>
 
-            {/* Employment Type */}
+            {/* Location text */}
             <div>
-              <label className="mb-2 block font-mono text-xs font-bold uppercase text-text-secondary">
-                JOB_TYPE
-              </label>
-              <select
-                value={filters.employmentType}
-                onChange={(e) => updateFilter('employmentType', e.target.value)}
-                className="
-                  w-full border-2 border-black/20 bg-white px-4 py-2
-                  font-mono text-xs font-bold uppercase text-text-primary
-                  focus:border-primary focus:outline-none
-                "
-              >
-                <option value="all">ALL_TYPES</option>
-                <option value="INTERNSHIP">INTERNSHIP</option>
-                <option value="FULL_TIME">FULL_TIME</option>
-                <option value="PART_TIME">PART_TIME</option>
-                <option value="CONTRACT">CONTRACT</option>
-              </select>
-            </div>
-
-            {/* Location Filter */}
-            <div>
-              <label className="mb-2 block font-mono text-xs font-bold uppercase text-text-secondary">
-                LOCATION
-              </label>
+              <p className="mb-1.5 font-mono text-[10px] font-bold uppercase text-text-tertiary">City / State</p>
               <input
                 type="text"
                 value={filters.location}
-                onChange={(e) => updateFilter('location', e.target.value)}
-                placeholder="e.g., San Francisco"
-                className="
-                  w-full border-2 border-black/10 bg-white px-3 py-2
-                  font-mono text-xs text-text-primary
-                  placeholder-text-tertiary
-                  focus:border-primary focus:outline-none
-                "
+                onChange={(e) => update('location', e.target.value)}
+                placeholder="e.g. San Francisco"
+                className="border border-black/15 bg-white px-3 py-1.5 font-mono text-xs text-text-primary placeholder-text-tertiary focus:border-black/40 focus:outline-none"
               />
             </div>
 
-            {/* Company Filter */}
+            {/* Hide applied */}
             <div>
-              <label className="mb-2 block font-mono text-xs font-bold uppercase text-text-secondary">
-                COMPANY
-              </label>
-              <input
-                type="text"
-                value={filters.company}
-                onChange={(e) => updateFilter('company', e.target.value)}
-                placeholder="e.g., Google"
-                className="
-                  w-full border-2 border-black/10 bg-white px-3 py-2
-                  font-mono text-xs text-text-primary
-                  placeholder-text-tertiary
-                  focus:border-primary focus:outline-none
-                "
-              />
-            </div>
-
-            {/* Hide Applied */}
-            <div>
-              <label className="mb-2 block font-mono text-xs font-bold uppercase text-text-secondary">
-                APPLIED_JOBS
-              </label>
+              <p className="mb-1.5 font-mono text-[10px] font-bold uppercase text-text-tertiary">Applied jobs</p>
               <button
-                onClick={() => updateFilter('hideApplied', !filters.hideApplied)}
+                onClick={() => update('hideApplied', !filters.hideApplied)}
                 className={`
-                  w-full border-2 px-4 py-2 font-mono text-xs font-bold uppercase
-                  transition-all
-                  ${
-                    filters.hideApplied
-                      ? 'border-black bg-primary text-text-primary'
-                      : 'border-black/20 bg-white text-text-secondary hover:border-black'
+                  flex items-center gap-1.5 border px-3 py-1.5 font-mono text-xs font-bold transition-colors
+                  ${filters.hideApplied
+                    ? 'border-black bg-primary text-text-primary'
+                    : 'border-black/20 bg-white text-text-secondary hover:border-black/40'
                   }
                 `}
               >
-                {filters.hideApplied ? '✓ HIDE_APPLIED' : 'SHOW_ALL'}
+                {filters.hideApplied ? '✓ Hidden' : 'Show all'}
               </button>
             </div>
-          </div>
 
-          {/* Clear Filters */}
-          {activeFilterCount > 0 && (
-            <button
-              onClick={() => {
-                const clearedFilters = {
-                  remote: false,
-                  employmentType: 'all',
-                  location: '',
-                  company: '',
-                  hideApplied: false,
-                };
-                setFilters(clearedFilters);
-                onFilterChange?.(clearedFilters);
-              }}
-              className="
-                mt-4 border-2 border-black/20 bg-white px-4 py-2
-                font-mono text-xs font-bold uppercase text-text-secondary
-                transition-all hover:border-black hover:text-text-primary
-              "
-            >
-              CLEAR_ALL
-            </button>
-          )}
+            {/* Clear all */}
+            {hasExtraFilters && (
+              <button
+                onClick={() => {
+                  const reset: FilterState = { tab: filters.tab, remote: false, location: '', hideApplied: false };
+                  setFilters(reset);
+                  onFilterChange?.(reset);
+                }}
+                className="mb-0 border border-black/15 px-3 py-1.5 font-mono text-xs text-text-tertiary transition-colors hover:border-black/30 hover:text-text-primary"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
