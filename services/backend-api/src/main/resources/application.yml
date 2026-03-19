@@ -5,6 +5,14 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/jobdog}
     username: ${SPRING_DATASOURCE_USERNAME:jobdog}
     password: ${SPRING_DATASOURCE_PASSWORD:jobdog}
+    hikari:
+      maximum-pool-size: ${SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE:20}
+      minimum-idle: ${SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE:5}
+      connection-timeout: ${SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT:30000}
+      idle-timeout: ${SPRING_DATASOURCE_HIKARI_IDLE_TIMEOUT:600000}
+      max-lifetime: ${SPRING_DATASOURCE_HIKARI_MAX_LIFETIME:1800000}
+      validation-timeout: ${SPRING_DATASOURCE_HIKARI_VALIDATION_TIMEOUT:5000}
+      pool-name: jobdog-hikari
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -42,16 +50,6 @@ spring:
             client-secret: ${GITHUB_CLIENT_SECRET:change-me}
             scope: user:email
             redirect-uri: "${APP_OAUTH_REDIRECT_BASE:http://localhost:8080}/api/v1/auth/oauth2/callback/{registrationId}"
-  web:
-    cors:
-      allowed-origins: 
-        - "http://localhost:3000"
-        - "https://jobdog.dev"
-        - "https://*.vercel.app"
-        - "https://jobdog-*.vercel.app"
-      allowed-methods: GET,POST,PUT,DELETE,OPTIONS
-      allowed-headers: "*"
-      allow-credentials: true
 
 management:
   endpoints:
@@ -69,6 +67,10 @@ app:
     expiration: ${APP_JWT_EXPIRATION:PT12H}
   oauth:
     frontend-base-url: ${APP_FRONTEND_BASE_URL:http://localhost:3000}
+  cors:
+    allowed-origins:
+      - ${APP_CORS_ALLOWED_ORIGIN_LOCAL:http://localhost:3000}
+      - ${APP_CORS_ALLOWED_ORIGIN_PROD:https://jobdog.dev}
   r2:
     endpoint: ${APP_R2_ENDPOINT:http://localhost:9000}
     bucket: ${APP_R2_BUCKET:resumes}

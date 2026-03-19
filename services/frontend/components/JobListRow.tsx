@@ -2,6 +2,7 @@
 
 import { memo, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 // Map company names to known domains for logo lookup
 const COMPANY_DOMAINS: Record<string, string> = {
@@ -85,6 +86,7 @@ interface JobListRowProps {
   jobStatus?: string;
   matchPercentile?: number;
   applyUrl: string;
+  detailHref?: string;
   alreadyApplied?: boolean;
   isSaved?: boolean;
   onApply?: (jobId: string) => void;
@@ -118,6 +120,7 @@ const JobListRow = memo(function JobListRow({
   jobStatus,
   matchPercentile,
   applyUrl,
+  detailHref,
   alreadyApplied = false,
   isSaved = false,
   onApply,
@@ -182,10 +185,15 @@ const JobListRow = memo(function JobListRow({
             <p className="font-mono text-xs font-bold uppercase tracking-wide text-text-tertiary">
               {company}
             </p>
-            {/* Title */}
-            <h3 className="mt-0.5 text-base font-bold text-text-primary leading-snug">
-              {title}
-            </h3>
+            {detailHref ? (
+              <Link href={detailHref} className="mt-0.5 block text-base font-bold leading-snug text-text-primary hover:underline">
+                {title}
+              </Link>
+            ) : (
+              <h3 className="mt-0.5 text-base font-bold text-text-primary leading-snug">
+                {title}
+              </h3>
+            )}
             {/* Meta */}
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-text-secondary">
               {location && (
@@ -274,15 +282,25 @@ const JobListRow = memo(function JobListRow({
                 Apply
               </button>
             )}
-            <a
-              href={applyUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="border border-black/20 bg-white px-4 py-2.5 font-mono text-xs font-bold text-text-secondary transition-all hover:border-black/40 hover:text-text-primary sm:py-1.5"
-            >
-              View ↗
-            </a>
+            {detailHref ? (
+              <Link
+                href={detailHref}
+                onClick={(e) => e.stopPropagation()}
+                className="border border-black/20 bg-white px-4 py-2.5 font-mono text-xs font-bold text-text-secondary transition-all hover:border-black/40 hover:text-text-primary sm:py-1.5"
+              >
+                View
+              </Link>
+            ) : (
+              <a
+                href={applyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="border border-black/20 bg-white px-4 py-2.5 font-mono text-xs font-bold text-text-secondary transition-all hover:border-black/40 hover:text-text-primary sm:py-1.5"
+              >
+                View ↗
+              </a>
+            )}
           </div>
         </div>
       </div>

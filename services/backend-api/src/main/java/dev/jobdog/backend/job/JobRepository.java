@@ -36,6 +36,8 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
             Pageable pageable
     );
 
+    Optional<JobEntity> findByIdAndStatus(UUID id, JobStatus status);
+
     Optional<JobEntity> findBySourceUrl(String sourceUrl);
 
     @Query("SELECT j FROM JobEntity j WHERE LOWER(j.company) = LOWER(:company)")

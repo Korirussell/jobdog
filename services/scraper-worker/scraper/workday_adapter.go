@@ -200,11 +200,21 @@ func (w *WorkdayAdapter) fetchJobList(ctx context.Context, baseURL string, req W
 }
 
 func (w *WorkdayAdapter) fetchDetailsAndUpsert(ctx context.Context, company, baseURL string, jobs []WorkdayJobListing) error {
+	if len(jobs) == 0 {
+		log.Info().Msg("No Workday job details to fetch")
+		return nil
+	}
+	
 	jobChan := make(chan WorkdayJobListing, len(jobs))
 	errChan := make(chan error, len(jobs))
 	
+	workers := w.workerPool
+	if len(jobs) < workers {
+		workers = len(jobs)
+	}
+	
 	var wg sync.WaitGroup
-	for i := 0; i < w.workerPool; i++ {
+	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -231,6 +241,9 @@ func (w *WorkdayAdapter) fetchDetailsAndUpsert(ctx context.Context, company, bas
 	}
 	
 	log.Info().Int("total", len(jobs)).Int("errors", errorCount).Msg("Completed detail fetching")
+	if errorCount > 0 {
+		return fmt.Errorf("workday detail fetch failed for %d of %d jobs", errorCount, len(jobs))
+	}
 	return nil
 }
 

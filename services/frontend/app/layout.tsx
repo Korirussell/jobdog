@@ -16,8 +16,14 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://jobdog.dev";
+
 export const metadata: Metadata = {
-  title: "JobDog.dev — Intern & New Grad Jobs",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "JobDog.dev — Intern & New Grad Jobs",
+    template: "%s",
+  },
   description: "Find your next internship or new grad role. Browse 1,800+ opportunities with FAANG-grade resume analysis.",
   manifest: "/manifest.json",
   icons: {

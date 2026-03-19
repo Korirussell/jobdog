@@ -1,13 +1,16 @@
 package dev.jobdog.backend.job;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class JobService {
@@ -56,6 +59,25 @@ public class JobService {
         Instant lastSync = jobRepository.findLatestEffectiveDateForActiveJobs();
 
         return new JobListResponse(items, filter.page(), filter.size(), jobPage.getTotalElements(), lastSync);
+    }
+
+    @Transactional(readOnly = true)
+    public JobDetailResponse getActiveJob(UUID jobId) {
+        JobEntity job = jobRepository.findByIdAndStatus(jobId, JobStatus.ACTIVE)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found"));
+
+        return new JobDetailResponse(
+                job.getId(),
+                job.getTitle(),
+                job.getCompany(),
+                job.getLocation(),
+                job.getEmploymentType(),
+                job.getPostedAt(),
+                job.getScrapedAt(),
+                job.getStatus().name(),
+                job.getSourceUrl(),
+                job.getDescriptionText()
+        );
     }
 
     private boolean hasFilters(JobFilterRequest filter) {

@@ -1,7 +1,10 @@
 package dev.jobdog.backend.job;
 
+import java.util.UUID;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,5 +30,10 @@ public class JobController {
     ) {
         JobFilterRequest filter = new JobFilterRequest(page, size, location, remote, company, search);
         return ResponseEntity.ok(jobService.listActiveJobs(filter));
+    }
+
+    @GetMapping("/{jobId}")
+    public ResponseEntity<JobDetailResponse> getJob(@PathVariable UUID jobId) {
+        return ResponseEntity.ok(jobService.getActiveJob(jobId));
     }
 }
