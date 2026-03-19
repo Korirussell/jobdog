@@ -109,7 +109,7 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-[100] border-b-2 border-black bg-white shadow-[0_4px_0px_0px_rgba(0,0,0,1)]" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      <header className="sticky top-0 z-[100] border-b-2 border-black/10 bg-white/98 backdrop-blur-sm" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-3 sm:h-16 sm:gap-4 sm:px-6">
 
           {/* ── Left: Logo ── */}

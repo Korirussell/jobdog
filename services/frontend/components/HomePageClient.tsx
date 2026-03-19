@@ -169,7 +169,7 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
       </div>
 
       <main className="mx-auto max-w-5xl px-3 sm:px-6">
-        <div className="sticky top-14 z-40 border-b-2 border-black bg-white shadow-[0_4px_0px_0px_rgba(0,0,0,1)] sm:top-16">
+        <div className="sticky top-14 z-40 bg-white sm:top-16">
           <FilterBar
             searchInputRef={searchInputRef}
             onFilterChange={(f) => { setFilters(f); }}

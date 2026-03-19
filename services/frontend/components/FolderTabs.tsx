@@ -36,9 +36,9 @@ export default function FilterBar({ onFilterChange, onSearchChange, searchInputR
   const hasExtraFilters = filters.remote || !!filters.location || filters.hideApplied;
 
   return (
-    <div className="bg-white">
+    <div className="border-b border-black/10 bg-white">
       {/* ── Main bar ── */}
-      <div className="px-2 py-2 sm:px-4">
+      <div className="px-2 py-2">
         {/* Row 1: tabs + filters toggle + pills (+ search on sm+) */}
         <div className="flex flex-wrap items-center gap-2">
 

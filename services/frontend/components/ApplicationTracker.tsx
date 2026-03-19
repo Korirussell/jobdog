@@ -54,7 +54,41 @@ function StatusPill({
 }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const cfg = STATUS_CONFIG[status] ?? { label: status, bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300' };
+
+  useEffect(() => {
+    if (open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + 4,
+        left: rect.left,
+      });
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+        buttonRef.current && !buttonRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = () => setOpen(false);
+    window.addEventListener('scroll', handler, { passive: true });
+    return () => window.removeEventListener('scroll', handler);
+  }, [open]);
 
   const handleSelect = async (newStatus: string) => {
     setOpen(false);
@@ -71,8 +105,9 @@ function StatusPill({
   };
 
   return (
-    <div className="relative inline-block">
+    <>
       <button
+        ref={buttonRef}
         onClick={() => setOpen((v) => !v)}
         disabled={saving}
         className={`inline-flex items-center gap-1 border px-2.5 py-1 font-mono text-[11px] font-bold transition-all
@@ -84,10 +119,14 @@ function StatusPill({
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {open && (
+      {open && dropdownPos && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full z-50 mt-1 min-w-[140px] border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+          <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
+          <div
+            ref={dropdownRef}
+            className="fixed z-[9999] min-w-[140px] border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            style={{ top: dropdownPos.top, left: dropdownPos.left }}
+          >
             {EDITABLE_STATUSES.map((s) => {
               const c = STATUS_CONFIG[s];
               return (
@@ -105,7 +144,7 @@ function StatusPill({
           </div>
         </>
       )}
-    </div>
+    </>
   );
 }
 
@@ -322,7 +361,7 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto overflow-y-visible border-2 border-black/10">
+      <div className="overflow-x-auto border-2 border-black/10">
         <table className="w-full min-w-[800px] border-collapse">
           <thead className="bg-black/[0.02]">
             <tr>
