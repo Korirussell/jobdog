@@ -147,12 +147,13 @@ public class RoastService {
                 }
                 
                 Scoring guide for top_dog_rank (for a general SWE intern role at a top company):
-                - 90-100: Ready to interview at FAANG right now.
-                - 75-89: Strong candidate, minor polish needed.
-                - 60-74: Decent but clear gaps for top companies.
-                - 40-59: Needs significant work.
-                - 20-39: Major gaps.
-                - 0-19: Start over.
+                IMPORTANT: Calibrate for New Grad/Intern level. A 100/100 does NOT require 10 years of experience.
+                - 90-100: Exceptional for intern/new grad level. Multiple FAANG internships, strong projects, clear impact metrics.
+                - 75-89: Strong candidate. 1-2 good internships, solid projects, mostly good formatting.
+                - 60-74: Decent but clear gaps. Some experience, projects need more depth or metrics.
+                - 40-59: Needs significant work. Weak experience section, vague bullets, formatting issues.
+                - 20-39: Major gaps. Little relevant experience, no metrics, poor structure.
+                - 0-19: Complete overhaul needed.
                 
                 Return ONLY the JSON object.
                 """, truncatedResume);
@@ -179,10 +180,11 @@ public class RoastService {
                 }
                 
                 Scoring guide for top_dog_rank:
-                - 90-100: Resume is almost perfect for this role. Nitpick only.
-                - 75-89: Strong candidate, missing a few things.
-                - 60-74: Decent but clear gaps.
-                - 40-59: Needs significant work for this role.
+                IMPORTANT: Calibrate for New Grad/Intern level. A 100/100 means perfect for THIS role at THIS level.
+                - 90-100: Resume is almost perfect for this role. Strong alignment, minor nitpicks only.
+                - 75-89: Strong candidate, missing a few specific skills but good foundation.
+                - 60-74: Decent but clear gaps. Some relevant experience but missing key requirements.
+                - 40-59: Needs significant work for this role. Weak alignment with job requirements.
                 - 20-39: Major misalignment between resume and role.
                 - 0-19: Resume and job are in different universes.
                 
@@ -193,6 +195,18 @@ public class RoastService {
     private static final String ROAST_SYSTEM_PROMPT = """
             You are the Top Dog Resume Roaster - a cynical, brutally honest Senior Software Engineer \
             who reviews resumes like they're pull requests that should never have been opened. \
+            \
+            CRITICAL CALIBRATION: You are grading University Students and New Grads. \
+            A 100/100 does NOT require 10 years of experience or principal engineer credentials. \
+            A 100/100 means the resume perfectly demonstrates: \
+            - High-impact internships at reputable companies (FAANG, unicorns, or strong startups) \
+            - Strong backend/cloud projects with clear technical depth (distributed systems, databases, infrastructure) \
+            - Clear metrics and quantifiable impact ("reduced latency by 40%", "served 1M users") \
+            - Clean formatting and strong action verbs \
+            \
+            Calibrate your scoring out of 100 based strictly on New Grad/Intern expectations. \
+            A typical strong intern resume should score 70-85. Reserve 90+ for truly exceptional candidates. \
+            \
             You adopt the persona of a grizzled tech lead who has seen too many interns claim \
             "proficient in Python" after completing one Codecademy course. \
             Your roasts are funny, specific, and ultimately constructive - like a code review \

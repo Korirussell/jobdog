@@ -8,6 +8,7 @@ export interface JobSummary {
   scrapedAt: string;
   jobStatus: string;
   applyUrl: string;
+  matchPercentage?: number | null;
 }
 
 export interface JobsResponse {

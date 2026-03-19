@@ -366,6 +366,28 @@ export class ApiClient {
       totalJobs: number;
     }>(`/api/v1/ghost-score?company=${encodeURIComponent(company)}`);
   }
+
+  // Roast endpoints
+  async roastJob(resumeId: string, jobId: string | null) {
+    return this.request<{
+      brutalRoastText: string;
+      missingDependencies: string[];
+      topDogRank: number;
+      tierName: string;
+    }>('/api/v1/roast', {
+      method: 'POST',
+      body: JSON.stringify({ resumeId, jobId }),
+    });
+  }
+
+  async getRoastHistory() {
+    return this.request<{ items: any[] }>('/api/v1/roast/history');
+  }
+
+  // Benchmark endpoints
+  async getBenchmarks() {
+    return this.request<{ items: any[] }>('/api/v1/jobs/benchmarks');
+  }
 }
 
 export const api = new ApiClient();

@@ -1,5 +1,6 @@
 package dev.jobdog.backend.job;
 
+import dev.jobdog.backend.auth.CurrentUser;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
@@ -14,9 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class JobController {
 
     private final JobService jobService;
+    private final CurrentUser currentUser;
 
-    public JobController(JobService jobService) {
+    public JobController(JobService jobService, CurrentUser currentUser) {
         this.jobService = jobService;
+        this.currentUser = currentUser;
     }
 
     @GetMapping
@@ -29,7 +32,9 @@ public class JobController {
             @RequestParam(required = false) String search
     ) {
         JobFilterRequest filter = new JobFilterRequest(page, size, location, remote, company, search);
-        return ResponseEntity.ok(jobService.listActiveJobs(filter));
+        // Pass userId if authenticated, null otherwise for local matching
+        UUID userId = currentUser.get() != null ? currentUser.get().userId() : null;
+        return ResponseEntity.ok(jobService.listActiveJobs(filter, userId));
     }
 
     @GetMapping("/{jobId}")

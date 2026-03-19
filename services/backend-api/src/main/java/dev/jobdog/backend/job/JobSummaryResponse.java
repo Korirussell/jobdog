@@ -12,6 +12,7 @@ public record JobSummaryResponse(
         Instant postedAt,
         Instant scrapedAt,
         String jobStatus,
-        String applyUrl
+        String applyUrl,
+        Integer matchPercentage
 ) {
 }

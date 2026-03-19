@@ -85,6 +85,7 @@ interface JobListRowProps {
   scrapedAt: string;
   jobStatus?: string;
   matchPercentile?: number;
+  matchPercentage?: number | null;
   applyUrl: string;
   detailHref?: string;
   alreadyApplied?: boolean;
@@ -119,6 +120,7 @@ const JobListRow = memo(function JobListRow({
   scrapedAt,
   jobStatus,
   matchPercentile,
+  matchPercentage,
   applyUrl,
   detailHref,
   alreadyApplied = false,
@@ -240,6 +242,11 @@ const JobListRow = memo(function JobListRow({
 
         {/* Actions — right side on desktop, bottom row on mobile */}
         <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
+          {matchPercentage !== undefined && matchPercentage !== null && (
+            <span className="border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold text-text-primary">
+              {matchPercentage}% Tech Match
+            </span>
+          )}
           {matchPercentile !== undefined && (
             <span className="border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold text-text-primary">
               {matchPercentile}% match

@@ -1,5 +1,6 @@
 package dev.jobdog.backend.job;
 
+import dev.jobdog.backend.matching.LocalMatchingService;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,13 +17,15 @@ import java.util.UUID;
 public class JobService {
 
     private final JobRepository jobRepository;
+    private final LocalMatchingService localMatchingService;
 
-    public JobService(JobRepository jobRepository) {
+    public JobService(JobRepository jobRepository, LocalMatchingService localMatchingService) {
         this.jobRepository = jobRepository;
+        this.localMatchingService = localMatchingService;
     }
 
     @Transactional(readOnly = true)
-    public JobListResponse listActiveJobs(JobFilterRequest filter) {
+    public JobListResponse listActiveJobs(JobFilterRequest filter, UUID userId) {
         // Pageable without sort — ordering is handled by COALESCE in the JPQL queries
         Pageable pageable = PageRequest.of(filter.page(), filter.size());
 
@@ -43,17 +46,33 @@ public class JobService {
 
         List<JobSummaryResponse> items = jobPage.getContent()
                 .stream()
-                .map(job -> new JobSummaryResponse(
-                        job.getId(),
-                        job.getTitle(),
-                        job.getCompany(),
-                        job.getLocation(),
-                        job.getEmploymentType(),
-                        job.getPostedAt(),
-                        job.getScrapedAt(),
-                        job.getStatus().name(),
-                        job.getSourceUrl()
-                ))
+                .map(job -> {
+                    // Calculate local match percentage if user is authenticated
+                    Integer matchPercentage = null;
+                    if (userId != null) {
+                        try {
+                            matchPercentage = localMatchingService.calculateUserJobMatch(
+                                userId, 
+                                job.getDescriptionText()
+                            );
+                        } catch (Exception e) {
+                            // If matching fails, just return null - don't break the feed
+                        }
+                    }
+                    
+                    return new JobSummaryResponse(
+                            job.getId(),
+                            job.getTitle(),
+                            job.getCompany(),
+                            job.getLocation(),
+                            job.getEmploymentType(),
+                            job.getPostedAt(),
+                            job.getScrapedAt(),
+                            job.getStatus().name(),
+                            job.getSourceUrl(),
+                            matchPercentage
+                    );
+                })
                 .toList();
 
         Instant lastSync = jobRepository.findLatestEffectiveDateForActiveJobs();
