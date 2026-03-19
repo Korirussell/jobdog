@@ -1,5 +1,8 @@
 const API_BASE = process.env.NODE_ENV === 'production' ? '' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080');
 
+// In production, we use Next.js rewrites to proxy API requests
+// In development, we connect directly to the backend
+
 export interface BulletFeedback {
   original: string;
   score: number;

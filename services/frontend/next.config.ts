@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://134.122.7.82:8080';
+const BACKEND_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://134.122.7.82:8080';
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
