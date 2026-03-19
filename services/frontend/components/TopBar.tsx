@@ -210,13 +210,13 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
                   <div className="flex items-center gap-2">
                     <Link
                       href="/login"
-                      className="hidden border-2 border-black/20 bg-white px-3 py-1.5 font-mono text-xs font-bold text-text-secondary transition-all hover:border-black hover:text-text-primary sm:block"
+                      className="flex h-9 items-center justify-center border-2 border-black/20 bg-white px-3 font-mono text-xs font-bold text-text-secondary transition-all hover:border-black hover:text-text-primary"
                     >
                       Log in
                     </Link>
                     <Link
                       href="/login"
-                      className="border-2 border-black bg-primary px-3 py-1.5 font-mono text-xs font-bold text-text-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
+                      className="flex h-9 items-center justify-center border-2 border-black bg-primary px-3 font-mono text-xs font-bold text-text-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
                     >
                       Sign up →
                     </Link>

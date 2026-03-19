@@ -169,7 +169,8 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
       </div>
 
       <main className="mx-auto max-w-5xl px-3 sm:px-6">
-        <div className="sticky top-14 z-40 bg-white sm:top-16">
+        {/* Keep the filter/search bar in normal flow (no floating/sticky behavior). */}
+        <div className="bg-white">
           <FilterBar
             searchInputRef={searchInputRef}
             onFilterChange={(f) => { setFilters(f); }}
