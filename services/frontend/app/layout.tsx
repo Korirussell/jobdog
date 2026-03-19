@@ -20,6 +20,9 @@ export const metadata: Metadata = {
   title: "JobDog.dev — Intern & New Grad Jobs",
   description: "Find your next internship or new grad role. Browse 1,800+ opportunities with FAANG-grade resume analysis.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
