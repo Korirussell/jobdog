@@ -156,16 +156,17 @@ const JobListRow = memo(function JobListRow({
   return (
     <div
       className={`
-        group border-b border-black/8 px-4 py-5 transition-colors
-        hover:bg-black/[0.018]
+        group border-b border-black/8 px-3 py-2.5 transition-colors
+        hover:bg-black/[0.025]
+        sm:px-4 sm:py-3
         ${isClosed ? 'opacity-50' : ''}
         ${isNew ? 'border-l-2 border-l-primary' : ''}
       `}
     >
       {/* Main row — content left, actions right on desktop; stacked on mobile */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
         {/* New pulse + content */}
-        <div className="flex min-w-0 flex-1 gap-3">
+        <div className="flex min-w-0 flex-1 gap-2">
           {isNew && (
             <div className="mt-1.5 shrink-0">
               <span className="relative flex h-2 w-2">
@@ -182,33 +183,29 @@ const JobListRow = memo(function JobListRow({
 
           <div className="min-w-0 flex-1">
             {/* Company */}
-            <p className="font-mono text-xs font-bold uppercase tracking-wide text-text-tertiary">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-text-tertiary">
               {company}
             </p>
             {detailHref ? (
-              <Link href={detailHref} className="mt-0.5 block text-base font-bold leading-snug text-text-primary hover:underline">
+              <Link href={detailHref} className="mt-0.5 block text-sm font-bold leading-tight text-text-primary hover:underline">
                 {title}
               </Link>
             ) : (
-              <h3 className="mt-0.5 text-base font-bold text-text-primary leading-snug">
+              <h3 className="mt-0.5 text-sm font-bold text-text-primary leading-tight">
                 {title}
               </h3>
             )}
             {/* Meta */}
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-text-secondary">
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[10px] text-text-secondary">
               {location && (
-                <span className="flex items-center gap-1">
-                  <svg className="h-3 w-3 shrink-0 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  {location}
+                <span className="flex items-center gap-0.5">
+                  📍 {location}
                 </span>
               )}
               {timeLabel && (
                 <>
-                  <span className="text-black/20">·</span>
-                  <span className="text-text-tertiary">{timeLabel}</span>
+                  <span className="text-black/20">│</span>
+                  <span className="font-bold text-primary">[{timeLabel}]</span>
                 </>
               )}
               {alreadyApplied && (

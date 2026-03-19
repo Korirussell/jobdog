@@ -322,7 +322,7 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto border-2 border-black/10">
+      <div className="overflow-x-auto overflow-y-visible border-2 border-black/10">
         <table className="w-full min-w-[800px] border-collapse">
           <thead className="bg-black/[0.02]">
             <tr>
@@ -429,7 +429,7 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
                 </td>
                 <td className="px-4 py-3">
                   <a
-                    href={`/?jobId=${app.jobId}`}
+                    href={`/jobs/${app.jobId}`}
                     className="font-mono text-[10px] font-bold text-text-tertiary underline hover:text-text-primary"
                   >
                     View ↗
