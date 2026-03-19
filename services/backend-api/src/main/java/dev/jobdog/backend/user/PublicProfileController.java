@@ -35,7 +35,7 @@ public class PublicProfileController {
         profile.put("displayName", user.getDisplayName());
 
         // Best analysis
-        analysisRepository.findTopByUserIdOrderByScoreDesc(userId).ifPresent(analysis -> {
+        analysisRepository.findTopByResume_User_IdOrderByOverallScoreDescAnalyzedAtDesc(userId).ifPresent(analysis -> {
             Map<String, Object> score = new LinkedHashMap<>();
             score.put("overallScore", analysis.getOverallScore());
             score.put("atsScore", analysis.getAtsScore());
