@@ -129,7 +129,9 @@ func Load() (*Config, error) {
 		{Company: "New Relic", BoardToken: "newrelic"},
 	}
 
-	// Default Lever sources - intern-heavy tech companies
+	// Default Lever sources - only companies with working Lever boards
+	// Removed companies returning 404: Benchling, Carta, Coda, Cockroach Labs, dbt Labs, Gem, Gusto,
+	// Ironclad, Loom, Mercury, Retool, Rippling, Superhuman, Airtable, Amplitude, Brex, Canva, Faire
 	cfg.LeverSources = []LeverSource{
 		{Company: "Cloudflare", Slug: "cloudflare"},
 		{Company: "Notion", Slug: "notion"},
@@ -137,25 +139,6 @@ func Load() (*Config, error) {
 		{Company: "Verkada", Slug: "verkada"},
 		{Company: "Ramp", Slug: "ramp"},
 		{Company: "Anduril", Slug: "anduril"},
-		{Company: "Benchling", Slug: "benchling"},
-		{Company: "Carta", Slug: "carta"},
-		{Company: "Coda", Slug: "coda"},
-		{Company: "Cockroach Labs", Slug: "cockroach-labs"},
-		{Company: "dbt Labs", Slug: "dbtlabs"},
-		{Company: "Gem", Slug: "gem"},
-		{Company: "Gusto", Slug: "gusto"},
-		{Company: "Ironclad", Slug: "ironclad"},
-		{Company: "Loom", Slug: "loom"},
-		{Company: "Mercury", Slug: "mercury"},
-		{Company: "Retool", Slug: "retool"},
-		{Company: "Rippling", Slug: "rippling"},
-		{Company: "Superhuman", Slug: "superhuman"},
-		// Additional Lever companies
-		{Company: "Airtable", Slug: "airtable"},
-		{Company: "Amplitude", Slug: "amplitude"},
-		{Company: "Brex", Slug: "brex"},
-		{Company: "Canva", Slug: "canva"},
-		{Company: "Faire", Slug: "faire"},
 		{Company: "Grammarly", Slug: "grammarly"},
 		{Company: "Intercom", Slug: "intercom"},
 		{Company: "Lattice", Slug: "lattice"},
