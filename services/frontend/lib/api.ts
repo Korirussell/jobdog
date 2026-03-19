@@ -130,7 +130,13 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to upload resume');
+      // Try to get the real error message from the response body
+      let msg = `Upload failed (${response.status})`;
+      try {
+        const body = await response.json();
+        if (body?.message) msg = body.message;
+      } catch {}
+      throw new Error(msg);
     }
 
     return response.json();

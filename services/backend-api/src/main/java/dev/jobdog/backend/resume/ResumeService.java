@@ -40,14 +40,23 @@ public class ResumeService {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Resume file is required");
         }
-        if (!"application/pdf".equalsIgnoreCase(file.getContentType())) {
-            throw new IllegalArgumentException("Only PDF resumes are supported");
+        // Accept application/pdf and application/octet-stream (some browsers/OS send this for PDFs)
+        // We validate it's actually a PDF by checking the magic bytes after reading
+        String ct = file.getContentType() == null ? "" : file.getContentType().toLowerCase();
+        if (!ct.contains("pdf") && !ct.contains("octet-stream")) {
+            throw new IllegalArgumentException("Only PDF files are supported (received: " + ct + ")");
         }
 
         UserEntity user = userRepository.findById(authenticatedUser.userId())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         byte[] bytes = readBytes(file);
+
+        // Validate PDF magic bytes (%PDF-)
+        if (bytes.length < 5 || bytes[0] != '%' || bytes[1] != 'P' || bytes[2] != 'D' || bytes[3] != 'F') {
+            throw new IllegalArgumentException("File does not appear to be a valid PDF");
+        }
+
         String checksum = sha256(bytes);
         String storageKey = buildStorageKey(user.getId(), file.getOriginalFilename());
 
