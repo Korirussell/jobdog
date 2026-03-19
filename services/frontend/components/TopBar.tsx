@@ -157,7 +157,7 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
             <button
               onClick={toggleDarkMode}
               title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="flex h-8 w-8 items-center justify-center border border-black/15 bg-white text-text-tertiary transition-all hover:border-black/30 hover:text-text-primary"
+              className="flex h-8 w-8 items-center justify-center border border-black/20 bg-background text-text-tertiary transition-all hover:border-black/40 hover:text-text-primary"
               aria-label="Toggle dark mode"
             >
               {darkMode ? (

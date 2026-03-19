@@ -9,6 +9,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.ColumnTransformer;
 
 import java.util.List;
 
@@ -22,6 +23,7 @@ public class ResumeProfileEntity extends BaseEntity {
 
     @Convert(converter = StringListConverter.class)
     @Column(nullable = false, columnDefinition = "jsonb")
+    @ColumnTransformer(write = "?::jsonb")
     private List<String> skills;
 
     @Column

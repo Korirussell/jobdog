@@ -515,13 +515,47 @@ export default function VaultPage() {
                         </div>
                         <div>
                           <label className="block font-mono text-[10px] font-bold uppercase text-text-tertiary mb-1">Targeting role</label>
-                          <input
-                            type="text"
+                          <select
                             value={targetRole}
                             onChange={(e) => setTargetRole(e.target.value)}
-                            placeholder="e.g. Software Engineer"
-                            className="border-2 border-black/20 bg-white px-2 py-1.5 font-mono text-xs text-text-primary placeholder:text-text-tertiary focus:border-black focus:outline-none w-44"
-                          />
+                            className="border-2 border-black/20 bg-white px-2 py-1.5 font-mono text-xs font-bold text-text-primary focus:border-black focus:outline-none w-52"
+                          >
+                            <optgroup label="Engineering">
+                              <option>Software Engineer</option>
+                              <option>Frontend Engineer</option>
+                              <option>Backend Engineer</option>
+                              <option>Full Stack Engineer</option>
+                              <option>Mobile Engineer (iOS)</option>
+                              <option>Mobile Engineer (Android)</option>
+                              <option>Embedded Systems Engineer</option>
+                              <option>Systems Engineer</option>
+                              <option>Infrastructure / DevOps</option>
+                              <option>Site Reliability Engineer</option>
+                              <option>Security Engineer</option>
+                              <option>Compiler / PL Engineer</option>
+                            </optgroup>
+                            <optgroup label="AI / Data">
+                              <option>Machine Learning Engineer</option>
+                              <option>AI / LLM Engineer</option>
+                              <option>Data Scientist</option>
+                              <option>Data Engineer</option>
+                              <option>Research Scientist</option>
+                            </optgroup>
+                            <optgroup label="Product / Design">
+                              <option>Product Manager</option>
+                              <option>Product Designer / UX</option>
+                              <option>UX Researcher</option>
+                            </optgroup>
+                            <optgroup label="Quant / Finance">
+                              <option>Quantitative Analyst</option>
+                              <option>Software Engineer (Fintech)</option>
+                            </optgroup>
+                            <optgroup label="Other">
+                              <option>Technical Program Manager</option>
+                              <option>Solutions Engineer</option>
+                              <option>Developer Advocate</option>
+                            </optgroup>
+                          </select>
                         </div>
                         <button
                           onClick={runAnalysis}

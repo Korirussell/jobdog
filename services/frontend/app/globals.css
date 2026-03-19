@@ -99,21 +99,62 @@
   --radius-xl: 16px;
 }
 
-/* Dark mode: invert border colors so black borders become light */
-[data-theme="dark"] .border-black {
-  border-color: rgba(255,255,255,0.7) !important;
+/* ============================================
+   Dark mode: invert borders, backgrounds, shadows
+   ============================================ */
+
+/* Borders */
+[data-theme="dark"] .border-black        { border-color: rgba(255,255,255,0.65) !important; }
+[data-theme="dark"] .border-black\/6     { border-color: rgba(255,255,255,0.06) !important; }
+[data-theme="dark"] .border-black\/8     { border-color: rgba(255,255,255,0.08) !important; }
+[data-theme="dark"] .border-black\/10    { border-color: rgba(255,255,255,0.10) !important; }
+[data-theme="dark"] .border-black\/15    { border-color: rgba(255,255,255,0.15) !important; }
+[data-theme="dark"] .border-black\/20    { border-color: rgba(255,255,255,0.20) !important; }
+[data-theme="dark"] .border-black\/30    { border-color: rgba(255,255,255,0.30) !important; }
+[data-theme="dark"] .border-black\/40    { border-color: rgba(255,255,255,0.40) !important; }
+
+/* White backgrounds → dark surface */
+[data-theme="dark"] .bg-white            { background-color: #1e1e1e !important; }
+[data-theme="dark"] .bg-white\/98        { background-color: rgba(20,20,20,0.98) !important; }
+
+/* Hover bg-white variants */
+[data-theme="dark"] .hover\:bg-white:hover { background-color: #252525 !important; }
+
+/* bg-black/[0.01] / bg-black/[0.02] / bg-black/[0.03] — zebra stripes */
+[data-theme="dark"] .bg-black\/\[0\.01\]  { background-color: rgba(255,255,255,0.01) !important; }
+[data-theme="dark"] .bg-black\/\[0\.02\]  { background-color: rgba(255,255,255,0.02) !important; }
+[data-theme="dark"] .bg-black\/\[0\.03\]  { background-color: rgba(255,255,255,0.03) !important; }
+[data-theme="dark"] .bg-black\/5          { background-color: rgba(255,255,255,0.05) !important; }
+[data-theme="dark"] .bg-black\/8          { background-color: rgba(255,255,255,0.08) !important; }
+[data-theme="dark"] .bg-black\/10         { background-color: rgba(255,255,255,0.10) !important; }
+
+/* Text */
+[data-theme="dark"] .text-black          { color: var(--text-primary) !important; }
+
+/* Retro pixel shadows → lighter in dark mode */
+[data-theme="dark"] .shadow-\[8px_8px_0px_0px_rgba\(0\,0\,0\,1\)\]  { box-shadow: 8px 8px 0px 0px rgba(255,255,255,0.12) !important; }
+[data-theme="dark"] .shadow-\[4px_4px_0px_0px_rgba\(0\,0\,0\,1\)\]  { box-shadow: 4px 4px 0px 0px rgba(255,255,255,0.12) !important; }
+[data-theme="dark"] .shadow-\[3px_3px_0px_0px_rgba\(0\,0\,0\,1\)\]  { box-shadow: 3px 3px 0px 0px rgba(255,255,255,0.12) !important; }
+[data-theme="dark"] .shadow-\[2px_2px_0px_0px_rgba\(0\,0\,0\,1\)\]  { box-shadow: 2px 2px 0px 0px rgba(255,255,255,0.12) !important; }
+
+/* Inputs & selects in dark mode */
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: #1e1e1e;
+  color: var(--text-primary);
+  border-color: rgba(255,255,255,0.2);
 }
-[data-theme="dark"] .border-black\/10 { border-color: rgba(255,255,255,0.1) !important; }
-[data-theme="dark"] .border-black\/8  { border-color: rgba(255,255,255,0.08) !important; }
-[data-theme="dark"] .border-black\/15 { border-color: rgba(255,255,255,0.15) !important; }
-[data-theme="dark"] .border-black\/20 { border-color: rgba(255,255,255,0.2) !important; }
-[data-theme="dark"] .border-black\/40 { border-color: rgba(255,255,255,0.4) !important; }
-[data-theme="dark"] .bg-white { background-color: var(--background-secondary) !important; }
-[data-theme="dark"] .bg-white\/98 { background-color: rgba(26,26,26,0.98) !important; }
-[data-theme="dark"] .text-black { color: var(--text-primary) !important; }
-[data-theme="dark"] .shadow-\[8px_8px_0px_0px_rgba\(0\,0\,0\,1\)\] { box-shadow: 8px 8px 0px 0px rgba(255,255,255,0.15) !important; }
-[data-theme="dark"] .shadow-\[4px_4px_0px_0px_rgba\(0\,0\,0\,1\)\] { box-shadow: 4px 4px 0px 0px rgba(255,255,255,0.15) !important; }
-[data-theme="dark"] .shadow-\[2px_2px_0px_0px_rgba\(0\,0\,0\,1\)\] { box-shadow: 2px 2px 0px 0px rgba(255,255,255,0.15) !important; }
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* Status badge backgrounds that use bg-gray-100 */
+[data-theme="dark"] .bg-gray-100 { background-color: rgba(255,255,255,0.08) !important; }
+
+/* Primary button retro shadow hover states */
+[data-theme="dark"] .hover\:shadow-none:hover { box-shadow: none !important; }
 
 @theme inline {
   /* Colors */
