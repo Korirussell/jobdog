@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 import FilterBar, { FilterState } from '@/components/FolderTabs';
-import JobCard from '@/components/JobCard';
+import JobListRow from '@/components/JobListRow';
 import ConveyorBelt from '@/components/ConveyorBelt';
 import ApplyModal from '@/components/ApplyModal';
 import { useAuth } from '@/contexts/AuthContext';
@@ -224,9 +224,9 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
             )}
           </div>
         ) : (
-          <div className="grid gap-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
             {visibleJobs.map((job) => (
-              <JobCard
+              <JobListRow
                 key={job.jobId}
                 jobId={job.jobId}
                 company={job.company}
@@ -235,11 +235,14 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
                 employmentType={job.employmentType}
                 postedAt={job.postedAt}
                 scrapedAt={job.scrapedAt}
+                jobStatus={job.jobStatus}
+                applyUrl={job.applyUrl}
                 matchPercentage={job.matchPercentage}
                 alreadyApplied={appliedJobIds.has(job.jobId)}
                 isSaved={savedJobIds.has(job.jobId)}
                 onApply={isAuthenticated ? handleApply : undefined}
                 onSave={isAuthenticated ? handleSaveJob : undefined}
+                detailHref={`/jobs/${job.jobId}`}
               />
             ))}
           </div>

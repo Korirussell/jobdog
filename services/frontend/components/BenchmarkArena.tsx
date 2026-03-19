@@ -40,8 +40,7 @@ export default function BenchmarkArena() {
       ]);
       setBenchmarks(benchmarksRes.items || []);
       setSavedJobs(savedRes.items || []);
-    } catch (error) {
-      console.error('Failed to load data:', error);
+    } catch {
     } finally {
       setLoading(false);
     }

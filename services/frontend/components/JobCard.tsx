@@ -1,5 +1,7 @@
 'use client';
 
+// Deprecated: job list reverted to JobListRow per product direction.
+
 import { memo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';

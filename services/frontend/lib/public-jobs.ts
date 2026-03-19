@@ -24,7 +24,11 @@ export interface JobDetail extends JobSummary {
 }
 
 function getApiOrigin() {
-  return process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+  const origin = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL;
+  if (!origin) {
+    throw new Error('BACKEND_URL or NEXT_PUBLIC_API_URL is required');
+  }
+  return origin;
 }
 
 function getSiteOrigin() {

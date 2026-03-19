@@ -38,8 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         pages.push(await fetchJobs(new URLSearchParams({ page: String(page), size: String(pageSize) }), {
           next: { revalidate },
         }));
-      } catch (error) {
-        console.warn(`Failed to fetch page ${page} for sitemap:`, error);
+      } catch {
         break; // Stop trying if a page fails
       }
     }
@@ -54,8 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         });
       }
     }
-  } catch (error) {
-    console.warn('Failed to fetch job data for sitemap, using basic sitemap:', error);
+  } catch {
     // Return basic sitemap without job data
     return entries;
   }

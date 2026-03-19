@@ -44,14 +44,8 @@ public class GlobalExceptionHandler {
                 exception.getMessage(),
                 exception);
 
-        // Include root cause in the message so it's visible in the API response
-        // (helps diagnose issues without needing server SSH access)
-        Throwable root = exception;
-        while (root.getCause() != null) root = root.getCause();
-        String detail = root.getClass().getSimpleName() + ": " + root.getMessage();
-
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR,
-                "Server error — " + detail,
+                "Server error",
                 request.getRequestURI());
     }
 

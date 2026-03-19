@@ -2,7 +2,7 @@ spring:
   application:
     name: backend-api
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/jobdog}
+    url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME:jobdog}
     password: ${SPRING_DATASOURCE_PASSWORD:jobdog}
     hikari:
@@ -15,8 +15,8 @@ spring:
       pool-name: jobdog-hikari
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD:}
   cache:
     type: redis
@@ -44,12 +44,12 @@ spring:
             client-id: ${GOOGLE_CLIENT_ID:change-me}
             client-secret: ${GOOGLE_CLIENT_SECRET:change-me}
             scope: profile,email
-            redirect-uri: "${APP_OAUTH_REDIRECT_BASE:http://localhost:8080}/api/v1/auth/oauth2/callback/{registrationId}"
+            redirect-uri: "${APP_OAUTH_REDIRECT_BASE}/api/v1/auth/oauth2/callback/{registrationId}"
           github:
             client-id: ${GITHUB_CLIENT_ID:change-me}
             client-secret: ${GITHUB_CLIENT_SECRET:change-me}
             scope: user:email
-            redirect-uri: "${APP_OAUTH_REDIRECT_BASE:http://localhost:8080}/api/v1/auth/oauth2/callback/{registrationId}"
+            redirect-uri: "${APP_OAUTH_REDIRECT_BASE}/api/v1/auth/oauth2/callback/{registrationId}"
 
 management:
   endpoints:
@@ -66,13 +66,13 @@ app:
     secret: ${APP_JWT_SECRET:change-me-in-env-change-me-in-env}
     expiration: ${APP_JWT_EXPIRATION:PT12H}
   oauth:
-    frontend-base-url: ${APP_FRONTEND_BASE_URL:http://localhost:3000}
+    frontend-base-url: ${APP_FRONTEND_BASE_URL}
   cors:
     allowed-origins:
-      - ${APP_CORS_ALLOWED_ORIGIN_LOCAL:http://localhost:3000}
       - ${APP_CORS_ALLOWED_ORIGIN_PROD:https://jobdog.dev}
+      - ${APP_CORS_ALLOWED_ORIGIN_WWW:https://www.jobdog.dev}
   r2:
-    endpoint: ${APP_R2_ENDPOINT:http://localhost:9000}
+    endpoint: ${APP_R2_ENDPOINT}
     bucket: ${APP_R2_BUCKET:resumes}
     access-key: ${APP_R2_ACCESS_KEY:change-me}
     secret-key: ${APP_R2_SECRET_KEY:change-me}
