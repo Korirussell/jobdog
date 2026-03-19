@@ -65,6 +65,16 @@ public class ResumeAnalysisEntity extends BaseEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String summaryVerdict;
 
+    // Full structured parse of the resume as ATS would see it
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private Map<String, Object> atsParsedSections;
+
+    // Recruiter's honest take on each section
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<Map<String, Object>> recruiterTake;
+
     @Column(nullable = false)
     private Instant analyzedAt;
 
@@ -90,6 +100,10 @@ public class ResumeAnalysisEntity extends BaseEntity {
     public void setImprovements(List<String> improvements) { this.improvements = improvements; }
     public String getSummaryVerdict() { return summaryVerdict; }
     public void setSummaryVerdict(String summaryVerdict) { this.summaryVerdict = summaryVerdict; }
+    public Map<String, Object> getAtsParsedSections() { return atsParsedSections; }
+    public void setAtsParsedSections(Map<String, Object> atsParsedSections) { this.atsParsedSections = atsParsedSections; }
+    public List<Map<String, Object>> getRecruiterTake() { return recruiterTake; }
+    public void setRecruiterTake(List<Map<String, Object>> recruiterTake) { this.recruiterTake = recruiterTake; }
     public Instant getAnalyzedAt() { return analyzedAt; }
     public void setAnalyzedAt(Instant analyzedAt) { this.analyzedAt = analyzedAt; }
 }

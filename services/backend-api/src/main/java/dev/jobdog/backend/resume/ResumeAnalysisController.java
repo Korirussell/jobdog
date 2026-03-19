@@ -73,6 +73,8 @@ public class ResumeAnalysisController {
         m.put("strengths", e.getStrengths());
         m.put("improvements", e.getImprovements());
         m.put("summaryVerdict", e.getSummaryVerdict());
+        m.put("atsParsedSections", e.getAtsParsedSections());
+        m.put("recruiterTake", e.getRecruiterTake());
         m.put("analyzedAt", e.getAnalyzedAt());
         return m;
     }

@@ -49,7 +49,7 @@ export default function Home() {
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
-  const [applyModal, setApplyModal] = useState<{ jobId: string; title: string; company: string } | null>(null);
+  const [applyModal, setApplyModal] = useState<{ jobId: string; title: string; company: string; applyUrl: string } | null>(null);
   const [conveyorJobs, setConveyorJobs] = useState<Array<{ jobId: string; company: string; title: string }>>([]);
 
   // Client-side filter + search state
@@ -110,7 +110,7 @@ export default function Home() {
   const handleApply = useCallback((jobId: string) => {
     if (!isAuthenticated) return;
     const job = allJobs.find((j) => j.jobId === jobId);
-    if (job) setApplyModal({ jobId, title: job.title, company: job.company });
+    if (job) setApplyModal({ jobId, title: job.title, company: job.company, applyUrl: job.applyUrl });
   }, [isAuthenticated, allJobs]);
 
   const handleApplySuccess = useCallback((jobId: string) => {
@@ -345,6 +345,7 @@ export default function Home() {
           jobId={applyModal.jobId}
           jobTitle={applyModal.title}
           company={applyModal.company}
+          applyUrl={applyModal.applyUrl}
           onClose={() => setApplyModal(null)}
           onSuccess={handleApplySuccess}
         />

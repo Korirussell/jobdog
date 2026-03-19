@@ -86,9 +86,9 @@ public class ResumeAnalysisService {
 
         byte[] pdfBytes = fetchResumeBytes(resume);
         String resumeText = pdfTextExtractor.extractText(pdfBytes);
-        String truncated = resumeText.substring(0, Math.min(resumeText.length(), 4000));
+        String truncated = resumeText.substring(0, Math.min(resumeText.length(), 5000));
 
-        String aiResponse = callOpenAi(buildAnalysisPrompt(truncated, resolvedLevel, resolvedRole), 3000);
+        String aiResponse = callOpenAi(buildAnalysisPrompt(truncated, resolvedLevel, resolvedRole), 4000);
         return parseAndSaveAnalysis(resume, resolvedLevel, resolvedRole, aiResponse);
     }
 
@@ -186,6 +186,39 @@ public class ResumeAnalysisService {
             entity.setStrengths(readStringList(root, "strengths"));
             entity.setImprovements(readStringList(root, "improvements"));
             entity.setSummaryVerdict(root.path("summary_verdict").asText("Analysis complete."));
+
+            // ATS parsed sections
+            JsonNode aps = root.path("ats_parsed_sections");
+            if (aps.isObject()) {
+                Map<String, Object> parsedSections = new LinkedHashMap<>();
+                aps.fields().forEachRemaining(e -> {
+                    JsonNode val = e.getValue();
+                    if (val.isArray()) {
+                        List<String> items = new ArrayList<>();
+                        val.forEach(n -> items.add(n.asText()));
+                        parsedSections.put(e.getKey(), items);
+                    } else {
+                        parsedSections.put(e.getKey(), val.asText(""));
+                    }
+                });
+                entity.setAtsParsedSections(parsedSections);
+            }
+
+            // Recruiter take per section
+            List<Map<String, Object>> recruiterTake = new ArrayList<>();
+            JsonNode rt = root.path("recruiter_take");
+            if (rt.isArray()) {
+                rt.forEach(item -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("section", item.path("section").asText(""));
+                    m.put("grade", item.path("grade").asText(""));
+                    m.put("comment", item.path("comment").asText(""));
+                    m.put("redFlags", readStringListFromNode(item, "red_flags"));
+                    recruiterTake.add(m);
+                });
+            }
+            entity.setRecruiterTake(recruiterTake);
+
             entity.setAnalyzedAt(Instant.now());
 
             return analysisRepository.save(entity);
@@ -217,10 +250,14 @@ public class ResumeAnalysisService {
     }
 
     private List<String> readStringList(JsonNode root, String field) {
-        JsonNode node = root.path(field);
-        if (!node.isArray()) return Collections.emptyList();
+        return readStringListFromNode(root, field);
+    }
+
+    private List<String> readStringListFromNode(JsonNode node, String field) {
+        JsonNode arr = node.path(field);
+        if (!arr.isArray()) return Collections.emptyList();
         List<String> result = new ArrayList<>();
-        node.forEach(n -> result.add(n.asText()));
+        arr.forEach(n -> result.add(n.asText()));
         return result;
     }
 
@@ -247,56 +284,67 @@ public class ResumeAnalysisService {
                 CANDIDATE LEVEL: %s (%s)
                 TARGET ROLE: %s
                 
-                RESUME:
+                RESUME TEXT:
                 %s
                 
-                Analyze this resume as a senior technical recruiter at a top tech company (Google, Meta, Apple, Amazon, Microsoft level).
-                Grade it specifically for a %s %s position.
+                You are a senior technical recruiter at a FAANG company reviewing this resume for a %s %s role.
+                Provide a deep, honest analysis. Do NOT pad with generic advice or keyword stuffing warnings unless they are genuinely present.
+                Reference specific content from the resume. Be direct and useful.
                 
-                Return ONLY valid JSON — no markdown, no explanation, just the JSON object:
+                Return ONLY valid JSON (no markdown, no preamble):
                 {
-                  "overall_score": <0-100, honest overall grade for this level and role>,
-                  "ats_score": <0-100, how well this resume will pass ATS keyword scanning>,
-                  "ats_issues": [
-                    "<specific ATS issue, e.g. 'Missing keywords: React, TypeScript, REST APIs'>",
-                    "<another issue>"
-                  ],
+                  "overall_score": <0-100>,
+                  "ats_score": <0-100, how cleanly an ATS system can parse this resume>,
+                  "ats_issues": ["<specific ATS parsing problem if any — only real issues, not generic>"],
+                  "ats_parsed_sections": {
+                    "name": "<candidate name as ATS would read it>",
+                    "contact": "<email, phone, linkedin, github — what was found>",
+                    "education": ["<each degree/school/GPA entry as a string>"],
+                    "experience": ["<each job title + company + dates as a string>"],
+                    "projects": ["<each project name + tech stack as a string>"],
+                    "skills": ["<each skill or skill category as listed>"],
+                    "certifications": ["<any certs found>"],
+                    "missing_sections": ["<sections a strong resume should have but this one lacks>"]
+                  },
                   "section_scores": {
                     "experience": <0-100>,
+                    "projects": <0-100>,
                     "skills": <0-100>,
                     "education": <0-100>,
                     "formatting": <0-100>,
                     "impact_language": <0-100>
                   },
-                  "bullet_feedback": [
+                  "recruiter_take": [
                     {
-                      "original": "<exact bullet point text from resume>",
-                      "score": <0-100>,
-                      "issue": "<what's wrong with this bullet>",
-                      "improved": "<rewritten version with stronger impact language and metrics>"
+                      "section": "<section name, e.g. 'Experience', 'Projects', 'Skills'>",
+                      "grade": "<A/B/C/D/F>",
+                      "comment": "<2-3 sentence honest recruiter take on this section specifically>",
+                      "red_flags": ["<specific red flag if any — leave empty array if none>"]
                     }
                   ],
-                  "strengths": [
-                    "<specific strength, e.g. 'Strong GPA from a target school'>",
-                    "<another strength>"
+                  "bullet_feedback": [
+                    {
+                      "original": "<exact bullet text from resume>",
+                      "score": <0-100>,
+                      "issue": "<specific problem: vague verb, no metric, unclear impact, etc.>",
+                      "improved": "<rewritten bullet with strong action verb, metric, and clear impact>"
+                    }
                   ],
-                  "improvements": [
-                    "<specific actionable improvement, e.g. 'Add quantified metrics to all experience bullets'>",
-                    "<another improvement>"
-                  ],
-                  "summary_verdict": "<2-3 sentences: honest overall assessment, what would make this resume competitive, and the single most important thing to fix>"
+                  "strengths": ["<specific strength grounded in resume content — max 4>"],
+                  "improvements": ["<specific, actionable improvement — not generic — max 5>"],
+                  "summary_verdict": "<3 sentences: honest overall assessment for this level/role, biggest gap, and the one thing that would most improve this resume>"
                 }
                 
-                Scoring rubric:
-                - 90-100: Ready to interview at FAANG for this level right now
-                - 75-89: Strong candidate, minor polish needed
-                - 60-74: Decent but clear gaps for top companies
+                Scoring rubric (be honest — do not inflate):
+                - 90-100: FAANG-ready for this level right now
+                - 75-89: Strong, minor polish needed
+                - 60-74: Decent but clear gaps
                 - 40-59: Needs significant work
-                - 20-39: Major gaps — foundational issues
-                - 0-19: Needs a complete overhaul
+                - 20-39: Major foundational issues
+                - 0-19: Complete overhaul needed
                 
-                Be brutally honest. Do not inflate scores. A typical intern resume scores 40-60.
-                Include ALL experience bullets in bullet_feedback (up to 10 most important ones).
+                A typical intern resume scores 40-60. Include up to 10 bullets in bullet_feedback.
+                For recruiter_take, cover every major section present in the resume.
                 """, userLevel, levelLabel, targetRole, resumeText, levelLabel, targetRole);
     }
 

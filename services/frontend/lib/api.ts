@@ -7,6 +7,24 @@ export interface BulletFeedback {
   improved: string;
 }
 
+export interface RecruiterTakeItem {
+  section: string;
+  grade: string;
+  comment: string;
+  red_flags: string[];
+}
+
+export interface AtsParsedSections {
+  name?: string;
+  contact?: string;
+  education?: string[];
+  experience?: string[];
+  projects?: string[];
+  skills?: string[];
+  certifications?: string[];
+  missing_sections?: string[];
+}
+
 export interface ResumeAnalysis {
   analysisId: string;
   resumeId: string;
@@ -20,6 +38,8 @@ export interface ResumeAnalysis {
   strengths: string[];
   improvements: string[];
   summaryVerdict: string;
+  atsParsedSections?: AtsParsedSections;
+  recruiterTake?: RecruiterTakeItem[];
   analyzedAt: string;
 }
 
@@ -234,6 +254,7 @@ export class ApiClient {
       benchmarkState: string;
       percentile: number | null;
       applicantCount: number;
+      earlyApplicantMessage: string | null;
     }>(`/api/v1/jobs/${jobId}/applications`, {
       method: 'POST',
       body: JSON.stringify({ resumeId }),
@@ -247,6 +268,8 @@ export class ApiClient {
       jobTitle: string;
       company: string;
       status: string;
+      resumeId: string;
+      resumeName: string;
       matchScore: number;
       percentile: number | null;
       applicantCount: number;

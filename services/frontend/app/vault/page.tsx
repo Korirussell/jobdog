@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import TopBar from '@/components/TopBar';
 import AuthGuard from '@/components/AuthGuard';
-import { api, ResumeAnalysis, BulletFeedback, JobFitResult } from '@/lib/api';
+import { api, ResumeAnalysis, BulletFeedback, JobFitResult, RecruiterTakeItem, AtsParsedSections } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Resume {
@@ -139,7 +139,7 @@ function BulletCard({ bullet, index }: { bullet: BulletFeedback; index: number }
   );
 }
 
-type AnalysisTab = 'overview' | 'bullets' | 'jobfit';
+type AnalysisTab = 'overview' | 'atsview' | 'recruiter' | 'bullets' | 'jobfit';
 
 export default function VaultPage() {
   const { user } = useAuth();
@@ -595,18 +595,24 @@ export default function VaultPage() {
                   ) : currentAnalysis ? (
                     <>
                       {/* Tabs */}
-                      <div className="flex border-b-2 border-black/10">
-                        {(['overview', 'bullets', 'jobfit'] as AnalysisTab[]).map((tab) => (
+                      <div className="flex flex-wrap border-b-2 border-black/10">
+                        {([
+                          { id: 'overview', label: 'Overview' },
+                          { id: 'atsview', label: 'ATS View' },
+                          { id: 'recruiter', label: 'Recruiter Take' },
+                          { id: 'bullets', label: `Bullets (${currentAnalysis.bulletFeedback.length})` },
+                          { id: 'jobfit', label: 'Job Fit' },
+                        ] as { id: AnalysisTab; label: string }[]).map(({ id, label }) => (
                           <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={`px-4 py-2.5 font-mono text-xs font-bold capitalize transition-colors border-b-2 -mb-0.5
-                              ${activeTab === tab
+                            key={id}
+                            onClick={() => setActiveTab(id)}
+                            className={`px-4 py-2.5 font-mono text-xs font-bold transition-colors border-b-2 -mb-0.5
+                              ${activeTab === id
                                 ? 'border-b-black text-text-primary'
                                 : 'border-b-transparent text-text-secondary hover:text-text-primary'
                               }`}
                           >
-                            {tab === 'overview' ? 'Overview' : tab === 'bullets' ? `Bullets (${currentAnalysis.bulletFeedback.length})` : 'Job Fit'}
+                            {label}
                           </button>
                         ))}
                       </div>
@@ -707,6 +713,152 @@ export default function VaultPage() {
                               </div>
                             )}
                           </div>
+                        </div>
+                      )}
+
+                      {/* ATS View tab */}
+                      {activeTab === 'atsview' && (
+                        <div className="space-y-4">
+                          {currentAnalysis.atsParsedSections ? (
+                            <>
+                              <div className="border border-black/8 bg-white p-5">
+                                <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-1">ATS Parse View</p>
+                                <p className="font-mono text-xs text-text-tertiary mb-4">
+                                  This is exactly what an ATS system extracts from your resume. Gaps here mean lost opportunities.
+                                </p>
+                                {/* ATS score bar */}
+                                <div className="mb-5 flex items-center gap-4">
+                                  <span className={`font-mono text-3xl font-bold ${currentAnalysis.atsScore >= 70 ? 'text-emerald-600' : currentAnalysis.atsScore >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                    {currentAnalysis.atsScore}
+                                  </span>
+                                  <div className="flex-1">
+                                    <div className="h-2 overflow-hidden rounded-full bg-black/8">
+                                      <div className={`h-full rounded-full ${currentAnalysis.atsScore >= 70 ? 'bg-emerald-500' : currentAnalysis.atsScore >= 50 ? 'bg-yellow-500' : 'bg-red-400'}`} style={{ width: `${currentAnalysis.atsScore}%` }} />
+                                    </div>
+                                    <p className="mt-1 font-mono text-[10px] text-text-tertiary">ATS readability score</p>
+                                  </div>
+                                </div>
+                                {/* Parsed fields */}
+                                {(() => {
+                                  const s = currentAnalysis.atsParsedSections as AtsParsedSections;
+                                  const fields: { key: keyof AtsParsedSections; label: string }[] = [
+                                    { key: 'name', label: 'Name' },
+                                    { key: 'contact', label: 'Contact Info' },
+                                    { key: 'education', label: 'Education' },
+                                    { key: 'experience', label: 'Experience' },
+                                    { key: 'projects', label: 'Projects' },
+                                    { key: 'skills', label: 'Skills' },
+                                    { key: 'certifications', label: 'Certifications' },
+                                  ];
+                                  return (
+                                    <div className="space-y-3">
+                                      {fields.map(({ key, label }) => {
+                                        const val = s[key];
+                                        if (!val || (Array.isArray(val) && val.length === 0)) return null;
+                                        return (
+                                          <div key={key} className="border border-black/8 p-3">
+                                            <p className="font-mono text-[10px] font-bold uppercase text-text-tertiary mb-1.5">{label}</p>
+                                            {Array.isArray(val) ? (
+                                              <ul className="space-y-1">
+                                                {val.map((item, i) => (
+                                                  <li key={i} className="font-mono text-xs text-text-secondary flex items-start gap-1.5">
+                                                    <span className="text-text-tertiary mt-0.5">·</span>
+                                                    {item}
+                                                  </li>
+                                                ))}
+                                              </ul>
+                                            ) : (
+                                              <p className="font-mono text-xs text-text-secondary">{val}</p>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                      {s.missing_sections && s.missing_sections.length > 0 && (
+                                        <div className="border border-red-200 bg-red-50 p-3">
+                                          <p className="font-mono text-[10px] font-bold uppercase text-red-700 mb-1.5">Missing Sections</p>
+                                          <ul className="space-y-1">
+                                            {s.missing_sections.map((item, i) => (
+                                              <li key={i} className="font-mono text-xs text-red-700 flex items-start gap-1.5">
+                                                <span className="mt-0.5">✗</span>{item}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                              {/* ATS issues */}
+                              {currentAnalysis.atsIssues.length > 0 && (
+                                <div className="border border-orange-200 bg-orange-50 p-4">
+                                  <p className="font-mono text-[10px] font-bold uppercase text-orange-700 mb-2">ATS Issues to Fix</p>
+                                  <ul className="space-y-1.5">
+                                    {currentAnalysis.atsIssues.map((issue, i) => (
+                                      <li key={i} className="flex items-start gap-2 font-mono text-xs text-orange-800">
+                                        <span className="shrink-0 mt-0.5">→</span>{issue}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="border border-black/8 bg-white p-8 text-center">
+                              <p className="font-mono text-xs text-text-tertiary">Re-analyze your resume to get the full ATS parse view.</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Recruiter Take tab */}
+                      {activeTab === 'recruiter' && (
+                        <div className="space-y-3">
+                          {currentAnalysis.recruiterTake && currentAnalysis.recruiterTake.length > 0 ? (
+                            <>
+                              <div className="border border-black/8 bg-white px-4 py-3">
+                                <p className="font-mono text-xs text-text-tertiary">
+                                  Honest section-by-section feedback from a FAANG recruiter&apos;s perspective.
+                                </p>
+                              </div>
+                              {(currentAnalysis.recruiterTake as RecruiterTakeItem[]).map((item, i) => {
+                                const gradeColor: Record<string, string> = {
+                                  A: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+                                  B: 'text-blue-700 bg-blue-50 border-blue-200',
+                                  C: 'text-yellow-700 bg-yellow-50 border-yellow-200',
+                                  D: 'text-orange-700 bg-orange-50 border-orange-200',
+                                  F: 'text-red-700 bg-red-50 border-red-200',
+                                };
+                                const gc = gradeColor[item.grade] ?? 'text-text-secondary bg-black/5 border-black/10';
+                                return (
+                                  <div key={i} className="border border-black/8 bg-white p-4">
+                                    <div className="flex items-start gap-3">
+                                      <div className={`shrink-0 flex h-8 w-8 items-center justify-center border font-mono text-sm font-bold ${gc}`}>
+                                        {item.grade}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-mono text-xs font-bold text-text-primary mb-1">{item.section}</p>
+                                        <p className="font-mono text-xs text-text-secondary leading-relaxed">{item.comment}</p>
+                                        {item.red_flags && item.red_flags.length > 0 && (
+                                          <div className="mt-2 space-y-1">
+                                            {item.red_flags.map((flag, fi) => (
+                                              <p key={fi} className="flex items-start gap-1.5 font-mono text-[10px] text-red-600">
+                                                <span className="shrink-0 mt-0.5">🚩</span>{flag}
+                                              </p>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </>
+                          ) : (
+                            <div className="border border-black/8 bg-white p-8 text-center">
+                              <p className="font-mono text-xs text-text-tertiary">Re-analyze your resume to get recruiter section feedback.</p>
+                            </div>
+                          )}
                         </div>
                       )}
 

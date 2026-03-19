@@ -12,6 +12,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.ColumnTransformer;
 
 import java.time.Instant;
 import java.util.Map;
@@ -29,6 +30,7 @@ public class ApplicationScoreEntity extends BaseEntity {
 
     @Convert(converter = JsonMapConverter.class)
     @Column(nullable = false, columnDefinition = "jsonb")
+    @ColumnTransformer(write = "?::jsonb")
     private Map<String, Object> matchBreakdown;
 
     @Enumerated(EnumType.STRING)

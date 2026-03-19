@@ -34,7 +34,9 @@ record ApplicationListItem(
         int matchScore,
         Integer percentile,
         int applicantCount,
-        Instant appliedAt
+        Instant appliedAt,
+        UUID resumeId,
+        String resumeName
 ) {}
 
 @Service
@@ -224,6 +226,10 @@ public class ApplicationService {
         return applicationRepository.findByUser_IdOrderByAppliedAtDesc(userId).stream()
                 .map(app -> {
                     var score = applicationScoreRepository.findByApplication_Id(app.getId()).orElse(null);
+                    String resumeLabel = app.getResume().getLabel();
+                    String resumeFilename = app.getResume().getOriginalFilename();
+                    String resumeName = (resumeLabel == null || resumeLabel.isBlank() || "default".equals(resumeLabel))
+                            ? resumeFilename : resumeLabel;
                     return new ApplicationListItem(
                             app.getId(),
                             app.getJob().getId(),
@@ -233,7 +239,9 @@ public class ApplicationService {
                             score != null ? score.getMatchScore() : 0,
                             score != null ? score.getPercentile() : null,
                             score != null ? score.getApplicantCount() : 0,
-                            app.getAppliedAt()
+                            app.getAppliedAt(),
+                            app.getResume().getId(),
+                            resumeName
                     );
                 })
                 .toList();

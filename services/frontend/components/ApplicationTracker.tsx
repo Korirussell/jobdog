@@ -13,6 +13,8 @@ export interface ApplicationRow {
   percentile: number | null;
   applicantCount: number;
   appliedAt: string;
+  resumeId?: string;
+  resumeName?: string;
 }
 
 interface AppMeta {
@@ -329,6 +331,9 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
               <ColHeader col="status" label="Status" />
               <ColHeader col="matchScore" label="Match" />
               <ColHeader col="appliedAt" label="Applied" />
+              <th className="border-b-2 border-black/10 px-4 py-3 text-left font-mono text-[10px] font-bold uppercase tracking-wider text-text-tertiary">
+                Resume
+              </th>
               <ColHeader col="deadline" label="Deadline" />
               <th className="border-b-2 border-black/10 px-4 py-3 text-left font-mono text-[10px] font-bold uppercase tracking-wider text-text-tertiary">
                 Notes
@@ -376,6 +381,26 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
                 </td>
                 <td className="px-4 py-3">
                   <span className="font-mono text-xs text-text-tertiary">{formatDate(app.appliedAt)}</span>
+                </td>
+                <td className="px-4 py-3">
+                  {app.resumeName ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="max-w-[100px] truncate font-mono text-[10px] text-text-secondary" title={app.resumeName}>
+                        {app.resumeName}
+                      </span>
+                      {app.resumeId && (
+                        <a
+                          href="/vault"
+                          title="View in Vault"
+                          className="shrink-0 font-mono text-[9px] font-bold text-text-tertiary underline hover:text-text-primary"
+                        >
+                          ↗
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="font-mono text-[10px] text-text-tertiary">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   {/* Deadline — inline date input */}
