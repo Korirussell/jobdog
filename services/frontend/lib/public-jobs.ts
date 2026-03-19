@@ -42,19 +42,35 @@ export function getSiteUrl(path = '') {
 
 export async function fetchJobs(params: URLSearchParams, init?: RequestInit): Promise<JobsResponse> {
   const qs = params.toString();
-  const response = await fetch(`${getApiOrigin()}/api/v1/jobs${qs ? `?${qs}` : ''}`, {
-    ...init,
-    headers: {
-      Accept: 'application/json',
-      ...(init?.headers ?? {}),
-    },
-  });
+  try {
+    const response = await fetch(`${getApiOrigin()}/api/v1/jobs${qs ? `?${qs}` : ''}`, {
+      ...init,
+      headers: {
+        Accept: 'application/json',
+        ...(init?.headers ?? {}),
+      },
+    });
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch jobs: ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch jobs: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (e) {
+    // Important: this function is used by Server Components (Home + sitemap).
+    // If the backend is down/unreachable, don't crash the whole app—return an empty list.
+    const pageRaw = params.get('page');
+    const sizeRaw = params.get('size');
+    const page = pageRaw ? Number(pageRaw) : 0;
+    const size = sizeRaw ? Number(sizeRaw) : 100;
+    return {
+      items: [],
+      page: Number.isNaN(page) ? 0 : page,
+      size: Number.isNaN(size) ? 100 : size,
+      total: 0,
+      lastSync: undefined,
+    };
   }
-
-  return response.json();
 }
 
 export async function fetchJob(jobId: string, init?: RequestInit): Promise<JobDetail> {
