@@ -1,5 +1,6 @@
 package dev.jobdog.backend.job;
 
+import dev.jobdog.backend.auth.AuthenticatedUser;
 import dev.jobdog.backend.auth.CurrentUser;
 import java.util.UUID;
 
