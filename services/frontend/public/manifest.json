@@ -1,0 +1,38 @@
+{
+  "name": "JobDog.dev — Intern & New Grad Jobs",
+  "short_name": "JobDog",
+  "description": "Find your next internship or new grad role. FAANG-grade resume analysis included.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F0EB",
+  "theme_color": "#FFD166",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/assets/jobdog.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/jobdog.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["jobs", "productivity"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Browse Jobs",
+      "url": "/",
+      "description": "Browse intern and new grad jobs"
+    },
+    {
+      "name": "Resume Vault",
+      "url": "/vault",
+      "description": "Analyze your resume"
+    }
+  ]
+}

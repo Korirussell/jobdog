@@ -1,6 +1,77 @@
 'use client';
 
 import { memo, useState } from 'react';
+import Image from 'next/image';
+
+// Map company names to known domains for logo lookup
+const COMPANY_DOMAINS: Record<string, string> = {
+  'google': 'google.com', 'meta': 'meta.com', 'facebook': 'facebook.com',
+  'amazon': 'amazon.com', 'apple': 'apple.com', 'microsoft': 'microsoft.com',
+  'netflix': 'netflix.com', 'stripe': 'stripe.com', 'airbnb': 'airbnb.com',
+  'uber': 'uber.com', 'lyft': 'lyft.com', 'twitter': 'twitter.com', 'x': 'x.com',
+  'linkedin': 'linkedin.com', 'salesforce': 'salesforce.com', 'adobe': 'adobe.com',
+  'nvidia': 'nvidia.com', 'intel': 'intel.com', 'amd': 'amd.com',
+  'shopify': 'shopify.com', 'coinbase': 'coinbase.com', 'doordash': 'doordash.com',
+  'robinhood': 'robinhood.com', 'plaid': 'plaid.com', 'databricks': 'databricks.com',
+  'figma': 'figma.com', 'notion': 'notion.so', 'discord': 'discord.com',
+  'duolingo': 'duolingo.com', 'instacart': 'instacart.com', 'snowflake': 'snowflake.com',
+  'twilio': 'twilio.com', 'zendesk': 'zendesk.com', 'zoom': 'zoom.us',
+  'cloudflare': 'cloudflare.com', 'okta': 'okta.com', 'mongodb': 'mongodb.com',
+  'palantir': 'palantir.com', 'reddit': 'reddit.com', 'ramp': 'ramp.com',
+  'anduril': 'anduril.com', 'scale ai': 'scale.com', 'brex': 'brex.com',
+  'rippling': 'rippling.com', 'gusto': 'gusto.com', 'retool': 'retool.com',
+  'airtable': 'airtable.com', 'confluent': 'confluent.io', 'samsara': 'samsara.com',
+  'pagerduty': 'pagerduty.com', 'hashicorp': 'hashicorp.com', 'mixpanel': 'mixpanel.com',
+  'coursera': 'coursera.org', 'benchling': 'benchling.com', 'chime': 'chime.com',
+  'lattice': 'lattice.com', 'checkr': 'checkr.com', 'navan': 'navan.com',
+  'roku': 'roku.com', 'spotify': 'spotify.com', 'slack': 'slack.com',
+  'dropbox': 'dropbox.com', 'box': 'box.com', 'atlassian': 'atlassian.com',
+  'github': 'github.com', 'gitlab': 'gitlab.com', 'datadog': 'datadoghq.com',
+  'splunk': 'splunk.com', 'elastic': 'elastic.co', 'twitch': 'twitch.tv',
+  'bytedance': 'bytedance.com', 'tiktok': 'tiktok.com', 'openai': 'openai.com',
+  'anthropic': 'anthropic.com', 'cohere': 'cohere.com', 'hugging face': 'huggingface.co',
+  'vercel': 'vercel.com', 'netlify': 'netlify.com', 'heroku': 'heroku.com',
+  'digitalocean': 'digitalocean.com', 'linode': 'linode.com', 'fastly': 'fastly.com',
+  'cloudinary': 'cloudinary.com', 'segment': 'segment.com', 'amplitude': 'amplitude.com',
+  'cockroach labs': 'cockroachlabs.com', 'dbt labs': 'getdbt.com',
+};
+
+function getCompanyDomain(company: string): string | null {
+  const key = company.toLowerCase().trim();
+  if (COMPANY_DOMAINS[key]) return COMPANY_DOMAINS[key];
+  // Try partial match
+  for (const [k, v] of Object.entries(COMPANY_DOMAINS)) {
+    if (key.includes(k) || k.includes(key)) return v;
+  }
+  // Fallback: guess domain from company name
+  const slug = key.replace(/[^a-z0-9]/g, '');
+  return slug.length > 2 ? `${slug}.com` : null;
+}
+
+function CompanyLogo({ company }: { company: string }) {
+  const [failed, setFailed] = useState(false);
+  const domain = getCompanyDomain(company);
+  if (!domain || failed) {
+    return (
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-black/5 font-mono text-[10px] font-bold text-text-tertiary">
+        {company.slice(0, 2).toUpperCase()}
+      </div>
+    );
+  }
+  return (
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden bg-white border border-black/8">
+      <Image
+        src={`https://logo.clearbit.com/${domain}`}
+        alt={`${company} logo`}
+        width={28}
+        height={28}
+        className="h-7 w-7 object-contain"
+        onError={() => setFailed(true)}
+        unoptimized
+      />
+    </div>
+  );
+}
 
 interface JobListRowProps {
   jobId: string;
@@ -100,6 +171,11 @@ const JobListRow = memo(function JobListRow({
               </span>
             </div>
           )}
+
+          {/* Company logo */}
+          <div className="mt-0.5 shrink-0">
+            <CompanyLogo company={company} />
+          </div>
 
           <div className="min-w-0 flex-1">
             {/* Company */}

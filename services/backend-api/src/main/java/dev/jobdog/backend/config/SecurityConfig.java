@@ -57,6 +57,7 @@ public class SecurityConfig {
                                 "/api/v1/jobs",
                                 "/api/v1/jobs/**",
                                 "/api/v1/ghost-score",
+                                "/api/v1/public/**",
                                 "/ws/**",
                                 "/oauth2/**",
                                 "/login/oauth2/**"

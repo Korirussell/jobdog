@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { api } from '@/lib/api';
 
 export interface ApplicationRow {
@@ -15,7 +15,12 @@ export interface ApplicationRow {
   appliedAt: string;
 }
 
-type SortKey = 'company' | 'jobTitle' | 'status' | 'matchScore' | 'appliedAt';
+interface AppMeta {
+  notes: string;
+  deadline: string; // ISO date string or empty
+}
+
+type SortKey = 'company' | 'jobTitle' | 'status' | 'matchScore' | 'appliedAt' | 'deadline';
 type SortDir = 'asc' | 'desc';
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
@@ -102,11 +107,69 @@ function StatusPill({
   );
 }
 
+const STORAGE_KEY = 'jobdog_app_meta';
+
+function loadMeta(): Record<string, AppMeta> {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function saveMeta(meta: Record<string, AppMeta>) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(meta)); } catch {}
+}
+
+function InlineNote({ appId, value, onChange }: { appId: string; value: string; onChange: (v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => { if (editing) ref.current?.focus(); }, [editing]);
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => { setDraft(value); setEditing(true); }}
+        className="max-w-[140px] truncate text-left font-mono text-[10px] text-text-tertiary hover:text-text-primary"
+        title={value || 'Add note...'}
+      >
+        {value || <span className="opacity-40">+ note</span>}
+      </button>
+    );
+  }
+  return (
+    <div className="relative">
+      <textarea
+        ref={ref}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => { onChange(draft); setEditing(false); }}
+        onKeyDown={(e) => { if (e.key === 'Escape') { setEditing(false); } if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onChange(draft); setEditing(false); } }}
+        rows={2}
+        className="w-40 resize-none border border-black/20 bg-white p-1 font-mono text-[10px] text-text-primary focus:border-black focus:outline-none"
+        placeholder="Add a note..."
+      />
+    </div>
+  );
+}
+
 export default function ApplicationTracker({ applications: initialApps }: { applications: ApplicationRow[] }) {
   const [apps, setApps] = useState<ApplicationRow[]>(initialApps);
   const [sortKey, setSortKey] = useState<SortKey>('appliedAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [meta, setMeta] = useState<Record<string, AppMeta>>({});
+
+  useEffect(() => { setMeta(loadMeta()); }, []);
+
+  const updateMeta = (appId: string, patch: Partial<AppMeta>) => {
+    setMeta((prev) => {
+      const next = { ...prev, [appId]: { notes: '', deadline: '', ...prev[appId], ...patch } };
+      saveMeta(next);
+      return next;
+    });
+  };
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -133,9 +196,14 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
       else if (sortKey === 'status') cmp = a.status.localeCompare(b.status);
       else if (sortKey === 'matchScore') cmp = a.matchScore - b.matchScore;
       else if (sortKey === 'appliedAt') cmp = new Date(a.appliedAt).getTime() - new Date(b.appliedAt).getTime();
+      else if (sortKey === 'deadline') {
+        const da = meta[a.applicationId]?.deadline || '';
+        const db = meta[b.applicationId]?.deadline || '';
+        cmp = da.localeCompare(db);
+      }
       return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [apps, sortKey, sortDir, statusFilter]);
+  }, [apps, sortKey, sortDir, statusFilter, meta]);
 
   // Stats
   const total = apps.length;
@@ -145,13 +213,15 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
   const interviewRate = total > 0 ? Math.round((interviewing / total) * 100) : 0;
 
   const exportCSV = () => {
-    const headers = ['Company', 'Role', 'Status', 'Match Score', 'Applied Date'];
+    const headers = ['Company', 'Role', 'Status', 'Match Score', 'Applied Date', 'Deadline', 'Notes'];
     const rows = apps.map((a) => [
       a.company,
       a.jobTitle,
       STATUS_CONFIG[a.status]?.label ?? a.status,
       a.matchScore > 0 ? `${a.matchScore}/100` : '—',
       formatDate(a.appliedAt),
+      meta[a.applicationId]?.deadline || '',
+      meta[a.applicationId]?.notes || '',
     ]);
     const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -250,7 +320,7 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
 
       {/* Table */}
       <div className="overflow-x-auto border-2 border-black/10">
-        <table className="w-full min-w-[640px] border-collapse">
+        <table className="w-full min-w-[800px] border-collapse">
           <thead className="bg-black/[0.02]">
             <tr>
               <ColHeader col="company" label="Company" />
@@ -258,6 +328,10 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
               <ColHeader col="status" label="Status" />
               <ColHeader col="matchScore" label="Match" />
               <ColHeader col="appliedAt" label="Applied" />
+              <ColHeader col="deadline" label="Deadline" />
+              <th className="border-b-2 border-black/10 px-4 py-3 text-left font-mono text-[10px] font-bold uppercase tracking-wider text-text-tertiary">
+                Notes
+              </th>
               <th className="border-b-2 border-black/10 px-4 py-3 text-left font-mono text-[10px] font-bold uppercase tracking-wider text-text-tertiary">
                 Action
               </th>
@@ -303,11 +377,36 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
                   <span className="font-mono text-xs text-text-tertiary">{formatDate(app.appliedAt)}</span>
                 </td>
                 <td className="px-4 py-3">
+                  {/* Deadline — inline date input */}
+                  {(() => {
+                    const dl = meta[app.applicationId]?.deadline || '';
+                    const isUrgent = dl && new Date(dl).getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000 && new Date(dl).getTime() > Date.now();
+                    const isPast = dl && new Date(dl).getTime() < Date.now();
+                    return (
+                      <input
+                        type="date"
+                        value={dl}
+                        onChange={(e) => updateMeta(app.applicationId, { deadline: e.target.value })}
+                        className={`border px-1.5 py-0.5 font-mono text-[10px] focus:outline-none
+                          ${isPast ? 'border-red-300 bg-red-50 text-red-700' : isUrgent ? 'border-orange-300 bg-orange-50 text-orange-700' : 'border-black/15 bg-white text-text-tertiary'}`}
+                        title="Application deadline"
+                      />
+                    );
+                  })()}
+                </td>
+                <td className="px-4 py-3">
+                  <InlineNote
+                    appId={app.applicationId}
+                    value={meta[app.applicationId]?.notes || ''}
+                    onChange={(v) => updateMeta(app.applicationId, { notes: v })}
+                  />
+                </td>
+                <td className="px-4 py-3">
                   <a
                     href={`/?jobId=${app.jobId}`}
                     className="font-mono text-[10px] font-bold text-text-tertiary underline hover:text-text-primary"
                   >
-                    View Job ↗
+                    View ↗
                   </a>
                 </td>
               </tr>

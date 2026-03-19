@@ -4,6 +4,14 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://134.122.7.82:8080';
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'logo.clearbit.com',
+      },
+    ],
+  },
   async rewrites() {
     return [
       {

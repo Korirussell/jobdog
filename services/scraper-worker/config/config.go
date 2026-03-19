@@ -45,6 +45,7 @@ func Load() (*Config, error) {
 
 	// Default Greenhouse sources - intern-heavy tech companies
 	cfg.GreenhouseSources = []GreenhouseSource{
+		// Tier 1 - FAANG adjacent
 		{Company: "Stripe", BoardToken: "stripe"},
 		{Company: "Airbnb", BoardToken: "airbnb"},
 		{Company: "Coinbase", BoardToken: "coinbase"},
@@ -84,6 +85,48 @@ func Load() (*Config, error) {
 		{Company: "Twilio", BoardToken: "twilio"},
 		{Company: "Zendesk", BoardToken: "zendesk"},
 		{Company: "Zoom", BoardToken: "zoom"},
+		// Tier 2 - High-value intern programs
+		{Company: "Amplitude", BoardToken: "amplitude"},
+		{Company: "Asana", BoardToken: "asana"},
+		{Company: "Canva", BoardToken: "canva"},
+		{Company: "Carta", BoardToken: "carta"},
+		{Company: "Coda", BoardToken: "coda"},
+		{Company: "Cockroach Labs", BoardToken: "cockroachdb"},
+		{Company: "Datadog", BoardToken: "datadog"},
+		{Company: "dbt Labs", BoardToken: "dbtlabs"},
+		{Company: "Dropbox", BoardToken: "dropbox"},
+		{Company: "Figma", BoardToken: "figma"},
+		{Company: "Grammarly", BoardToken: "grammarly"},
+		{Company: "Gusto", BoardToken: "gusto"},
+		{Company: "Intercom", BoardToken: "intercom"},
+		{Company: "Linear", BoardToken: "linear"},
+		{Company: "Loom", BoardToken: "loom"},
+		{Company: "Mercury", BoardToken: "mercury"},
+		{Company: "Notion", BoardToken: "notion"},
+		{Company: "OpenAI", BoardToken: "openai"},
+		{Company: "Retool", BoardToken: "retool"},
+		{Company: "Superhuman", BoardToken: "superhuman"},
+		{Company: "Vercel", BoardToken: "vercel"},
+		{Company: "Webflow", BoardToken: "webflow"},
+		{Company: "Zapier", BoardToken: "zapier"},
+		// Fintech & crypto
+		{Company: "Affirm", BoardToken: "affirm"},
+		{Company: "Block", BoardToken: "block"},
+		{Company: "Klarna", BoardToken: "klarna"},
+		{Company: "Kraken", BoardToken: "kraken"},
+		{Company: "Nerdwallet", BoardToken: "nerdwallet"},
+		{Company: "SoFi", BoardToken: "sofi"},
+		// Defense & hardware
+		{Company: "SpaceX", BoardToken: "spacex"},
+		{Company: "Relativity Space", BoardToken: "relativityspace"},
+		{Company: "Joby Aviation", BoardToken: "jobyaviation"},
+		// Enterprise
+		{Company: "Salesforce", BoardToken: "salesforce"},
+		{Company: "Workday", BoardToken: "workday"},
+		{Company: "ServiceNow", BoardToken: "servicenow"},
+		{Company: "Splunk", BoardToken: "splunk"},
+		{Company: "Elastic", BoardToken: "elastic"},
+		{Company: "New Relic", BoardToken: "newrelic"},
 	}
 
 	// Default Lever sources - intern-heavy tech companies
@@ -99,7 +142,6 @@ func Load() (*Config, error) {
 		{Company: "Coda", Slug: "coda"},
 		{Company: "Cockroach Labs", Slug: "cockroach-labs"},
 		{Company: "dbt Labs", Slug: "dbtlabs"},
-		{Company: "Figma", Slug: "figma"},
 		{Company: "Gem", Slug: "gem"},
 		{Company: "Gusto", Slug: "gusto"},
 		{Company: "Ironclad", Slug: "ironclad"},
@@ -108,6 +150,21 @@ func Load() (*Config, error) {
 		{Company: "Retool", Slug: "retool"},
 		{Company: "Rippling", Slug: "rippling"},
 		{Company: "Superhuman", Slug: "superhuman"},
+		// Additional Lever companies
+		{Company: "Airtable", Slug: "airtable"},
+		{Company: "Amplitude", Slug: "amplitude"},
+		{Company: "Brex", Slug: "brex"},
+		{Company: "Canva", Slug: "canva"},
+		{Company: "Faire", Slug: "faire"},
+		{Company: "Grammarly", Slug: "grammarly"},
+		{Company: "Intercom", Slug: "intercom"},
+		{Company: "Lattice", Slug: "lattice"},
+		{Company: "Linear", Slug: "linear"},
+		{Company: "Plaid", Slug: "plaid"},
+		{Company: "Scale AI", Slug: "scaleai"},
+		{Company: "Vercel", Slug: "vercel"},
+		{Company: "Webflow", Slug: "webflow"},
+		{Company: "Zapier", Slug: "zapier"},
 	}
 
 	// Workday sources - disabled by default, only enabled if explicitly configured

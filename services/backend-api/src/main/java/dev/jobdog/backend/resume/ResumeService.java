@@ -109,6 +109,25 @@ public class ResumeService {
         return resumeRepository.findByUser_IdOrderByUploadedAtDesc(userId);
     }
 
+    @Transactional
+    public void deleteResume(UUID resumeId, UUID userId) {
+        ResumeEntity resume = resumeRepository.findById(resumeId)
+                .orElseThrow(() -> new IllegalArgumentException("Resume not found"));
+        if (!resume.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Resume does not belong to user");
+        }
+        // Best-effort R2 deletion — don't fail if storage delete fails
+        if (resume.getStorageKey() != null && !resume.getStorageKey().startsWith("local-fallback/")) {
+            try {
+                storageService.deleteObject(resume.getStorageKey());
+            } catch (Exception e) {
+                org.slf4j.LoggerFactory.getLogger(ResumeService.class)
+                        .warn("Failed to delete R2 object for resume {}: {}", resumeId, e.getMessage());
+            }
+        }
+        resumeRepository.delete(resume);
+    }
+
     private String sha256(byte[] bytes) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

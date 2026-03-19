@@ -205,6 +205,27 @@ export class ApiClient {
     }>('/api/v1/resumes');
   }
 
+  async deleteResume(resumeId: string) {
+    return this.request<void>(`/api/v1/resumes/${resumeId}`, { method: 'DELETE' });
+  }
+
+  async getPublicProfile(userId: string) {
+    return this.request<{
+      userId: string;
+      displayName: string;
+      topScore?: {
+        overallScore: number;
+        atsScore: number;
+        sectionScores: Record<string, number>;
+        strengths: string[];
+        summaryVerdict: string;
+        userLevel: string;
+        targetRole: string;
+        analyzedAt: string;
+      };
+    }>(`/api/v1/public/profile/${userId}`);
+  }
+
   // Applications
   async createApplication(jobId: string, resumeId: string) {
     return this.request<{

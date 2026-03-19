@@ -5,4 +5,6 @@ public interface StorageService {
     void putObject(String key, String contentType, byte[] content);
 
     byte[] getObject(String key);
+
+    void deleteObject(String key);
 }
