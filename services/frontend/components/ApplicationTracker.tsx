@@ -165,7 +165,8 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
 
   const updateMeta = (appId: string, patch: Partial<AppMeta>) => {
     setMeta((prev) => {
-      const next = { ...prev, [appId]: { notes: '', deadline: '', ...prev[appId], ...patch } };
+      const existing: AppMeta = prev[appId] ?? { notes: '', deadline: '' };
+      const next = { ...prev, [appId]: { ...existing, ...patch } };
       saveMeta(next);
       return next;
     });
