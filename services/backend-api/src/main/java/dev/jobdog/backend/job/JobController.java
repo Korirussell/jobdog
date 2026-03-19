@@ -33,7 +33,7 @@ public class JobController {
     ) {
         JobFilterRequest filter = new JobFilterRequest(page, size, location, remote, company, search);
         // Pass userId if authenticated, null otherwise for local matching
-        UUID userId = currentUser.get() != null ? currentUser.get().userId() : null;
+        UUID userId = currentUser.get().map(AuthenticatedUser::userId).orElse(null);
         return ResponseEntity.ok(jobService.listActiveJobs(filter, userId));
     }
 
