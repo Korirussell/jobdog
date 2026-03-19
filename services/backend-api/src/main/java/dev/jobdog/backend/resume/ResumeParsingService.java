@@ -5,13 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.theokanning.openai.completion.chat.ChatCompletionRequest;
 import com.theokanning.openai.completion.chat.ChatMessage;
 import com.theokanning.openai.service.OpenAiService;
-import dev.jobdog.backend.user.UserEntity;
-import dev.jobdog.backend.user.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -19,41 +18,42 @@ import java.util.UUID;
 @Service
 public class ResumeParsingService {
 
+    private static final Logger log = LoggerFactory.getLogger(ResumeParsingService.class);
+
     private final ResumeRepository resumeRepository;
     private final ResumeProfileRepository resumeProfileRepository;
-    private final UserRepository userRepository;
     private final PdfTextExtractor pdfTextExtractor;
     private final OpenAiService openAiService;
-    private final StorageService storageService;
     private final ObjectMapper objectMapper;
+    private final ResumeParsingTransactionHelper transactionHelper;
 
     public ResumeParsingService(ResumeRepository resumeRepository,
                                 ResumeProfileRepository resumeProfileRepository,
-                                UserRepository userRepository,
                                 PdfTextExtractor pdfTextExtractor,
                                 OpenAiService openAiService,
-                                StorageService storageService,
-                                ObjectMapper objectMapper) {
+                                ObjectMapper objectMapper,
+                                ResumeParsingTransactionHelper transactionHelper) {
         this.resumeRepository = resumeRepository;
         this.resumeProfileRepository = resumeProfileRepository;
-        this.userRepository = userRepository;
         this.pdfTextExtractor = pdfTextExtractor;
         this.openAiService = openAiService;
-        this.storageService = storageService;
         this.objectMapper = objectMapper;
+        this.transactionHelper = transactionHelper;
     }
 
+    /**
+     * Entry point — runs on a separate async thread.
+     * Delegates all DB writes to a @Transactional helper so the transaction
+     * is properly bound to the async thread (not the caller's thread).
+     */
     @Async
-    @Transactional
     public void parseResumeAsync(UUID resumeId, byte[] pdfBytes) {
+        log.info("Starting async resume parsing for resumeId={}", resumeId);
         try {
-            ResumeEntity resume = resumeRepository.findById(resumeId)
-                    .orElseThrow(() -> new IllegalArgumentException("Resume not found"));
-
-            resume.setStatus(ResumeStatus.PROCESSING);
-            resumeRepository.save(resume);
+            transactionHelper.markProcessing(resumeId);
 
             String extractedText = pdfTextExtractor.extractText(pdfBytes);
+            log.debug("Extracted {} chars from resume {}", extractedText.length(), resumeId);
 
             String prompt = buildParsingPrompt(extractedText);
 
@@ -64,7 +64,7 @@ public class ResumeParsingService {
                             new ChatMessage("user", prompt)
                     ))
                     .temperature(0.3)
-                    .maxTokens(500)
+                    .maxTokens(1000)
                     .build();
 
             String response = openAiService.createChatCompletion(request)
@@ -73,41 +73,39 @@ public class ResumeParsingService {
                     .getMessage()
                     .getContent();
 
-            JsonNode jsonResponse = objectMapper.readTree(response);
+            log.debug("OpenAI response for resume {}: {}", resumeId, response);
+
+            JsonNode jsonResponse = objectMapper.readTree(stripMarkdown(response));
 
             List<String> skills = new ArrayList<>();
             if (jsonResponse.has("skills") && jsonResponse.get("skills").isArray()) {
                 jsonResponse.get("skills").forEach(skill -> skills.add(skill.asText()));
             }
 
-            Integer yearsExperience = jsonResponse.has("yearsExperience") 
-                    ? jsonResponse.get("yearsExperience").asInt() 
+            Integer yearsExperience = jsonResponse.has("yearsExperience") && !jsonResponse.get("yearsExperience").isNull()
+                    ? jsonResponse.get("yearsExperience").asInt()
                     : null;
 
-            String educationLevel = jsonResponse.has("educationLevel") 
-                    ? jsonResponse.get("educationLevel").asText() 
+            String educationLevel = jsonResponse.has("educationLevel") && !jsonResponse.get("educationLevel").isNull()
+                    ? jsonResponse.get("educationLevel").asText()
                     : null;
 
-            ResumeProfileEntity profile = new ResumeProfileEntity();
-            profile.setResume(resume);
-            profile.setSkills(skills);
-            profile.setYearsExperience(yearsExperience);
-            profile.setEducationLevel(educationLevel);
-            profile.setParserProvider("openai");
-            profile.setParserModel("gpt-4o-mini");
-            resumeProfileRepository.save(profile);
+            transactionHelper.saveParsedProfile(resumeId, skills, yearsExperience, educationLevel);
+            log.info("Resume {} parsed successfully — {} skills, education={}", resumeId, skills.size(), educationLevel);
 
-            resume.setStatus(ResumeStatus.PARSED);
-            resumeRepository.save(resume);
-
-        } catch (Exception exception) {
-            ResumeEntity resume = resumeRepository.findById(resumeId).orElse(null);
-            if (resume != null) {
-                resume.setStatus(ResumeStatus.FAILED);
-                resumeRepository.save(resume);
-            }
-            throw new RuntimeException("Resume parsing failed", exception);
+        } catch (Exception e) {
+            log.error("Resume parsing failed for resumeId={}: {}", resumeId, e.getMessage(), e);
+            transactionHelper.markFailed(resumeId);
         }
+    }
+
+    private String stripMarkdown(String text) {
+        if (text == null) return "{}";
+        String stripped = text.trim();
+        if (stripped.startsWith("```")) {
+            stripped = stripped.replaceAll("^```[a-zA-Z]*\\n?", "").replaceAll("```$", "").trim();
+        }
+        return stripped;
     }
 
     private String buildParsingPrompt(String resumeText) {
@@ -116,14 +114,14 @@ public class ResumeParsingService {
                 
                 {
                   "skills": ["skill1", "skill2", ...],
-                  "yearsExperience": <integer>,
+                  "yearsExperience": <integer or null>,
                   "educationLevel": "BACHELORS" | "MASTERS" | "PHD" | "ASSOCIATES" | "HIGH_SCHOOL" | null
                 }
                 
                 Resume text:
                 %s
                 
-                Return only the JSON object, no explanation.
-                """, resumeText.substring(0, Math.min(resumeText.length(), 4000)));
+                Return only the JSON object, no markdown, no explanation.
+                """, resumeText.substring(0, Math.min(resumeText.length(), 6000)));
     }
 }

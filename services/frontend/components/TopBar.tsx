@@ -95,7 +95,7 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-[100] border-b-2 border-black/10 bg-white/98 backdrop-blur-sm">
+      <header className="sticky top-0 z-[100] border-b-2 border-black/10 bg-white/98 backdrop-blur-sm" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
 
           {/* ── Left: Logo ── */}
@@ -178,7 +178,7 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
                   <div className="flex items-center gap-2">
                     <Link
                       href="/login"
-                      className="border-2 border-black/20 bg-white px-3 py-1.5 font-mono text-xs font-bold text-text-secondary transition-all hover:border-black hover:text-text-primary"
+                      className="hidden border-2 border-black/20 bg-white px-3 py-1.5 font-mono text-xs font-bold text-text-secondary transition-all hover:border-black hover:text-text-primary sm:block"
                     >
                       Log in
                     </Link>

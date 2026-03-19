@@ -73,11 +73,11 @@ export default function ApplyModal({ jobId, jobTitle, company, onClose, onSucces
 
   return (
     <div
-      className="fixed inset-0 z-[400] flex items-center justify-center px-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}
+      className="fixed inset-0 z-[400] flex items-center justify-center overflow-hidden px-4 backdrop-blur-sm"
+      style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-md border-[3px] border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+      <div className="w-full max-w-md border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]" style={{ backgroundColor: '#ffffff' }}>
         {/* Title Bar */}
         <div className="flex items-center justify-between border-b-[3px] border-black bg-primary px-4 py-2">
           <h2 className="font-mono text-sm font-bold uppercase">APPLY.EXE</h2>
@@ -89,13 +89,13 @@ export default function ApplyModal({ jobId, jobTitle, company, onClose, onSucces
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="bg-white p-6">
           {result ? (
             <div className="text-center">
               <p className="mb-2 font-mono text-2xl font-bold text-emerald-600">✓ APPLIED</p>
               <p className="font-mono text-sm text-text-secondary">{company} — {jobTitle}</p>
               {result.matchScore > 0 && (
-                <div className="mt-4 border-2 border-black/10 bg-background p-4">
+                <div className="mt-4 border-2 border-black/10 bg-gray-50 p-4">
                   <p className="font-mono text-xs font-bold uppercase text-text-secondary">MATCH SCORE</p>
                   <p className="font-mono text-3xl font-bold text-text-primary">
                     {result.matchScore}<span className="text-lg text-text-secondary">/100</span>
@@ -125,7 +125,7 @@ export default function ApplyModal({ jobId, jobTitle, company, onClose, onSucces
                   <span className="animate-pulse">|</span> Loading resumes...
                 </p>
               ) : resumes.length === 0 ? (
-                <div className="border-2 border-black/10 bg-background p-4">
+                <div className="border-2 border-black/10 bg-gray-50 p-4">
                   <p className="font-mono text-sm font-bold text-text-secondary">No resumes found</p>
                   <p className="mt-1 font-mono text-xs text-text-secondary">
                     Upload a resume in the Vault before applying.

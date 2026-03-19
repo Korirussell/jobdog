@@ -154,6 +154,8 @@ export default function VaultPage() {
   const [uploadError, setUploadError] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollAttemptsRef = useRef(0);
 
   // Analysis
   const [analysisCache, setAnalysisCache] = useState<Record<string, ResumeAnalysis>>({});
@@ -177,11 +179,20 @@ export default function VaultPage() {
   const currentJobFitKey = selectedResumeId && selectedJobId ? `${selectedResumeId}:${selectedJobId}` : '';
   const currentJobFit = currentJobFitKey ? jobFitCache[currentJobFitKey] ?? null : null;
 
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    pollAttemptsRef.current = 0;
+  }, []);
+
   // Load resumes on mount
   useEffect(() => {
     fetchResumes();
     fetchJobs();
-  }, []);
+    return () => stopPolling();
+  }, [stopPolling]);
 
   // Load cached analysis whenever selected resume changes
   useEffect(() => {
@@ -221,6 +232,43 @@ export default function VaultPage() {
     } catch {}
   }
 
+  const startPolling = useCallback((resumeId: string) => {
+    stopPolling();
+    pollAttemptsRef.current = 0;
+    pollingRef.current = setInterval(async () => {
+      pollAttemptsRef.current += 1;
+      if (pollAttemptsRef.current > 20) { // 20 × 3s = 60s max
+        stopPolling();
+        return;
+      }
+      try {
+        const res = await api.getResumes();
+        setResumes(res.items);
+        const target = res.items.find((r) => r.resumeId === resumeId);
+        if (target?.status === 'PARSED') {
+          stopPolling();
+          // Auto-trigger analysis if none exists
+          setAnalysisCache((prev) => {
+            if (!prev[resumeId]) {
+              // Trigger analysis asynchronously
+              api.analyzeResume(resumeId, 'INTERN', 'Software Engineer')
+                .then((result) => {
+                  setAnalysisCache((p) => ({ ...p, [resumeId]: result }));
+                  setActiveTab('overview');
+                })
+                .catch(() => {});
+            }
+            return prev;
+          });
+        } else if (target?.status === 'FAILED') {
+          stopPolling();
+        }
+      } catch {
+        // ignore polling errors
+      }
+    }, 3000);
+  }, [stopPolling]);
+
   async function uploadAndAnalyze(file: File) {
     setUploadError('');
     setUploading(true);
@@ -228,7 +276,10 @@ export default function VaultPage() {
       const uploaded = await api.uploadResume(file);
       const newId = (uploaded as any)?.resumeId ?? null;
       await fetchResumes();
-      if (newId) setSelectedResumeId(newId);
+      if (newId) {
+        setSelectedResumeId(newId);
+        startPolling(newId);
+      }
     } catch (err: any) {
       setUploadError(err?.message || 'Upload failed. Check file size (10 MB max) and format (PDF).');
     } finally {
@@ -433,15 +484,16 @@ export default function VaultPage() {
                     {analyzeError && (
                       <p className="mt-3 font-mono text-xs font-bold text-red-600">⚠ {analyzeError}</p>
                     )}
-                    {selectedResume.status === 'PROCESSING' && (
-                      <p className="mt-3 font-mono text-xs text-yellow-700">
-                        <span className="animate-pulse">⏳</span> Resume is still being parsed — analysis will be available shortly.
-                      </p>
-                    )}
-                    {selectedResume.status === 'UPLOADED' && (
-                      <p className="mt-3 font-mono text-xs text-blue-700">
-                        Resume uploaded — parsing in progress...
-                      </p>
+                    {(selectedResume.status === 'PROCESSING' || selectedResume.status === 'UPLOADED') && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75" />
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500" />
+                        </span>
+                        <p className="font-mono text-xs text-yellow-700">
+                          Parsing resume... auto-checking every 3s. Analysis will start automatically.
+                        </p>
+                      </div>
                     )}
                   </div>
 

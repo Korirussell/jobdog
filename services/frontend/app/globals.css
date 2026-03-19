@@ -151,6 +151,28 @@ body {
   -webkit-backdrop-filter: blur(8px);
 }
 
+/* iOS safe area insets — handles notch, home indicator, Dynamic Island */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.pr-safe {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Ensure fixed bottom elements clear the home indicator on iOS */
+.fixed-bottom-safe {
+  bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Skip link - hidden by default, visible on focus for accessibility */
 .skip-link {
   position: absolute;

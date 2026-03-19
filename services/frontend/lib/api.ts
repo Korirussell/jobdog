@@ -220,19 +220,24 @@ export class ApiClient {
   }
 
   async getApplications() {
-    return this.request<{
-      items: Array<{
-        applicationId: string;
-        jobId: string;
-        jobTitle: string;
-        company: string;
-        status: string;
-        matchScore: number;
-        percentile: number | null;
-        applicantCount: number;
-        appliedAt: string;
-      }>;
-    }>('/api/v1/applications');
+    return this.request<Array<{
+      applicationId: string;
+      jobId: string;
+      jobTitle: string;
+      company: string;
+      status: string;
+      matchScore: number;
+      percentile: number | null;
+      applicantCount: number;
+      appliedAt: string;
+    }>>('/api/v1/applications');
+  }
+
+  async updateApplicationStatus(applicationId: string, status: string) {
+    return this.request<void>(`/api/v1/applications/${applicationId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
   }
 
   // Saved Jobs

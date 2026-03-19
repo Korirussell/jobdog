@@ -25,6 +25,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+record ApplicationListItem(
+        UUID applicationId,
+        UUID jobId,
+        String jobTitle,
+        String company,
+        String status,
+        int matchScore,
+        Integer percentile,
+        int applicantCount,
+        Instant appliedAt
+) {}
+
 @Service
 public class ApplicationService {
 
@@ -205,6 +217,41 @@ public class ApplicationService {
     private int computePercentile(UUID jobId, int currentScore) {
         Integer percentile = applicationScoreRepository.computePercentile(jobId, currentScore);
         return percentile != null ? percentile : 50;
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApplicationListItem> listApplications(UUID userId) {
+        return applicationRepository.findByUser_IdOrderByAppliedAtDesc(userId).stream()
+                .map(app -> {
+                    var score = applicationScoreRepository.findByApplication_Id(app.getId()).orElse(null);
+                    return new ApplicationListItem(
+                            app.getId(),
+                            app.getJob().getId(),
+                            app.getJob().getTitle(),
+                            app.getJob().getCompany(),
+                            app.getStatus().name(),
+                            score != null ? score.getMatchScore() : 0,
+                            score != null ? score.getPercentile() : null,
+                            score != null ? score.getApplicantCount() : 0,
+                            app.getAppliedAt()
+                    );
+                })
+                .toList();
+    }
+
+    @Transactional
+    public void updateStatus(UUID applicationId, UUID userId, String newStatus) {
+        ApplicationEntity app = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new IllegalArgumentException("Application not found"));
+        if (!app.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Application does not belong to user");
+        }
+        try {
+            app.setStatus(ApplicationStatus.valueOf(newStatus.toUpperCase()));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid status: " + newStatus);
+        }
+        applicationRepository.save(app);
     }
 
     private record ScoreComputation(int matchScore, Map<String, Object> matchBreakdown) {
