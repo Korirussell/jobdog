@@ -52,6 +52,15 @@ export class ApiClient {
     });
 
     if (!response.ok) {
+      // If the token is expired/invalid, clear it and redirect to login
+      if (response.status === 401) {
+        this.clearToken();
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login?session=expired';
+        }
+        throw new Error('Session expired. Please log in again.');
+      }
+
       const responseText = await response.text().catch(() => "");
       let message = `API ${response.status}: ${response.statusText}`;
       if (responseText) {
@@ -130,7 +139,13 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      // Try to get the real error message from the response body
+      if (response.status === 401) {
+        this.clearToken();
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login?session=expired';
+        }
+        throw new Error('Session expired. Please log in again.');
+      }
       let msg = `Upload failed (${response.status})`;
       try {
         const body = await response.json();

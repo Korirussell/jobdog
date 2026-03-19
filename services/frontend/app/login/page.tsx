@@ -21,11 +21,13 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, authLoading, router]);
 
-  // Show error if redirected back from a failed OAuth attempt
+  // Show error if redirected back from a failed OAuth attempt or expired session
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('error') === 'oauth_failed') {
       setError('OAuth login failed. Please try again or use email/password.');
+    } else if (params.get('session') === 'expired') {
+      setError('Your session expired. Please log in again.');
     }
   }, []);
 
