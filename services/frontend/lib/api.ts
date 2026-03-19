@@ -1,5 +1,41 @@
 const API_BASE = process.env.NODE_ENV === 'production' ? '' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080');
 
+export interface BulletFeedback {
+  original: string;
+  score: number;
+  issue: string;
+  improved: string;
+}
+
+export interface ResumeAnalysis {
+  analysisId: string;
+  resumeId: string;
+  userLevel: string;
+  targetRole: string;
+  overallScore: number;
+  atsScore: number;
+  atsIssues: string[];
+  sectionScores: Record<string, number>;
+  bulletFeedback: BulletFeedback[];
+  strengths: string[];
+  improvements: string[];
+  summaryVerdict: string;
+  analyzedAt: string;
+}
+
+export interface JobFitResult {
+  fitId: string;
+  resumeId: string;
+  jobId: string;
+  jobTitle: string;
+  company: string;
+  fitScore: number;
+  matchedSkills: string[];
+  missingSkills: string[];
+  fitSummary: string;
+  analyzedAt: string;
+}
+
 export class ApiClient {
   private token: string | null = null;
 
@@ -240,6 +276,34 @@ export class ApiClient {
     }>('/api/v1/roast', {
       method: 'POST',
       body: JSON.stringify({ resumeId, jobId: jobId ?? null }),
+    });
+  }
+
+  // Resume Analysis
+  async getResumeAnalysis(resumeId: string) {
+    const response = await fetch(`${API_BASE}/api/v1/resume-analysis/${resumeId}`, {
+      headers: { ...(this.getToken() ? { 'Authorization': `Bearer ${this.getToken()}` } : {}) },
+    });
+    if (response.status === 204) return null;
+    if (!response.ok) {
+      if (response.status === 401) { this.clearToken(); if (typeof window !== 'undefined') window.location.href = '/login?session=expired'; throw new Error('Session expired.'); }
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body?.message || `Error ${response.status}`);
+    }
+    return response.json() as Promise<ResumeAnalysis>;
+  }
+
+  async analyzeResume(resumeId: string, userLevel: string, targetRole: string) {
+    return this.request<ResumeAnalysis>('/api/v1/resume-analysis', {
+      method: 'POST',
+      body: JSON.stringify({ resumeId, userLevel, targetRole }),
+    });
+  }
+
+  async getJobFitAnalysis(resumeId: string, jobId: string) {
+    return this.request<JobFitResult>('/api/v1/resume-analysis/job-fit', {
+      method: 'POST',
+      body: JSON.stringify({ resumeId, jobId }),
     });
   }
 
