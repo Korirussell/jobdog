@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 
+const API_BASE = process.env.NODE_ENV === 'production' ? (process.env.NEXT_PUBLIC_API_URL || '') : (process.env.NEXT_PUBLIC_API_URL ?? '');
+
 export default function LoginPage() {
   const router = useRouter();
   const { login, register, isAuthenticated, loading: authLoading } = useAuth();
@@ -76,7 +78,7 @@ export default function LoginPage() {
         {/* OAuth Buttons */}
         <div className="mb-6 space-y-3">
           <a
-            href="/oauth2/authorization/google"
+            href={`${API_BASE}/oauth2/authorization/google`}
             className="
               flex w-full items-center justify-center gap-3
               border-2 border-black bg-white px-6 py-3
@@ -97,7 +99,7 @@ export default function LoginPage() {
           </a>
 
           <a
-            href="/oauth2/authorization/github"
+            href={`${API_BASE}/oauth2/authorization/github`}
             className="
               flex w-full items-center justify-center gap-3
               border-2 border-black bg-white px-6 py-3
