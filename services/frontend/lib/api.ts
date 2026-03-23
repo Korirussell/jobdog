@@ -1,11 +1,8 @@
-const API_BASE = process.env.NODE_ENV === 'production' ? '' : (process.env.NEXT_PUBLIC_API_URL ?? '');
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
-if (process.env.NODE_ENV !== 'production' && !API_BASE) {
-  throw new Error('NEXT_PUBLIC_API_URL is required in development');
+if (!API_BASE) {
+  console.warn('NEXT_PUBLIC_API_URL is not set, API calls may fail');
 }
-
-// In production, we use Next.js rewrites to proxy API requests
-// In development, we connect directly to the backend
 
 export interface BulletFeedback {
   original: string;
