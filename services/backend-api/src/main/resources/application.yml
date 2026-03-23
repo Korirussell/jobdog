@@ -71,6 +71,7 @@ app:
     allowed-origins:
       - ${APP_CORS_ALLOWED_ORIGIN_PROD:https://jobdog.dev}
       - ${APP_CORS_ALLOWED_ORIGIN_WWW:https://www.jobdog.dev}
+      - ${APP_CORS_ALLOWED_ORIGIN_VERCEL:}
   r2:
     endpoint: ${APP_R2_ENDPOINT}
     bucket: ${APP_R2_BUCKET:resumes}

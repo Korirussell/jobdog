@@ -3,8 +3,10 @@ package dev.jobdog.backend.resume;
 import dev.jobdog.backend.auth.AuthenticatedUser;
 import dev.jobdog.backend.user.UserEntity;
 import dev.jobdog.backend.user.UserRepository;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -22,15 +24,18 @@ public class ResumeService {
     private final UserRepository userRepository;
     private final StorageService storageService;
     private final ResumeParsingService resumeParsingService;
+    private final ApplicationContext applicationContext;
 
     public ResumeService(ResumeRepository resumeRepository,
                          UserRepository userRepository,
                          StorageService storageService,
-                         ResumeParsingService resumeParsingService) {
+                         ResumeParsingService resumeParsingService,
+                         ApplicationContext applicationContext) {
         this.resumeRepository = resumeRepository;
         this.userRepository = userRepository;
         this.storageService = storageService;
         this.resumeParsingService = resumeParsingService;
+        this.applicationContext = applicationContext;
     }
 
     @Transactional
@@ -86,9 +91,15 @@ public class ResumeService {
 
         ResumeEntity saved = resumeRepository.save(resume);
         
-        resumeParsingService.parseResumeAsync(saved.getId(), bytes);
+        // Publish event to trigger async parsing after transaction commit
+        applicationContext.publishEvent(new ResumeUploadedEvent(saved.getId(), bytes));
         
         return new ResumeUploadResponse(saved.getId(), saved.getStatus().name(), saved.getStorageKey(), saved.getUploadedAt());
+    }
+
+    @TransactionalEventListener
+    public void handleResumeUploaded(ResumeUploadedEvent event) {
+        resumeParsingService.parseResumeAsync(event.getResumeId(), event.getPdfBytes());
     }
 
     private byte[] readBytes(MultipartFile file) {
