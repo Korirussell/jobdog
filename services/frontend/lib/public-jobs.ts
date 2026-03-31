@@ -40,6 +40,15 @@ export function getSiteUrl(path = '') {
   return path ? `${origin}${path.startsWith('/') ? path : `/${path}`}` : origin;
 }
 
+/**
+ * Fetches paginated job listings from the backend API.
+ * Used by Server Components for SSR with automatic revalidation.
+ * Gracefully handles backend failures by returning empty results.
+ * 
+ * @param params URL search parameters for filtering (page, size, location, remote, company, search)
+ * @param init Optional fetch configuration (headers, cache, revalidation)
+ * @returns Paginated job response with items, total count, and last sync timestamp
+ */
 export async function fetchJobs(params: URLSearchParams, init?: RequestInit): Promise<JobsResponse> {
   const qs = params.toString();
   try {
@@ -73,6 +82,16 @@ export async function fetchJobs(params: URLSearchParams, init?: RequestInit): Pr
   }
 }
 
+/**
+ * Fetches full details for a specific job by ID.
+ * Used by dynamic job detail pages for SEO-friendly content.
+ * Throws on 404 to trigger Next.js notFound() handler.
+ * 
+ * @param jobId Unique job identifier (UUID)
+ * @param init Optional fetch configuration (headers, cache, revalidation)
+ * @returns Complete job details including full description text
+ * @throws Error with 'NOT_FOUND' message if job doesn't exist
+ */
 export async function fetchJob(jobId: string, init?: RequestInit): Promise<JobDetail> {
   const response = await fetch(`${getApiOrigin()}/api/v1/jobs/${jobId}`, {
     ...init,
@@ -93,6 +112,13 @@ export async function fetchJob(jobId: string, init?: RequestInit): Promise<JobDe
   return response.json();
 }
 
+/**
+ * Builds URLSearchParams from filter input object.
+ * Only includes parameters with truthy values to keep URLs clean.
+ * 
+ * @param input Filter criteria object
+ * @returns URLSearchParams ready for API request
+ */
 export function buildJobsSearchParams(input: {
   page?: string;
   size?: string;

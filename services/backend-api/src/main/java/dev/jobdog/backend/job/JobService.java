@@ -13,17 +13,36 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Service layer for job listing and retrieval operations.
+ * Implements business logic for job filtering, pagination, and personalized matching.
+ * Demonstrates Service Layer pattern and Dependency Injection.
+ */
 @Service
 public class JobService {
 
     private final JobRepository jobRepository;
     private final LocalMatchingService localMatchingService;
 
+    /**
+     * Constructor injection of dependencies (IoC principle).
+     * @param jobRepository Data access layer for job entities
+     * @param localMatchingService Deterministic matching algorithm for user-job fit
+     */
     public JobService(JobRepository jobRepository, LocalMatchingService localMatchingService) {
         this.jobRepository = jobRepository;
         this.localMatchingService = localMatchingService;
     }
 
+    /**
+     * Retrieves paginated job listings with optional filtering.
+     * For authenticated users, calculates match percentage based on resume profile.
+     * Uses read-only transaction for performance optimization.
+     * 
+     * @param filter Pagination and filter criteria
+     * @param userId Optional user ID for personalized matching (null for anonymous)
+     * @return Paginated job list with match scores and metadata
+     */
     @Transactional(readOnly = true)
     public JobListResponse listActiveJobs(JobFilterRequest filter, UUID userId) {
         // Pageable without sort — ordering is handled by COALESCE in the JPQL queries
@@ -80,6 +99,13 @@ public class JobService {
         return new JobListResponse(items, filter.page(), filter.size(), jobPage.getTotalElements(), lastSync);
     }
 
+    /**
+     * Retrieves full details for a specific active job.
+     * 
+     * @param jobId Unique identifier for the job
+     * @return Complete job details including full description
+     * @throws ResponseStatusException 404 if job not found or inactive
+     */
     @Transactional(readOnly = true)
     public JobDetailResponse getActiveJob(UUID jobId) {
         JobEntity job = jobRepository.findByIdAndStatus(jobId, JobStatus.ACTIVE)

@@ -6,3 +6,5 @@ services/scraper-worker/bin/
 .env
 .idea/
 .vscode/
+SENIOR_ENGINEER_AUDIT.md
+INFRASTRUCTURE_AUDIT.md

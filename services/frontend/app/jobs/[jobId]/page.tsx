@@ -13,6 +13,14 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
 }
 
+/**
+ * Generates dynamic metadata for job detail pages.
+ * Creates SEO-optimized title, description, and Open Graph tags.
+ * Used by Next.js for server-side meta tag generation.
+ * 
+ * @param params Dynamic route parameters containing jobId
+ * @returns Metadata object with title, description, canonical URL, and social tags
+ */
 export async function generateMetadata({ params }: { params: Promise<{ jobId: string }> }): Promise<Metadata> {
   const { jobId } = await params;
 
@@ -48,6 +56,14 @@ export async function generateMetadata({ params }: { params: Promise<{ jobId: st
   }
 }
 
+/**
+ * Server-rendered job detail page with full description.
+ * Implements ISR with 5-minute revalidation for fresh content.
+ * Triggers Next.js notFound() if job doesn't exist.
+ * 
+ * @param params Dynamic route parameters containing jobId
+ * @returns Server component with complete job details
+ */
 export default async function JobDetailPage({ params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await params;
 

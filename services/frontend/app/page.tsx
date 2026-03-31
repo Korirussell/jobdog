@@ -10,6 +10,14 @@ export const metadata: Metadata = {
   description: 'Browse active internship and new grad software roles with crawlable job pages and fresh listings from JobDog.',
 };
 
+/**
+ * Server-rendered home page displaying paginated job listings.
+ * Implements Next.js 15 async searchParams pattern with ISR (revalidate: 300s).
+ * Fetches initial data server-side for SEO and fast initial page load.
+ * 
+ * @param searchParams Async search parameters from URL (page, location, remote, company, search)
+ * @returns Server component with pre-fetched job data passed to client component
+ */
 export default async function Home({
   searchParams,
 }: {
