@@ -43,6 +43,8 @@ public class RoastController {
         result.put("missingDependencies", roast.getMissingDependencies());
         result.put("topDogRank", roast.getTopDogRank());
         result.put("tierName", roast.getTierName());
+        result.put("subScores", roast.getSubScores());
+        result.put("topPros", roast.getTopPros());
         return ResponseEntity.ok(result);
     }
 

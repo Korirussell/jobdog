@@ -326,6 +326,8 @@ export class ApiClient {
       missingDependencies: string[];
       topDogRank: number;
       tierName: string;
+      subScores: Record<string, number>;
+      topPros: string[];
     }>('/api/v1/roast', {
       method: 'POST',
       body: JSON.stringify({ resumeId, jobId: jobId ?? null }),
@@ -378,6 +380,8 @@ export class ApiClient {
       missingDependencies: string[];
       topDogRank: number;
       tierName: string;
+      subScores: Record<string, number>;
+      topPros: string[];
     }>('/api/v1/roast', {
       method: 'POST',
       body: JSON.stringify({ resumeId, jobId }),
