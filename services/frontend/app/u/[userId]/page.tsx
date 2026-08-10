@@ -6,6 +6,7 @@ import Link from 'next/link';
 import TopBar from '@/components/TopBar';
 import { api } from '@/lib/api';
 import { TIERS, getTier } from '@/lib/tiers';
+import { ShareCardSheet } from '@/components/ShareCardSheet';
 
 function ScoreRing({ score, size = 96 }: { score: number; size?: number }) {
   const tier = getTier(score);
@@ -52,7 +53,7 @@ export default function PublicProfilePage() {
   const [profile, setProfile] = useState<Awaited<ReturnType<typeof api.getPublicProfile>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -61,15 +62,6 @@ export default function PublicProfilePage() {
       .catch((e) => setError(e?.message || 'Profile not found'))
       .finally(() => setLoading(false));
   }, [userId]);
-
-  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -101,10 +93,10 @@ export default function PublicProfilePage() {
                 <h1 className="mt-1 font-mono text-2xl font-bold text-text-primary">{profile.displayName}</h1>
               </div>
               <button
-                onClick={handleCopy}
+                onClick={() => setShareOpen(true)}
                 className="flex items-center gap-1.5 border border-black/20 bg-white px-3 py-1.5 font-mono text-[10px] font-bold text-text-secondary transition-colors hover:border-black/40"
               >
-                {copied ? '✓ Copied!' : '🔗 Share'}
+                🔗 Share
               </button>
             </div>
 
@@ -217,6 +209,16 @@ export default function PublicProfilePage() {
           </div>
         )}
       </div>
+
+      {shareOpen && profile?.topScore && (
+        <ShareCardSheet
+          score={profile.topScore.overallScore}
+          tierLabel={getTier(profile.topScore.overallScore).label}
+          pros={profile.topScore.strengths.slice(0, 3)}
+          handle={profile.displayName}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
     </div>
   );
 }

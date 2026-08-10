@@ -6,6 +6,7 @@ import AuthGuard from '@/components/AuthGuard';
 import { api, ResumeAnalysis, BulletFeedback, JobFitResult, RecruiterTakeItem, AtsParsedSections } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { TIERS, getTier } from '@/lib/tiers';
+import { ShareCardSheet } from '@/components/ShareCardSheet';
 
 interface Resume {
   resumeId: string;
@@ -151,6 +152,7 @@ export default function VaultPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState('');
   const [activeTab, setActiveTab] = useState<AnalysisTab>('overview');
+  const [shareOpen, setShareOpen] = useState(false);
 
   // Role targeting
   const [userLevel, setUserLevel] = useState<'INTERN' | 'NEW_GRAD'>('INTERN');
@@ -636,6 +638,12 @@ export default function VaultPage() {
                                   Analyzed for: <span className="font-bold text-text-secondary">{currentAnalysis.userLevel === 'INTERN' ? 'Internship' : 'New Grad'} · {currentAnalysis.targetRole}</span>
                                 </p>
                               </div>
+                              <button
+                                onClick={() => setShareOpen(true)}
+                                className="shrink-0 flex items-center gap-1.5 border-2 border-black bg-primary px-3 py-1.5 font-mono text-xs font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
+                              >
+                                🔗 Share
+                              </button>
                             </div>
                           </div>
 
@@ -990,6 +998,15 @@ export default function VaultPage() {
           </div>
         </div>
       </div>
+
+      {shareOpen && selectedResumeId && analysisCache[selectedResumeId] && (
+        <ShareCardSheet
+          score={analysisCache[selectedResumeId].overallScore}
+          tierLabel={getTier(analysisCache[selectedResumeId].overallScore).label}
+          pros={analysisCache[selectedResumeId].strengths.slice(0, 3)}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
     </AuthGuard>
   );
 }
