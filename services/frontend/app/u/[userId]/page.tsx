@@ -5,18 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import TopBar from '@/components/TopBar';
 import { api } from '@/lib/api';
-
-const TIERS = [
-  { min: 90, label: 'ALPHA DOG', emoji: '🏆', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-300', bar: 'bg-emerald-500' },
-  { min: 75, label: 'GOOD BOY', emoji: '🐕', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-300', bar: 'bg-blue-500' },
-  { min: 60, label: 'FETCH PLAYER', emoji: '🦴', color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-300', bar: 'bg-yellow-500' },
-  { min: 40, label: 'HOUSE TRAINED', emoji: '🏠', color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-300', bar: 'bg-orange-500' },
-  { min: 0, label: 'LOST PUPPY', emoji: '🐾', color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-300', bar: 'bg-red-400' },
-];
-
-function getTier(score: number) {
-  return TIERS.find((t) => score >= t.min) ?? TIERS[TIERS.length - 1];
-}
+import { TIERS, getTier } from '@/lib/tiers';
 
 function ScoreRing({ score, size = 96 }: { score: number; size?: number }) {
   const tier = getTier(score);

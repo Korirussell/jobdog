@@ -5,6 +5,7 @@ import TopBar from '@/components/TopBar';
 import AuthGuard from '@/components/AuthGuard';
 import { api, ResumeAnalysis, BulletFeedback, JobFitResult, RecruiterTakeItem, AtsParsedSections } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { TIERS, getTier } from '@/lib/tiers';
 
 interface Resume {
   resumeId: string;
@@ -18,20 +19,6 @@ interface Job {
   jobId: string;
   title: string;
   company: string;
-}
-
-// Score → tier mapping (matches backend rankToTier thresholds)
-const TIERS = [
-  { min: 90, label: 'ALPHA DOG', emoji: '🏆', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-300', bar: 'bg-emerald-500', desc: 'Top 5% of candidates. FAANG-ready.' },
-  { min: 75, label: 'GOOD BOY', emoji: '🐕', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-300', bar: 'bg-blue-500', desc: 'Strong candidate. Minor polish needed.' },
-  { min: 60, label: 'FETCH PLAYER', emoji: '🦴', color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-300', bar: 'bg-yellow-500', desc: 'Decent but clear gaps for top companies.' },
-  { min: 40, label: 'HOUSE TRAINED', emoji: '🏠', color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-300', bar: 'bg-orange-500', desc: 'Needs significant work.' },
-  { min: 20, label: 'LOST PUPPY', emoji: '🐾', color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-300', bar: 'bg-red-400', desc: 'Major gaps. Start rebuilding.' },
-  { min: 0, label: 'POUND CANDIDATE', emoji: '💀', color: 'text-red-800', bg: 'bg-red-100', border: 'border-red-400', bar: 'bg-red-600', desc: 'Complete overhaul needed.' },
-];
-
-function getTier(score: number) {
-  return TIERS.find((t) => score >= t.min) ?? TIERS[TIERS.length - 1];
 }
 
 function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
