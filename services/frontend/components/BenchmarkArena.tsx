@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { getTier } from '@/lib/tiers';
+import { ShareCardSheet } from '@/components/ShareCardSheet';
 
 interface BenchmarkJob {
   benchmarkId: string;
@@ -27,6 +29,7 @@ export default function BenchmarkArena() {
   const [loading, setLoading] = useState(true);
   const [roasting, setRoasting] = useState(false);
   const [roastResult, setRoastResult] = useState<any>(null);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -49,7 +52,8 @@ export default function BenchmarkArena() {
   async function executeRoast() {
     setRoasting(true);
     setRoastResult(null);
-    
+    setShareOpen(false);
+
     try {
       // Get user's most recent resume
       const resumesRes = await api.getResumes();
@@ -194,13 +198,21 @@ export default function BenchmarkArena() {
             <h2 className="font-mono text-lg font-bold text-text-primary">
               ROAST RESULTS
             </h2>
-            <div className="text-right">
-              <div className="font-mono text-2xl font-bold text-text-primary">
-                {roastResult.topDogRank}/100
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <div className="font-mono text-2xl font-bold text-text-primary">
+                  {roastResult.topDogRank}/100
+                </div>
+                <div className="font-mono text-xs text-text-tertiary">
+                  {roastResult.tierName.replace(/_/g, ' ')}
+                </div>
               </div>
-              <div className="font-mono text-xs text-text-tertiary">
-                {roastResult.tierName.replace(/_/g, ' ')}
-              </div>
+              <button
+                onClick={() => setShareOpen(true)}
+                className="shrink-0 border-2 border-black bg-primary px-3 py-2 font-mono text-xs font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
+              >
+                🔗 SHARE
+              </button>
             </div>
           </div>
 
@@ -233,6 +245,16 @@ export default function BenchmarkArena() {
             )}
           </div>
         </div>
+      )}
+
+      {shareOpen && roastResult && (
+        <ShareCardSheet
+          score={roastResult.topDogRank}
+          tierLabel={getTier(roastResult.topDogRank).label}
+          pros={roastResult.topPros ?? []}
+          subScores={roastResult.subScores}
+          onClose={() => setShareOpen(false)}
+        />
       )}
     </div>
   );

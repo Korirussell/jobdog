@@ -9,15 +9,19 @@ interface ShareCardSheetProps {
   jobFit?: string;
   percentile?: number;
   handle?: string;
+  subScores?: Record<string, number>;
   onClose: () => void;
 }
 
-export function ShareCardSheet({ score, tierLabel, pros, jobFit, percentile, handle, onClose }: ShareCardSheetProps) {
+export function ShareCardSheet({ score, tierLabel, pros, jobFit, percentile, handle, subScores, onClose }: ShareCardSheetProps) {
+  const hasSubScores = Boolean(subScores && Object.keys(subScores).length > 0);
+
   const [ratio, setRatio] = useState<'9:16' | '1:1'>('1:1');
   const [showPros, setShowPros] = useState(true);
   const [showJobFit, setShowJobFit] = useState(Boolean(jobFit));
   const [showPercentile, setShowPercentile] = useState(Boolean(percentile));
   const [showHandle, setShowHandle] = useState(Boolean(handle));
+  const [showSubScores, setShowSubScores] = useState(hasSubScores);
 
   const imageUrl = useMemo(() => {
     const params = new URLSearchParams();
@@ -28,8 +32,17 @@ export function ShareCardSheet({ score, tierLabel, pros, jobFit, percentile, han
     if (showJobFit && jobFit) params.set('jobFit', jobFit);
     if (showPercentile && percentile != null) params.set('percentile', String(percentile));
     if (showHandle && handle) params.set('handle', handle);
-    return `/api/og/resume-card?${params.toString()}`;
-  }, [score, tierLabel, ratio, showPros, showJobFit, showPercentile, showHandle, pros, jobFit, percentile, handle]);
+    if (showSubScores && subScores) {
+      // Encoding: "key:value|key:value", value rounded to a 0-100 integer.
+      // URLSearchParams percent-encodes the whole thing on toString().
+      const encoded = Object.entries(subScores)
+        .filter(([, value]) => Number.isFinite(value))
+        .map(([key, value]) => `${key}:${Math.round(Math.max(0, Math.min(100, value)))}`)
+        .join('|');
+      if (encoded) params.set('subScores', encoded);
+    }
+    return `/og/resume-card?${params.toString()}`;
+  }, [score, tierLabel, ratio, showPros, showJobFit, showPercentile, showHandle, showSubScores, pros, jobFit, percentile, handle, subScores]);
 
   async function handleDownload() {
     const response = await fetch(imageUrl);
@@ -72,6 +85,12 @@ export function ShareCardSheet({ score, tierLabel, pros, jobFit, percentile, han
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={showPros} onChange={(e) => setShowPros(e.target.checked)} />
               Top 3 pros
+            </label>
+          )}
+          {hasSubScores && (
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={showSubScores} onChange={(e) => setShowSubScores(e.target.checked)} />
+              Sub-score breakdown
             </label>
           )}
           {jobFit && (
