@@ -9,4 +9,6 @@ public interface ResumeProfileRepository extends JpaRepository<ResumeProfileEnti
 
     Optional<ResumeProfileEntity> findByResume_Id(UUID resumeId);
     Optional<ResumeProfileEntity> findTopByResume_User_IdOrderByResume_UploadedAtDesc(UUID userId);
+
+    void deleteByResume_Id(UUID resumeId);
 }

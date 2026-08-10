@@ -8,4 +8,6 @@ import java.util.UUID;
 public interface RoastHistoryRepository extends JpaRepository<RoastHistoryEntity, UUID> {
 
     List<RoastHistoryEntity> findByUser_IdOrderByRoastedAtDesc(UUID userId);
+
+    void deleteByResume_Id(UUID resumeId);
 }

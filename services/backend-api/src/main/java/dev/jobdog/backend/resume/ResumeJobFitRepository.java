@@ -8,4 +8,6 @@ import java.util.UUID;
 public interface ResumeJobFitRepository extends JpaRepository<ResumeJobFitEntity, UUID> {
 
     Optional<ResumeJobFitEntity> findByResume_IdAndJob_Id(UUID resumeId, UUID jobId);
+
+    void deleteByResume_Id(UUID resumeId);
 }

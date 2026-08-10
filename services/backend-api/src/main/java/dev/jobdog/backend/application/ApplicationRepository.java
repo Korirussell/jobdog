@@ -13,4 +13,6 @@ public interface ApplicationRepository extends JpaRepository<ApplicationEntity, 
     List<ApplicationEntity> findByJob_IdOrderByAppliedAtDesc(UUID jobId);
 
     List<ApplicationEntity> findByUser_IdOrderByAppliedAtDesc(UUID userId);
+
+    List<ApplicationEntity> findByResume_Id(UUID resumeId);
 }

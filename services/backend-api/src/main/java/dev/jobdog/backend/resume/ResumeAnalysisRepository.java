@@ -10,4 +10,6 @@ public interface ResumeAnalysisRepository extends JpaRepository<ResumeAnalysisEn
     Optional<ResumeAnalysisEntity> findTopByResume_IdOrderByAnalyzedAtDesc(UUID resumeId);
 
     Optional<ResumeAnalysisEntity> findTopByResume_User_IdOrderByOverallScoreDescAnalyzedAtDesc(UUID userId);
+
+    void deleteByResume_Id(UUID resumeId);
 }

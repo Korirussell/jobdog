@@ -1,6 +1,8 @@
 package dev.jobdog.backend.resume;
 
+import dev.jobdog.backend.application.ApplicationRepository;
 import dev.jobdog.backend.auth.AuthenticatedUser;
+import dev.jobdog.backend.roast.RoastHistoryRepository;
 import dev.jobdog.backend.user.UserEntity;
 import dev.jobdog.backend.user.UserRepository;
 import org.springframework.context.ApplicationContext;
@@ -25,17 +27,32 @@ public class ResumeService {
     private final StorageService storageService;
     private final ResumeParsingService resumeParsingService;
     private final ApplicationContext applicationContext;
+    private final ApplicationRepository applicationRepository;
+    private final ResumeAnalysisRepository resumeAnalysisRepository;
+    private final ResumeJobFitRepository resumeJobFitRepository;
+    private final RoastHistoryRepository roastHistoryRepository;
+    private final ResumeProfileRepository resumeProfileRepository;
 
     public ResumeService(ResumeRepository resumeRepository,
                          UserRepository userRepository,
                          StorageService storageService,
                          ResumeParsingService resumeParsingService,
-                         ApplicationContext applicationContext) {
+                         ApplicationContext applicationContext,
+                         ApplicationRepository applicationRepository,
+                         ResumeAnalysisRepository resumeAnalysisRepository,
+                         ResumeJobFitRepository resumeJobFitRepository,
+                         RoastHistoryRepository roastHistoryRepository,
+                         ResumeProfileRepository resumeProfileRepository) {
         this.resumeRepository = resumeRepository;
         this.userRepository = userRepository;
         this.storageService = storageService;
         this.resumeParsingService = resumeParsingService;
         this.applicationContext = applicationContext;
+        this.applicationRepository = applicationRepository;
+        this.resumeAnalysisRepository = resumeAnalysisRepository;
+        this.resumeJobFitRepository = resumeJobFitRepository;
+        this.roastHistoryRepository = roastHistoryRepository;
+        this.resumeProfileRepository = resumeProfileRepository;
     }
 
     @Transactional
@@ -127,7 +144,19 @@ public class ResumeService {
         if (!resume.getUser().getId().equals(userId)) {
             throw new IllegalArgumentException("Resume does not belong to user");
         }
-        // Best-effort R2 deletion — don't fail if storage delete fails
+
+        long applicationCount = applicationRepository.findByResume_Id(resumeId).size();
+        if (applicationCount > 0) {
+            throw new ResumeInUseException(
+                    "Resume is attached to " + applicationCount + " application(s); remove those first");
+        }
+
+        resumeJobFitRepository.deleteByResume_Id(resumeId);
+        resumeAnalysisRepository.deleteByResume_Id(resumeId);
+        roastHistoryRepository.deleteByResume_Id(resumeId);
+        resumeProfileRepository.deleteByResume_Id(resumeId);
+
+        // Best-effort R2 deletion — don't fail the whole operation if storage delete fails
         if (resume.getStorageKey() != null && !resume.getStorageKey().startsWith("local-fallback/")) {
             try {
                 storageService.deleteObject(resume.getStorageKey());
