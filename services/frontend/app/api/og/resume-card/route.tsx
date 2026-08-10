@@ -5,7 +5,8 @@ export const runtime = 'edge';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const score = Math.max(0, Math.min(100, Number(searchParams.get('score') ?? '0')));
+  const rawScore = Number(searchParams.get('score') ?? '0');
+  const score = Math.max(0, Math.min(100, Number.isFinite(rawScore) ? rawScore : 0));
   const ratio = searchParams.get('ratio') === '9:16' ? '9:16' : '1:1';
   const pros = (searchParams.get('pros') ?? '').split('|').filter(Boolean).slice(0, 3);
   const jobFit = searchParams.get('jobFit');
