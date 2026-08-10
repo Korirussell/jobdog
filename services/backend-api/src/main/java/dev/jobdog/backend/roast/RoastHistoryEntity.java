@@ -50,6 +50,17 @@ public class RoastHistoryEntity extends BaseEntity {
     @Column(nullable = false)
     private Instant roastedAt;
 
+    @Column(length = 64)
+    private String contentHash;
+
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private java.util.Map<String, Double> subScores;
+
+    @Convert(converter = StringListConverter.class)
+    @Column(columnDefinition = "jsonb")
+    private List<String> topPros;
+
     public UserEntity getUser() { return user; }
     public void setUser(UserEntity user) { this.user = user; }
     public ResumeEntity getResume() { return resume; }
@@ -66,4 +77,10 @@ public class RoastHistoryEntity extends BaseEntity {
     public void setTierName(String tierName) { this.tierName = tierName; }
     public Instant getRoastedAt() { return roastedAt; }
     public void setRoastedAt(Instant roastedAt) { this.roastedAt = roastedAt; }
+    public String getContentHash() { return contentHash; }
+    public void setContentHash(String contentHash) { this.contentHash = contentHash; }
+    public java.util.Map<String, Double> getSubScores() { return subScores; }
+    public void setSubScores(java.util.Map<String, Double> subScores) { this.subScores = subScores; }
+    public List<String> getTopPros() { return topPros; }
+    public void setTopPros(List<String> topPros) { this.topPros = topPros; }
 }
