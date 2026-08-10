@@ -12,6 +12,7 @@ import dev.jobdog.backend.resume.ResumeEntity;
 import dev.jobdog.backend.resume.ResumeProfileEntity;
 import dev.jobdog.backend.resume.ResumeProfileRepository;
 import dev.jobdog.backend.resume.ResumeRepository;
+import dev.jobdog.backend.resume.ResumeScoringUtils;
 import dev.jobdog.backend.user.UserEntity;
 import dev.jobdog.backend.user.UserRepository;
 import org.springframework.stereotype.Service;
@@ -19,10 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 record ApplicationListItem(
@@ -152,10 +151,10 @@ public class ApplicationService {
     private ScoreComputation computeScore(ResumeProfileEntity resumeProfile,
                                           JobRequirementProfileEntity jobProfile,
                                           JobEntity job) {
-        double requiredCoverage = coverage(resumeProfile.getSkills(), jobProfile.getRequiredSkills());
-        double preferredCoverage = coverage(resumeProfile.getSkills(), jobProfile.getPreferredSkills());
-        double experienceAlignment = experienceAlignment(resumeProfile.getYearsExperience(), job.getMinimumYearsExperience());
-        double educationAlignment = educationAlignment(resumeProfile.getEducationLevel(), job.getEducationLevel());
+        double requiredCoverage = ResumeScoringUtils.coverage(resumeProfile.getSkills(), jobProfile.getRequiredSkills());
+        double preferredCoverage = ResumeScoringUtils.coverage(resumeProfile.getSkills(), jobProfile.getPreferredSkills());
+        double experienceAlignment = ResumeScoringUtils.experienceAlignment(resumeProfile.getYearsExperience(), job.getMinimumYearsExperience());
+        double educationAlignment = ResumeScoringUtils.educationAlignment(resumeProfile.getEducationLevel(), job.getEducationLevel());
 
         int matchScore = (int) Math.round(
                 (requiredCoverage * 60)
@@ -171,49 +170,6 @@ public class ApplicationService {
         breakdown.put("educationAlignment", educationAlignment);
 
         return new ScoreComputation(matchScore, breakdown);
-    }
-
-    private double coverage(List<String> candidateSkills, List<String> jobSkills) {
-        if (jobSkills == null || jobSkills.isEmpty()) {
-            return 1.0;
-        }
-        Set<String> normalizedCandidateSkills = normalize(candidateSkills);
-        Set<String> normalizedJobSkills = normalize(jobSkills);
-        long matched = normalizedJobSkills.stream().filter(normalizedCandidateSkills::contains).count();
-        return (double) matched / normalizedJobSkills.size();
-    }
-
-    private Set<String> normalize(List<String> values) {
-        Set<String> normalized = new HashSet<>();
-        if (values == null) {
-            return normalized;
-        }
-        for (String value : values) {
-            if (value != null && !value.isBlank()) {
-                normalized.add(value.trim().toLowerCase());
-            }
-        }
-        return normalized;
-    }
-
-    private double experienceAlignment(Integer candidateYears, Integer requiredYears) {
-        if (requiredYears == null || requiredYears <= 0) {
-            return 1.0;
-        }
-        if (candidateYears == null || candidateYears < 0) {
-            return 0.0;
-        }
-        return Math.min(1.0, (double) candidateYears / requiredYears);
-    }
-
-    private double educationAlignment(String candidateEducation, String requiredEducation) {
-        if (requiredEducation == null || requiredEducation.isBlank()) {
-            return 1.0;
-        }
-        if (candidateEducation == null || candidateEducation.isBlank()) {
-            return 0.0;
-        }
-        return candidateEducation.trim().equalsIgnoreCase(requiredEducation.trim()) ? 1.0 : 0.5;
     }
 
     private int computePercentile(UUID jobId, int currentScore) {
