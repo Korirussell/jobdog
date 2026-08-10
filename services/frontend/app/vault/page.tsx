@@ -154,6 +154,7 @@ export default function VaultPage() {
   const [uploadError, setUploadError] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollAttemptsRef = useRef(0);
@@ -306,6 +307,7 @@ export default function VaultPage() {
   async function handleDeleteResume(resumeId: string) {
     if (!confirm('Delete this resume? This cannot be undone.')) return;
     setDeletingId(resumeId);
+    setDeleteError(null);
     try {
       await api.deleteResume(resumeId);
       setResumes((prev) => prev.filter((r) => r.resumeId !== resumeId));
@@ -315,7 +317,7 @@ export default function VaultPage() {
         setSelectedResumeId(remaining.length > 0 ? remaining[0].resumeId : null);
       }
     } catch (err: any) {
-      alert('Failed to delete resume: ' + (err?.message || 'Unknown error'));
+      setDeleteError(err?.message || 'Failed to delete resume.');
     } finally {
       setDeletingId(null);
     }
@@ -403,6 +405,12 @@ export default function VaultPage() {
               </div>
               {uploadError && (
                 <p className="font-mono text-xs font-bold text-red-600">⚠ {uploadError}</p>
+              )}
+
+              {deleteError && (
+                <div className="mb-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {deleteError}
+                </div>
               )}
 
               {/* Resume list */}
