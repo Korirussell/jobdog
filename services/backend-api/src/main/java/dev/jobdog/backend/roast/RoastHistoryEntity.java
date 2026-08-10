@@ -59,6 +59,7 @@ public class RoastHistoryEntity extends BaseEntity {
 
     @Convert(converter = StringListConverter.class)
     @Column(columnDefinition = "jsonb")
+    @ColumnTransformer(write = "?::jsonb")
     private List<String> topPros;
 
     public UserEntity getUser() { return user; }

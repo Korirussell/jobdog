@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HexFormat;
@@ -32,6 +33,7 @@ public class RoastService {
             List.of("Data Structures", "Algorithms", "Git", "SQL");
     private static final List<String> GENERAL_PREFERRED_SKILLS =
             List.of("React", "AWS", "Docker", "Kubernetes", "System Design", "CI/CD");
+    private static final Duration CACHE_TTL = Duration.ofDays(90);
 
     private final ResumeRepository resumeRepository;
     private final JobRepository jobRepository;
@@ -198,16 +200,16 @@ public class RoastService {
         String tierName = rankToTier(topDogRank);
 
         Map<String, Double> subScores = Map.of(
-                "requiredSkillCoverage", requiredCoverage,
-                "preferredSkillCoverage", preferredCoverage,
-                "experienceAlignment", experienceAlignment,
-                "educationAlignment", educationAlignment,
+                "requiredSkillCoverage", requiredCoverage * 100,
+                "preferredSkillCoverage", preferredCoverage * 100,
+                "experienceAlignment", experienceAlignment * 100,
+                "educationAlignment", educationAlignment * 100,
                 "writingQuality", writingQuality
         );
 
         RoastGradeCacheEntry entry = new RoastGradeCacheEntry(
                 topDogRank, tierName, subScores, topPros, brutalRoastText, missingDependencies);
-        roastGradeRedisTemplate.opsForValue().set(contentHash, entry);
+        roastGradeRedisTemplate.opsForValue().set(contentHash, entry, CACHE_TTL);
         return entry;
     }
 

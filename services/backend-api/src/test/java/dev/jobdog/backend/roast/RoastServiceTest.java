@@ -19,6 +19,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -119,7 +120,7 @@ class RoastServiceTest {
         roastService.roast(userId, resumeId, null);
 
         verify(openAiService, times(1)).createChatCompletion(any());
-        verify(valueOperations, times(1)).set(anyString(), any(RoastGradeCacheEntry.class));
+        verify(valueOperations, times(1)).set(anyString(), any(RoastGradeCacheEntry.class), any(Duration.class));
         verify(roastHistoryRepository, times(1)).save(any());
     }
 }
