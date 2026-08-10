@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { href: '/saved', label: 'Saved', authOnly: true },
   { href: '/applications', label: 'Applied', authOnly: true },
   { href: '/vault', label: 'Vault', authOnly: true },
+  { href: '/battle', label: 'Battle', authOnly: true },
 ];
 
 interface TopBarProps {
@@ -300,6 +301,7 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
             {[
               { href: '/', label: 'Jobs', icon: '💼' },
               { href: '/vault', label: 'Resume Vault', icon: '📁' },
+              { href: '/battle', label: 'Resume Battle', icon: '⚔' },
               { href: '/saved', label: 'Saved Jobs', icon: '★' },
               { href: '/applications', label: 'Applications', icon: '📋' },
               { href: '/settings', label: 'Settings', icon: '⚙' },
