@@ -116,6 +116,14 @@ func main() {
 			log.Error().Err(err).Msg("Failed to mark stale jobs")
 		}
 
+		log.Info().Msg("Purging old closed jobs")
+		purgedCount, err := jobRepo.PurgeOldClosedJobs(90 * 24 * time.Hour)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to purge old closed jobs")
+		} else {
+			log.Info().Int64("count", purgedCount).Msg("Purged old closed jobs")
+		}
+
 		log.Info().Msg("Running URL liveness check")
 		if err := urlChecker.CheckAndPruneURLs(context.Background()); err != nil {
 			log.Error().Err(err).Msg("URL liveness check failed")

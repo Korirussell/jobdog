@@ -136,6 +136,22 @@ func (r *JobRepository) MarkStaleJobsAsClosed(olderThan time.Duration) error {
 	return nil
 }
 
+func (r *JobRepository) PurgeOldClosedJobs(olderThan time.Duration) (int64, error) {
+	cutoff := time.Now().Add(-olderThan)
+	result, err := r.db.Exec(
+		`DELETE FROM jobs WHERE status = 'CLOSED' AND scraped_at < $1`,
+		cutoff,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("purging old closed jobs: %w", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("getting purge rows affected: %w", err)
+	}
+	return rowsAffected, nil
+}
+
 type ActiveJob struct {
 	ID        string
 	SourceURL string
