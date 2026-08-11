@@ -108,6 +108,7 @@ func (s *WorkdayScraper) ScrapeCompany(ctx context.Context, company, workdayURL 
 			Status:          "ACTIVE",
 			PostedAt:        &postedAt,
 		}
+		job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
 
 		jobID, err := s.repo.UpsertJob(&job)
 		if err != nil {

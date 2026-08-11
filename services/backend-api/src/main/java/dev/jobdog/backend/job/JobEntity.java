@@ -50,6 +50,9 @@ public class JobEntity extends BaseEntity {
     @Column(length = 64)
     private String educationLevel;
 
+    @Column(length = 16)
+    private String experienceLevel;
+
     @Column
     private Instant postedAt;
 
@@ -150,6 +153,14 @@ public class JobEntity extends BaseEntity {
 
     public void setEducationLevel(String educationLevel) {
         this.educationLevel = educationLevel;
+    }
+
+    public String getExperienceLevel() {
+        return experienceLevel;
+    }
+
+    public void setExperienceLevel(String experienceLevel) {
+        this.experienceLevel = experienceLevel;
     }
 
     public Instant getPostedAt() {

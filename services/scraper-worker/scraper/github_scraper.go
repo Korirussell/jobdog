@@ -45,6 +45,7 @@ func (s *GitHubScraper) ScrapeSimplifyRepo(ctx context.Context) error {
 	log.Info().Int("count", len(jobs)).Msg("Parsed jobs from Simplify repo")
 
 	for _, job := range jobs {
+		job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
 		jobID, err := s.repo.UpsertJob(&job)
 		if err != nil {
 			log.Error().Err(err).Str("company", job.Company).Msg("Failed to upsert job")

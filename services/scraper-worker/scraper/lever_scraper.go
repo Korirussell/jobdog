@@ -135,6 +135,7 @@ func (s *LeverScraper) ScrapeCompany(ctx context.Context, company, slug string) 
 			Status:          "ACTIVE",
 			PostedAt:        &postedAt,
 		}
+		job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
 
 		jobID, err := s.repo.UpsertJob(&job)
 		if err != nil {

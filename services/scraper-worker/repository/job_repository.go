@@ -33,9 +33,9 @@ func (r *JobRepository) UpsertJob(job *models.Job) (string, error) {
 		INSERT INTO jobs (
 			id, source, source_job_id, source_url, title, company, location,
 			employment_type, description_text, description_hash, status,
-			minimum_years_experience, education_level, posted_at, scraped_at,
+			minimum_years_experience, education_level, experience_level, posted_at, scraped_at,
 			created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $16)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $17)
 		ON CONFLICT (source_url)
 		DO UPDATE SET
 			title = EXCLUDED.title,
@@ -45,6 +45,7 @@ func (r *JobRepository) UpsertJob(job *models.Job) (string, error) {
 			description_text = EXCLUDED.description_text,
 			description_hash = EXCLUDED.description_hash,
 			status = 'ACTIVE',
+			experience_level = EXCLUDED.experience_level,
 			posted_at = COALESCE(jobs.posted_at, EXCLUDED.posted_at),
 			scraped_at = EXCLUDED.scraped_at,
 			updated_at = EXCLUDED.updated_at
@@ -56,7 +57,7 @@ func (r *JobRepository) UpsertJob(job *models.Job) (string, error) {
 		query,
 		job.ID, job.Source, job.SourceJobID, job.SourceURL, job.Title, job.Company,
 		job.Location, job.EmploymentType, job.DescriptionText, job.DescriptionHash,
-		job.Status, job.MinimumYearsExperience, job.EducationLevel, job.PostedAt,
+		job.Status, job.MinimumYearsExperience, job.EducationLevel, job.ExperienceLevel, job.PostedAt,
 		job.ScrapedAt, time.Now(),
 	).Scan(&id)
 

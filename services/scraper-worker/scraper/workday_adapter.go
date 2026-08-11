@@ -291,7 +291,8 @@ func (w *WorkdayAdapter) fetchDetailAndUpsert(ctx context.Context, company, base
 		Status:          "ACTIVE",
 		PostedAt:        &postedAt,
 	}
-	
+	job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
+
 	jobID, err := w.repo.UpsertJob(job)
 	if err != nil {
 		return fmt.Errorf("failed to upsert job: %w", err)
