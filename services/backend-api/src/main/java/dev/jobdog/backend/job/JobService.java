@@ -1,5 +1,6 @@
 package dev.jobdog.backend.job;
 
+import dev.jobdog.backend.ghost.GhostScoreService;
 import dev.jobdog.backend.matching.LocalMatchingService;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
@@ -10,8 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Service layer for job listing and retrieval operations.
@@ -23,15 +27,19 @@ public class JobService {
 
     private final JobRepository jobRepository;
     private final LocalMatchingService localMatchingService;
+    private final GhostScoreService ghostScoreService;
 
     /**
      * Constructor injection of dependencies (IoC principle).
      * @param jobRepository Data access layer for job entities
      * @param localMatchingService Deterministic matching algorithm for user-job fit
+     * @param ghostScoreService Batched Ghost Score lookup for job-card metadata
      */
-    public JobService(JobRepository jobRepository, LocalMatchingService localMatchingService) {
+    public JobService(JobRepository jobRepository, LocalMatchingService localMatchingService,
+                       GhostScoreService ghostScoreService) {
         this.jobRepository = jobRepository;
         this.localMatchingService = localMatchingService;
+        this.ghostScoreService = ghostScoreService;
     }
 
     /**
@@ -63,6 +71,14 @@ public class JobService {
             jobPage = jobRepository.findByStatusOrderByEffectiveDateDesc(JobStatus.ACTIVE, pageable);
         }
 
+        // Batch-compute Ghost Scores for every distinct company on this page in one pass,
+        // instead of issuing a per-company lookup for each job.
+        Set<String> pageCompanies = jobPage.getContent().stream()
+                .map(JobEntity::getCompany)
+                .filter(company -> company != null && !company.isBlank())
+                .collect(Collectors.toSet());
+        Map<String, Double> ghostScoresByCompany = ghostScoreService.computeGhostScores(pageCompanies);
+
         List<JobSummaryResponse> items = jobPage.getContent()
                 .stream()
                 .map(job -> {
@@ -71,14 +87,19 @@ public class JobService {
                     if (userId != null) {
                         try {
                             matchPercentage = localMatchingService.calculateUserJobMatch(
-                                userId, 
+                                userId,
                                 job.getDescriptionText()
                             );
                         } catch (Exception e) {
                             // If matching fails, just return null - don't break the feed
                         }
                     }
-                    
+
+                    String companyTier = CompanyTier.lookup(job.getCompany());
+                    Double ghostScore = job.getCompany() == null
+                            ? null
+                            : ghostScoresByCompany.get(job.getCompany().trim().toLowerCase());
+
                     return new JobSummaryResponse(
                             job.getId(),
                             job.getTitle(),
@@ -89,7 +110,10 @@ public class JobService {
                             job.getScrapedAt(),
                             job.getStatus().name(),
                             job.getSourceUrl(),
-                            matchPercentage
+                            matchPercentage,
+                            companyTier,
+                            ghostScore,
+                            job.getExperienceLevel()
                     );
                 })
                 .toList();

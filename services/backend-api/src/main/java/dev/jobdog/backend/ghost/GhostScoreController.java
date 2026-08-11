@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,15 +28,18 @@ public class GhostScoreController {
     private final JobRepository jobRepository;
     private final UserRepository userRepository;
     private final CurrentUser currentUser;
+    private final GhostScoreService ghostScoreService;
 
     public GhostScoreController(GhostReportRepository ghostReportRepository,
                                 JobRepository jobRepository,
                                 UserRepository userRepository,
-                                CurrentUser currentUser) {
+                                CurrentUser currentUser,
+                                GhostScoreService ghostScoreService) {
         this.ghostReportRepository = ghostReportRepository;
         this.jobRepository = jobRepository;
         this.userRepository = userRepository;
         this.currentUser = currentUser;
+        this.ghostScoreService = ghostScoreService;
     }
 
     @GetMapping
@@ -46,14 +48,10 @@ public class GhostScoreController {
         List<JobEntity> companyJobs = jobRepository.findByCompanyIgnoreCase(company);
 
         long totalJobs = companyJobs.size();
-        double avgDaysOpen = companyJobs.stream()
-                .filter(j -> j.getPostedAt() != null)
-                .mapToLong(j -> Duration.between(j.getPostedAt(), Instant.now()).toDays())
-                .average()
-                .orElse(0.0);
+        double avgDaysOpen = ghostScoreService.averageDaysOpen(companyJobs);
 
         // Ghost score: weighted formula based on avg days open + ghost report ratio
-        int ghostScore = computeGhostScore(avgDaysOpen, ghostReports, totalJobs);
+        int ghostScore = ghostScoreService.computeGhostScore(avgDaysOpen, ghostReports, totalJobs);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("company", company);
@@ -87,18 +85,5 @@ public class GhostScoreController {
 
         ghostReportRepository.save(report);
         return ResponseEntity.ok(Map.of("status", "reported"));
-    }
-
-    private int computeGhostScore(double avgDaysOpen, long ghostReports, long totalJobs) {
-        if (totalJobs == 0) return 0;
-
-        // Days component: jobs open > 60 days are suspicious, > 120 days very suspicious
-        double daysComponent = Math.min(1.0, avgDaysOpen / 120.0) * 50;
-
-        // Ghost report ratio component
-        double reportRatio = (double) ghostReports / Math.max(1, totalJobs);
-        double reportComponent = Math.min(1.0, reportRatio) * 50;
-
-        return (int) Math.round(Math.min(100, daysComponent + reportComponent));
     }
 }

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,6 +43,14 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
 
     @Query("SELECT j FROM JobEntity j WHERE LOWER(j.company) = LOWER(:company)")
     List<JobEntity> findByCompanyIgnoreCase(@Param("company") String company);
+
+    /**
+     * Batched variant of {@link #findByCompanyIgnoreCase(String)} — fetches jobs for a set of
+     * (already-lowercased) companies in one query, used by the batched Ghost Score lookup so a
+     * page of job listings spanning many distinct companies doesn't trigger one query per company.
+     */
+    @Query("SELECT j FROM JobEntity j WHERE LOWER(j.company) IN :companies")
+    List<JobEntity> findByCompanyIgnoreCaseIn(@Param("companies") Collection<String> companies);
 
     @Query("SELECT MAX(COALESCE(j.postedAt, j.scrapedAt)) FROM JobEntity j WHERE j.status = dev.jobdog.backend.job.JobStatus.ACTIVE")
     java.time.Instant findLatestEffectiveDateForActiveJobs();

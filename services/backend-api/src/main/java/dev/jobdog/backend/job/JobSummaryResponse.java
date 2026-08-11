@@ -13,6 +13,9 @@ public record JobSummaryResponse(
         Instant scrapedAt,
         String jobStatus,
         String applyUrl,
-        Integer matchPercentage
+        Integer matchPercentage,
+        String companyTier,
+        Double ghostScore,
+        String experienceLevel
 ) {
 }
