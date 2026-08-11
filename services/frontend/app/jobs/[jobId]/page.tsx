@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 import { createJobMetadataDescription, fetchJob, getSiteUrl } from '@/lib/public-jobs';
+import JobDetailApplyButton from './JobDetailApplyButton';
 
 export const revalidate = 300;
 
@@ -98,14 +99,12 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
               {scrapedLabel && <span>Synced {scrapedLabel}</span>}
             </div>
             <div className="mt-6">
-              <a
-                href={job.applyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex border-2 border-black bg-primary px-4 py-2 font-mono text-xs font-bold text-text-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
-              >
-                Apply ↗
-              </a>
+              <JobDetailApplyButton
+                jobId={job.jobId}
+                jobTitle={job.title}
+                company={job.company}
+                applyUrl={job.applyUrl}
+              />
             </div>
           </header>
 

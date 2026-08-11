@@ -75,7 +75,7 @@ export default function ApplyModal({ jobId, jobTitle, company, applyUrl, onClose
     matchScore: number;
     percentile: number | null;
     benchmarkState: string;
-    earlyApplicantMessage: string | null;
+    message: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -105,7 +105,7 @@ export default function ApplyModal({ jobId, jobTitle, company, applyUrl, onClose
         matchScore: res.matchScore,
         percentile: res.percentile ?? null,
         benchmarkState: res.benchmarkState,
-        earlyApplicantMessage: res.earlyApplicantMessage ?? null,
+        message: res.message ?? null,
       });
       onSuccess(jobId);
     } catch (err: any) {
@@ -159,7 +159,7 @@ export default function ApplyModal({ jobId, jobTitle, company, applyUrl, onClose
                     of {result.matchScore > 0 ? `applicants · match score ${result.matchScore}/100` : 'applicants'}
                   </p>
                 </div>
-              ) : result.earlyApplicantMessage ? (
+              ) : result.message ? (
                 <div className="border border-emerald-200 bg-emerald-50 px-4 py-3">
                   <p className="font-mono text-xs font-bold text-emerald-700">🚀 Early applicant!</p>
                   <p className="font-mono text-[10px] text-emerald-600 mt-0.5">

@@ -261,7 +261,7 @@ export class ApiClient {
       benchmarkState: string;
       percentile: number | null;
       applicantCount: number;
-      earlyApplicantMessage: string | null;
+      message: string | null;
     }>(`/api/v1/jobs/${jobId}/applications`, {
       method: 'POST',
       body: JSON.stringify({ resumeId }),
