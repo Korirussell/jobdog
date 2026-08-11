@@ -95,7 +95,12 @@ func (s *WorkdayScraper) ScrapeCompany(ctx context.Context, company, workdayURL 
 			location = fmt.Sprintf("%s, %s", wdJob.Locations[0].City, wdJob.Locations[0].Country)
 		}
 
-		postedAt, _ := time.Parse("2006-01-02", wdJob.PostedOn)
+		var postedAtPtr *time.Time
+		if parsed, err := time.Parse("2006-01-02", wdJob.PostedOn); err == nil {
+			postedAtPtr = &parsed
+		} else {
+			log.Warn().Err(err).Str("raw_value", wdJob.PostedOn).Msg("failed to parse Workday posted date, leaving unset")
+		}
 
 		job := models.Job{
 			Source:          "workday",
@@ -106,7 +111,7 @@ func (s *WorkdayScraper) ScrapeCompany(ctx context.Context, company, workdayURL 
 			EmploymentType:  "FULL_TIME",
 			DescriptionText: fmt.Sprintf("%s at %s", wdJob.Title, company),
 			Status:          "ACTIVE",
-			PostedAt:        &postedAt,
+			PostedAt:        postedAtPtr,
 		}
 		job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
 

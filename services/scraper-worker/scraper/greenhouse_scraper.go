@@ -30,9 +30,10 @@ type GreenhouseResponse struct {
 		Location struct {
 			Name string `json:"name"`
 		} `json:"location"`
-		AbsoluteURL string    `json:"absolute_url"`
-		UpdatedAt   time.Time `json:"updated_at"`
-		Departments []struct {
+		AbsoluteURL    string     `json:"absolute_url"`
+		UpdatedAt      time.Time  `json:"updated_at"`
+		FirstPublished *time.Time `json:"first_published"`
+		Departments    []struct {
 			Name string `json:"name"`
 		} `json:"departments"`
 		Content string `json:"content"`
@@ -102,7 +103,14 @@ func (s *GreenhouseScraper) ScrapeCompany(ctx context.Context, company, boardTok
 			continue
 		}
 
+		// Prefer first_published (the job's original posting date) over
+		// updated_at (last-updated timestamp, which is misleading for
+		// reposted/edited listings). Fall back to updated_at when
+		// first_published is absent from the API response.
 		postedAt := ghJob.UpdatedAt
+		if ghJob.FirstPublished != nil {
+			postedAt = *ghJob.FirstPublished
+		}
 
 		job := models.Job{
 			Source:          "greenhouse",
