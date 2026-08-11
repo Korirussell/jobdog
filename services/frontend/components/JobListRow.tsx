@@ -86,6 +86,9 @@ interface JobListRowProps {
   jobStatus?: string;
   matchPercentile?: number;
   matchPercentage?: number | null;
+  companyTier?: string | null;
+  ghostScore?: number | null;
+  experienceLevel?: string | null;
   applyUrl: string;
   detailHref?: string;
   alreadyApplied?: boolean;
@@ -121,6 +124,9 @@ const JobListRow = memo(function JobListRow({
   jobStatus,
   matchPercentile,
   matchPercentage,
+  companyTier,
+  ghostScore,
+  experienceLevel,
   applyUrl,
   detailHref,
   alreadyApplied = false,
@@ -131,7 +137,9 @@ const JobListRow = memo(function JobListRow({
   const [saved, setSaved] = useState(isSaved);
   const [savePending, setSavePending] = useState(false);
 
-  const timeLabel = formatTimeAgo(postedAt) || (scrapedAt ? `~${formatTimeAgo(scrapedAt)}` : '');
+  const dateLabel = postedAt ? 'Posted' : 'Added';
+  const displayDate = postedAt ?? scrapedAt;
+  const timeLabel = formatTimeAgo(displayDate);
   const isClosed = jobStatus === 'CLOSED';
   const canApply = !isClosed && !alreadyApplied;
 
@@ -207,7 +215,7 @@ const JobListRow = memo(function JobListRow({
               {timeLabel && (
                 <>
                   <span className="text-black/20">│</span>
-                  <span className="font-bold text-primary">[{timeLabel}]</span>
+                  <span className="font-bold text-primary">[{dateLabel} {timeLabel}]</span>
                 </>
               )}
               {alreadyApplied && (
@@ -220,6 +228,24 @@ const JobListRow = memo(function JobListRow({
                 <>
                   <span className="text-black/20">·</span>
                   <span className="font-bold text-red-500">Closed</span>
+                </>
+              )}
+              {companyTier && (
+                <>
+                  <span className="text-black/20">·</span>
+                  <span className="font-bold text-primary">{companyTier}</span>
+                </>
+              )}
+              {experienceLevel === 'NEW_GRAD' && (
+                <>
+                  <span className="text-black/20">·</span>
+                  <span className="font-bold text-primary">New Grad</span>
+                </>
+              )}
+              {ghostScore !== undefined && ghostScore !== null && ghostScore > 50 && (
+                <>
+                  <span className="text-black/20">·</span>
+                  <span className="font-bold text-red-500">⚠ Ghost {ghostScore}</span>
                 </>
               )}
             </div>
@@ -315,7 +341,13 @@ const JobListRow = memo(function JobListRow({
   prev.postedAt === next.postedAt &&
   prev.alreadyApplied === next.alreadyApplied &&
   prev.jobStatus === next.jobStatus &&
-  prev.isSaved === next.isSaved
+  prev.isSaved === next.isSaved &&
+  prev.companyTier === next.companyTier &&
+  prev.ghostScore === next.ghostScore &&
+  prev.experienceLevel === next.experienceLevel &&
+  prev.matchPercentage === next.matchPercentage &&
+  prev.matchPercentile === next.matchPercentile &&
+  prev.techStack === next.techStack
 );
 
 export default JobListRow;

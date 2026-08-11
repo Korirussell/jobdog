@@ -179,6 +179,9 @@ export class ApiClient {
         employmentType: string;
         postedAt: string;
         applyUrl: string;
+        companyTier: string | null;
+        ghostScore: number | null;
+        experienceLevel: string | null;
       }>;
       page: number;
       size: number;
