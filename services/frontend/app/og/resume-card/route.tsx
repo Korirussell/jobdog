@@ -3,6 +3,14 @@ import { getTier } from '@/lib/tiers';
 
 export const runtime = 'edge';
 
+// JobDog's site palette (services/frontend/app/globals.css), duplicated here
+// since Satori can't read CSS custom properties.
+const BACKGROUND = '#F4F0EB';
+const PRIMARY = '#FFD166';
+const TEXT_PRIMARY = '#3E2723';
+const TEXT_SECONDARY = '#6D4C41';
+const BLACK = '#000000';
+
 const SUB_SCORE_LABELS: Record<string, string> = {
   requiredSkillCoverage: 'Required skills',
   preferredSkillCoverage: 'Preferred skills',
@@ -40,6 +48,9 @@ export async function GET(request: Request) {
   const tier = getTier(score);
   const width = 1080;
   const height = ratio === '9:16' ? 1920 : 1080;
+  // The 9:16 canvas is ~1.8x taller than 1:1 — scale up the content so it fills
+  // the frame like a real Story card instead of leaving a small centered island.
+  const scale = ratio === '9:16' ? 1.4 : 1;
 
   return new ImageResponse(
     (
@@ -48,64 +59,123 @@ export async function GET(request: Request) {
           width: '100%',
           height: '100%',
           display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#0f172a',
-          color: 'white',
-          fontFamily: 'sans-serif',
-          padding: 64,
+          backgroundColor: BACKGROUND,
+          fontFamily: 'monospace',
+          padding: 40,
         }}
       >
-        <div style={{ fontSize: 40, opacity: 0.7, display: 'flex' }}>JOBDOG</div>
-        <div style={{ fontSize: 220, fontWeight: 700, display: 'flex' }}>{score}</div>
-        <div style={{ fontSize: 56, display: 'flex' }}>
-          {tier.emoji} {tier.label}
-        </div>
-        {handle && <div style={{ fontSize: 32, opacity: 0.8, marginTop: 16, display: 'flex' }}>@{handle}</div>}
-        {jobFit && <div style={{ fontSize: 32, marginTop: 24, display: 'flex' }}>{jobFit}</div>}
-        {percentile && <div style={{ fontSize: 28, opacity: 0.85, display: 'flex' }}>Top {percentile}% of JobDog users</div>}
-        {pros.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', marginTop: 32, gap: 8 }}>
-            {pros.map((pro) => (
-              // A rendered dot rather than a "✓" text glyph: the default OG font has no
-              // checkmark glyph and renders it as tofu.
-              <div key={pro} style={{ fontSize: 26, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ display: 'flex', width: 12, height: 12, borderRadius: 6, backgroundColor: '#38bdf8' }} />
-                {pro}
-              </div>
-            ))}
+        {/* Card frame — thick black border + offset shadow, matches the site's card motif. Dominant fill is the site's primary yellow, not white. */}
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: PRIMARY,
+            border: `6px solid ${BLACK}`,
+            boxShadow: `16px 16px 0px 0px ${BLACK}`,
+            padding: 56,
+          }}
+        >
+          {/* Hero emoji — the tier mascot, the first thing anyone sees */}
+          <div style={{ display: 'flex', fontSize: 260 * scale, lineHeight: 1, marginBottom: -16 * scale }}>
+            {tier.emoji}
           </div>
-        )}
-        {subScores.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', marginTop: 32, gap: 10, width: 620 }}>
-            {subScores.map((entry) => (
-              <div key={entry.key} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ fontSize: 22, opacity: 0.85, width: 240, display: 'flex' }}>{entry.label}</div>
-                <div
-                  style={{
-                    display: 'flex',
-                    width: 300,
-                    height: 16,
-                    borderRadius: 8,
-                    backgroundColor: 'rgba(255,255,255,0.18)',
-                  }}
-                >
+
+          <div style={{ display: 'flex', fontSize: 56 * scale, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: 1, marginTop: 8 * scale }}>
+            {tier.label}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 * scale, marginTop: 20 * scale }}>
+            <div style={{ display: 'flex', fontSize: 96 * scale, fontWeight: 700, color: TEXT_PRIMARY, lineHeight: 1 }}>
+              {score}
+            </div>
+            <div style={{ display: 'flex', fontSize: 34 * scale, fontWeight: 700, color: TEXT_SECONDARY }}>/100 resume score</div>
+          </div>
+
+          {jobFit && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                backgroundColor: '#FFFFFF',
+                border: `4px solid ${BLACK}`,
+                padding: '20px 36px',
+                marginTop: 36 * scale,
+                maxWidth: 820,
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ display: 'flex', fontSize: 22, fontWeight: 700, color: TEXT_SECONDARY, letterSpacing: 1 }}>
+                BEST FIT ROLE
+              </div>
+              <div style={{ display: 'flex', fontSize: 36, fontWeight: 700, color: TEXT_PRIMARY, marginTop: 6 }}>
+                {jobFit}
+              </div>
+            </div>
+          )}
+
+          {percentile && (
+            <div style={{ display: 'flex', fontSize: 28 * scale, fontWeight: 700, color: TEXT_PRIMARY, marginTop: 28 * scale }}>
+              Top {percentile}% of JobDog users
+            </div>
+          )}
+
+          {handle && (
+            <div style={{ display: 'flex', fontSize: 26 * scale, color: TEXT_SECONDARY, marginTop: 10 * scale }}>@{handle}</div>
+          )}
+
+          {pros.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', marginTop: 40 * scale, gap: 14, width: 780 }}>
+              {pros.map((pro) => (
+                // A rendered square rather than a "✓" text glyph: Satori's default font has no
+                // checkmark glyph and renders it as tofu.
+                <div key={pro} style={{ fontSize: 28, display: 'flex', alignItems: 'center', gap: 16, color: TEXT_PRIMARY, fontWeight: 700 }}>
+                  <div style={{ display: 'flex', width: 22, height: 22, flexShrink: 0, backgroundColor: '#FFFFFF', border: `2px solid ${BLACK}` }} />
+                  {pro}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {subScores.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', marginTop: 40 * scale, gap: 16, width: 780 }}>
+              {subScores.map((entry) => (
+                <div key={entry.key} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{ fontSize: 24, color: TEXT_SECONDARY, fontWeight: 700, width: 280, display: 'flex' }}>{entry.label}</div>
                   <div
                     style={{
                       display: 'flex',
-                      width: (300 * entry.value) / 100,
-                      height: 16,
-                      borderRadius: 8,
-                      backgroundColor: '#38bdf8',
+                      width: 340,
+                      height: 22,
+                      backgroundColor: '#FFFFFF',
+                      border: `2px solid ${BLACK}`,
                     }}
-                  />
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        width: (336 * entry.value) / 100,
+                        height: 18,
+                        backgroundColor: TEXT_PRIMARY,
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: 24, width: 60, color: TEXT_PRIMARY, fontWeight: 700, display: 'flex' }}>
+                    {Math.round(entry.value)}
+                  </div>
                 </div>
-                <div style={{ fontSize: 22, width: 56, display: 'flex' }}>{Math.round(entry.value)}</div>
-              </div>
-            ))}
+              ))}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', fontSize: 22 * scale, fontWeight: 700, color: TEXT_SECONDARY, marginTop: 48 * scale, letterSpacing: 2 }}>
+            jobdog.dev
           </div>
-        )}
+        </div>
       </div>
     ),
     { width, height }

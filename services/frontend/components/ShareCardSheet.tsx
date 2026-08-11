@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface ShareCardSheetProps {
   score: number;
@@ -22,6 +22,13 @@ export function ShareCardSheet({ score, tierLabel, pros, jobFit, percentile, han
   const [showPercentile, setShowPercentile] = useState(Boolean(percentile));
   const [showHandle, setShowHandle] = useState(Boolean(handle));
   const [showSubScores, setShowSubScores] = useState(hasSubScores);
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   const imageUrl = useMemo(() => {
     const params = new URLSearchParams();
@@ -45,77 +52,108 @@ export function ShareCardSheet({ score, tierLabel, pros, jobFit, percentile, han
   }, [score, tierLabel, ratio, showPros, showJobFit, showPercentile, showHandle, showSubScores, pros, jobFit, percentile, handle, subScores]);
 
   async function handleDownload() {
-    const response = await fetch(imageUrl);
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `jobdog-score-${score}.png`;
-    link.click();
-    URL.revokeObjectURL(url);
+    setDownloading(true);
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `jobdog-score-${score}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } finally {
+      setDownloading(false);
+    }
   }
 
+  const toggles: Array<{ key: string; checked: boolean; set: (v: boolean) => void; label: string }> = [];
+  if (pros.length > 0) toggles.push({ key: 'pros', checked: showPros, set: setShowPros, label: 'Top 3 pros' });
+  if (hasSubScores) toggles.push({ key: 'subScores', checked: showSubScores, set: setShowSubScores, label: 'Sub-score breakdown' });
+  if (jobFit) toggles.push({ key: 'jobFit', checked: showJobFit, set: setShowJobFit, label: 'Best job-fit score' });
+  if (percentile != null) toggles.push({ key: 'percentile', checked: showPercentile, set: setShowPercentile, label: 'Percentile among JobDog users' });
+  if (handle) toggles.push({ key: 'handle', checked: showHandle, set: setShowHandle, label: 'Show my handle' });
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center">
-      <div className="w-full max-w-md rounded-t-2xl bg-white p-6 sm:rounded-2xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Share your score</h2>
-          <button onClick={onClose} className="text-gray-500">Close</button>
-        </div>
-
-        <img src={imageUrl} alt="Share card preview" className="mb-4 w-full rounded-lg border" />
-
-        <div className="mb-4 flex gap-2">
+    <div
+      className="fixed inset-0 z-[400] flex items-center justify-center overflow-hidden px-4 backdrop-blur-sm"
+      style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-sm border-[3px] border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+        <div className="flex items-center justify-between border-b-[3px] border-black bg-primary px-4 py-2">
+          <div>
+            <h2 className="font-mono text-sm font-bold uppercase">Share your score</h2>
+            <p className="font-mono text-[10px] text-text-secondary">Score {score}/100 — {tierLabel.replace(/_/g, ' ')}</p>
+          </div>
           <button
-            className={`flex-1 rounded-md border px-3 py-2 text-sm ${ratio === '1:1' ? 'bg-black text-white' : ''}`}
-            onClick={() => setRatio('1:1')}
+            onClick={onClose}
+            className="flex h-5 w-5 shrink-0 items-center justify-center border-2 border-black bg-white font-mono text-xs font-bold hover:bg-background"
           >
-            LinkedIn (1:1)
-          </button>
-          <button
-            className={`flex-1 rounded-md border px-3 py-2 text-sm ${ratio === '9:16' ? 'bg-black text-white' : ''}`}
-            onClick={() => setRatio('9:16')}
-          >
-            Story (9:16)
+            ×
           </button>
         </div>
 
-        <div className="mb-4 space-y-2 text-sm">
-          {pros.length > 0 && (
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={showPros} onChange={(e) => setShowPros(e.target.checked)} />
-              Top 3 pros
-            </label>
-          )}
-          {hasSubScores && (
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={showSubScores} onChange={(e) => setShowSubScores(e.target.checked)} />
-              Sub-score breakdown
-            </label>
-          )}
-          {jobFit && (
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={showJobFit} onChange={(e) => setShowJobFit(e.target.checked)} />
-              Best job-fit score
-            </label>
-          )}
-          {percentile != null && (
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={showPercentile} onChange={(e) => setShowPercentile(e.target.checked)} />
-              Percentile among JobDog users
-            </label>
-          )}
-          {handle && (
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={showHandle} onChange={(e) => setShowHandle(e.target.checked)} />
-              Show my handle
-            </label>
-          )}
-        </div>
+        <div className="max-h-[80vh] overflow-y-auto p-5">
+          <img
+            src={imageUrl}
+            alt="Share card preview"
+            className="mb-4 w-full border-2 border-black"
+          />
 
-        <button onClick={handleDownload} className="w-full rounded-md bg-black px-4 py-2 text-white">
-          Download image
-        </button>
+          <div className="mb-4 flex gap-2">
+            <button
+              className={`flex-1 border-2 px-3 py-2 font-mono text-xs font-bold uppercase transition-all ${
+                ratio === '1:1'
+                  ? 'border-black bg-primary text-text-primary shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]'
+                  : 'border-black/20 bg-white text-text-secondary hover:border-black/40'
+              }`}
+              onClick={() => setRatio('1:1')}
+            >
+              LinkedIn (1:1)
+            </button>
+            <button
+              className={`flex-1 border-2 px-3 py-2 font-mono text-xs font-bold uppercase transition-all ${
+                ratio === '9:16'
+                  ? 'border-black bg-primary text-text-primary shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]'
+                  : 'border-black/20 bg-white text-text-secondary hover:border-black/40'
+              }`}
+              onClick={() => setRatio('9:16')}
+            >
+              Story (9:16)
+            </button>
+          </div>
+
+          {toggles.length > 0 && (
+            <div className="mb-4 space-y-1.5">
+              <p className="font-mono text-[10px] font-bold uppercase text-text-tertiary">What to include</p>
+              {toggles.map((t) => (
+                <label
+                  key={t.key}
+                  className="flex cursor-pointer items-center gap-2.5 border-2 border-black/15 px-3 py-2 transition-all hover:border-black/30"
+                >
+                  <input
+                    type="checkbox"
+                    checked={t.checked}
+                    onChange={(e) => t.set(e.target.checked)}
+                    className="accent-black shrink-0"
+                  />
+                  <span className="font-mono text-xs font-bold text-text-primary">{t.label}</span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="w-full border-2 border-black bg-primary px-4 py-2.5 font-mono text-sm font-bold uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
+          >
+            {downloading ? 'Preparing…' : 'Download Image'}
+          </button>
+        </div>
       </div>
     </div>
   );
