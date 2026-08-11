@@ -239,6 +239,9 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
                 jobStatus={job.jobStatus}
                 applyUrl={job.applyUrl}
                 matchPercentage={job.matchPercentage}
+                companyTier={job.companyTier}
+                ghostScore={job.ghostScore}
+                experienceLevel={job.experienceLevel}
                 alreadyApplied={appliedJobIds.has(job.jobId)}
                 isSaved={savedJobIds.has(job.jobId)}
                 onApply={isAuthenticated ? handleApply : undefined}

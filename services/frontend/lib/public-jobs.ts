@@ -9,6 +9,9 @@ export interface JobSummary {
   jobStatus: string;
   applyUrl: string;
   matchPercentage?: number | null;
+  companyTier: string | null;
+  ghostScore: number | null;
+  experienceLevel: string | null;
 }
 
 export interface JobsResponse {
