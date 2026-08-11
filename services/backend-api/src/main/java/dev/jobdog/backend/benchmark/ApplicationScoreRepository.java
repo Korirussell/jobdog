@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -11,6 +12,8 @@ import java.util.UUID;
 public interface ApplicationScoreRepository extends JpaRepository<ApplicationScoreEntity, UUID> {
 
     Optional<ApplicationScoreEntity> findByApplication_Id(UUID applicationId);
+
+    List<ApplicationScoreEntity> findByApplication_IdIn(Collection<UUID> applicationIds);
 
     List<ApplicationScoreEntity> findByApplication_Job_IdOrderByMatchScoreDesc(UUID jobId);
 

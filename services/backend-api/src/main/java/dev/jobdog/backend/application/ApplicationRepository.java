@@ -1,5 +1,6 @@
 package dev.jobdog.backend.application;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -12,6 +13,7 @@ public interface ApplicationRepository extends JpaRepository<ApplicationEntity, 
 
     List<ApplicationEntity> findByJob_IdOrderByAppliedAtDesc(UUID jobId);
 
+    @EntityGraph(attributePaths = {"job", "resume"})
     List<ApplicationEntity> findByUser_IdOrderByAppliedAtDesc(UUID userId);
 
     List<ApplicationEntity> findByResume_Id(UUID resumeId);

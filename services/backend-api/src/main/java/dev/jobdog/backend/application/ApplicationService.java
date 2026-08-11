@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 record ApplicationListItem(
         UUID applicationId,
@@ -179,28 +180,36 @@ public class ApplicationService {
 
     @Transactional(readOnly = true)
     public List<ApplicationListItem> listApplications(UUID userId) {
-        return applicationRepository.findByUser_IdOrderByAppliedAtDesc(userId).stream()
-                .map(app -> {
-                    var score = applicationScoreRepository.findByApplication_Id(app.getId()).orElse(null);
-                    String resumeLabel = app.getResume().getLabel();
-                    String resumeFilename = app.getResume().getOriginalFilename();
-                    String resumeName = (resumeLabel == null || resumeLabel.isBlank() || "default".equals(resumeLabel))
-                            ? resumeFilename : resumeLabel;
-                    return new ApplicationListItem(
-                            app.getId(),
-                            app.getJob().getId(),
-                            app.getJob().getTitle(),
-                            app.getJob().getCompany(),
-                            app.getStatus().name(),
-                            score != null ? score.getMatchScore() : 0,
-                            score != null ? score.getPercentile() : null,
-                            score != null ? score.getApplicantCount() : 0,
-                            app.getAppliedAt(),
-                            app.getResume().getId(),
-                            resumeName
-                    );
-                })
+        List<ApplicationEntity> applications = applicationRepository.findByUser_IdOrderByAppliedAtDesc(userId);
+
+        Map<UUID, ApplicationScoreEntity> scoresByApplicationId = applicationScoreRepository
+                .findByApplication_IdIn(applications.stream().map(ApplicationEntity::getId).toList())
+                .stream()
+                .collect(Collectors.toMap(s -> s.getApplication().getId(), s -> s));
+
+        return applications.stream()
+                .map(app -> toListItem(app, scoresByApplicationId.get(app.getId())))
                 .toList();
+    }
+
+    private ApplicationListItem toListItem(ApplicationEntity app, ApplicationScoreEntity score) {
+        String resumeLabel = app.getResume().getLabel();
+        String resumeFilename = app.getResume().getOriginalFilename();
+        String resumeName = (resumeLabel == null || resumeLabel.isBlank() || "default".equals(resumeLabel))
+                ? resumeFilename : resumeLabel;
+        return new ApplicationListItem(
+                app.getId(),
+                app.getJob().getId(),
+                app.getJob().getTitle(),
+                app.getJob().getCompany(),
+                app.getStatus().name(),
+                score != null ? score.getMatchScore() : 0,
+                score != null ? score.getPercentile() : null,
+                score != null ? score.getApplicantCount() : 0,
+                app.getAppliedAt(),
+                app.getResume().getId(),
+                resumeName
+        );
     }
 
     @Transactional
