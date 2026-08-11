@@ -11,6 +11,7 @@ import (
 	"jobdog/scraper-worker/models"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type JobRepository struct {
@@ -136,12 +137,70 @@ func (r *JobRepository) MarkStaleJobsAsClosed(olderThan time.Duration) error {
 	return nil
 }
 
+// PurgeOldClosedJobs hard-deletes CLOSED jobs whose scraped_at is older than the
+// cutoff, to keep the jobs table from growing forever. It never deletes a job that
+// a user has real history tied to (an application, or a saved-jobs bookmark) —
+// those are excluded from the candidate set entirely, regardless of age. For the
+// remaining candidates, purely-derived/computed child rows (job requirement
+// profiles, roast history, resume-job fit results, ghost reports) are cascaded
+// away first since they have no independent value once the job itself is gone,
+// then the jobs themselves are deleted. Everything runs in a single transaction so
+// a job is never deleted with orphaned children, or vice versa. Returns the count
+// of jobs actually deleted (not child rows).
 func (r *JobRepository) PurgeOldClosedJobs(olderThan time.Duration) (int64, error) {
 	cutoff := time.Now().Add(-olderThan)
-	result, err := r.db.Exec(
-		`DELETE FROM jobs WHERE status = 'CLOSED' AND scraped_at < $1`,
-		cutoff,
-	)
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return 0, fmt.Errorf("beginning purge transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	rows, err := tx.Query(`
+		SELECT id FROM jobs
+		WHERE status = 'CLOSED' AND scraped_at < $1
+		AND id NOT IN (SELECT DISTINCT job_id FROM applications)
+		AND id NOT IN (SELECT DISTINCT job_id FROM saved_jobs)
+	`, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("selecting purge candidates: %w", err)
+	}
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return 0, fmt.Errorf("scanning purge candidate id: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return 0, fmt.Errorf("iterating purge candidate rows: %w", err)
+	}
+	rows.Close()
+
+	if len(ids) == 0 {
+		return 0, tx.Commit()
+	}
+
+	idArray := pq.Array(ids)
+
+	if _, err := tx.Exec(`DELETE FROM job_requirement_profiles WHERE job_id = ANY($1)`, idArray); err != nil {
+		return 0, fmt.Errorf("purging job_requirement_profiles for candidate jobs: %w", err)
+	}
+	if _, err := tx.Exec(`DELETE FROM roast_history WHERE job_id = ANY($1)`, idArray); err != nil {
+		return 0, fmt.Errorf("purging roast_history for candidate jobs: %w", err)
+	}
+	if _, err := tx.Exec(`DELETE FROM resume_job_fits WHERE job_id = ANY($1)`, idArray); err != nil {
+		return 0, fmt.Errorf("purging resume_job_fits for candidate jobs: %w", err)
+	}
+	if _, err := tx.Exec(`DELETE FROM ghost_reports WHERE job_id = ANY($1)`, idArray); err != nil {
+		return 0, fmt.Errorf("purging ghost_reports for candidate jobs: %w", err)
+	}
+
+	result, err := tx.Exec(`DELETE FROM jobs WHERE id = ANY($1)`, idArray)
 	if err != nil {
 		return 0, fmt.Errorf("purging old closed jobs: %w", err)
 	}
@@ -149,6 +208,11 @@ func (r *JobRepository) PurgeOldClosedJobs(olderThan time.Duration) (int64, erro
 	if err != nil {
 		return 0, fmt.Errorf("getting purge rows affected: %w", err)
 	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("committing purge transaction: %w", err)
+	}
+
 	return rowsAffected, nil
 }
 
