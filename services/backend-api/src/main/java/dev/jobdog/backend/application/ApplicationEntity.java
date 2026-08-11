@@ -38,6 +38,12 @@ public class ApplicationEntity extends BaseEntity {
     @Column(nullable = false)
     private Instant appliedAt;
 
+    @Column
+    private java.time.LocalDate deadline;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
     public UserEntity getUser() {
         return user;
     }
@@ -76,5 +82,21 @@ public class ApplicationEntity extends BaseEntity {
 
     public void setAppliedAt(Instant appliedAt) {
         this.appliedAt = appliedAt;
+    }
+
+    public java.time.LocalDate getDeadline() {
+        return deadline;
+    }
+
+    public void setDeadline(java.time.LocalDate deadline) {
+        this.deadline = deadline;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
 }

@@ -15,11 +15,8 @@ export interface ApplicationRow {
   appliedAt: string;
   resumeId?: string;
   resumeName?: string;
-}
-
-interface AppMeta {
-  notes: string;
-  deadline: string; // ISO date string or empty
+  deadline?: string | null;
+  notes?: string | null;
 }
 
 type SortKey = 'company' | 'jobTitle' | 'status' | 'matchScore' | 'appliedAt' | 'deadline';
@@ -148,19 +145,6 @@ function StatusPill({
   );
 }
 
-const STORAGE_KEY = 'jobdog_app_meta';
-
-function loadMeta(): Record<string, AppMeta> {
-  try {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
-}
-
-function saveMeta(meta: Record<string, AppMeta>) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(meta)); } catch {}
-}
-
 function InlineNote({ appId, value, onChange }: { appId: string; value: string; onChange: (v: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -200,16 +184,12 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
   const [sortKey, setSortKey] = useState<SortKey>('appliedAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [meta, setMeta] = useState<Record<string, AppMeta>>({});
 
-  useEffect(() => { setMeta(loadMeta()); }, []);
-
-  const updateMeta = (appId: string, patch: Partial<AppMeta>) => {
-    setMeta((prev) => {
-      const existing: AppMeta = prev[appId] ?? { notes: '', deadline: '' };
-      const next = { ...prev, [appId]: { ...existing, ...patch } };
-      saveMeta(next);
-      return next;
+  const updateAppField = (appId: string, patch: { deadline?: string | null; notes?: string | null }) => {
+    setApps((prev) => prev.map((a) => a.applicationId === appId ? { ...a, ...patch } : a));
+    api.updateApplicationDetails(appId, patch).catch(() => {
+      // revert on failure by re-syncing from initialApps snapshot is not ideal;
+      // keep optimistic value but surface no error UI for now.
     });
   };
 
@@ -239,13 +219,13 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
       else if (sortKey === 'matchScore') cmp = a.matchScore - b.matchScore;
       else if (sortKey === 'appliedAt') cmp = new Date(a.appliedAt).getTime() - new Date(b.appliedAt).getTime();
       else if (sortKey === 'deadline') {
-        const da = meta[a.applicationId]?.deadline || '';
-        const db = meta[b.applicationId]?.deadline || '';
+        const da = a.deadline || '';
+        const db = b.deadline || '';
         cmp = da.localeCompare(db);
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [apps, sortKey, sortDir, statusFilter, meta]);
+  }, [apps, sortKey, sortDir, statusFilter]);
 
   // Stats
   const total = apps.length;
@@ -262,8 +242,8 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
       STATUS_CONFIG[a.status]?.label ?? a.status,
       a.matchScore > 0 ? `${a.matchScore}/100` : '—',
       formatDate(a.appliedAt),
-      meta[a.applicationId]?.deadline || '',
-      meta[a.applicationId]?.notes || '',
+      a.deadline || '',
+      a.notes || '',
     ]);
     const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -444,14 +424,14 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
                 <td className="px-4 py-3">
                   {/* Deadline — inline date input */}
                   {(() => {
-                    const dl = meta[app.applicationId]?.deadline || '';
+                    const dl = app.deadline || '';
                     const isUrgent = dl && new Date(dl).getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000 && new Date(dl).getTime() > Date.now();
                     const isPast = dl && new Date(dl).getTime() < Date.now();
                     return (
                       <input
                         type="date"
                         value={dl}
-                        onChange={(e) => updateMeta(app.applicationId, { deadline: e.target.value })}
+                        onChange={(e) => updateAppField(app.applicationId, { deadline: e.target.value || null })}
                         className={`border px-1.5 py-0.5 font-mono text-[10px] focus:outline-none
                           ${isPast ? 'border-red-300 bg-red-50 text-red-700' : isUrgent ? 'border-orange-300 bg-orange-50 text-orange-700' : 'border-black/15 bg-white text-text-tertiary'}`}
                         title="Application deadline"
@@ -462,8 +442,8 @@ export default function ApplicationTracker({ applications: initialApps }: { appl
                 <td className="px-4 py-3">
                   <InlineNote
                     appId={app.applicationId}
-                    value={meta[app.applicationId]?.notes || ''}
-                    onChange={(v) => updateMeta(app.applicationId, { notes: v })}
+                    value={app.notes || ''}
+                    onChange={(v) => updateAppField(app.applicationId, { notes: v || null })}
                   />
                 </td>
                 <td className="px-4 py-3">

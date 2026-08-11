@@ -30,6 +30,8 @@ export default function ApplicationsPage() {
           percentile: item.percentile ?? null,
           applicantCount: item.applicantCount ?? 0,
           appliedAt: item.appliedAt,
+          deadline: item.deadline,
+          notes: item.notes,
         })));
       })
       .catch(() => setError('Failed to load applications.'))

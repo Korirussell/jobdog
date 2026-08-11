@@ -36,7 +36,9 @@ record ApplicationListItem(
         int applicantCount,
         Instant appliedAt,
         UUID resumeId,
-        String resumeName
+        String resumeName,
+        java.time.LocalDate deadline,
+        String notes
 ) {}
 
 @Service
@@ -208,8 +210,33 @@ public class ApplicationService {
                 score != null ? score.getApplicantCount() : 0,
                 app.getAppliedAt(),
                 app.getResume().getId(),
-                resumeName
+                resumeName,
+                app.getDeadline(),
+                app.getNotes()
         );
+    }
+
+    @Transactional
+    public void updateApplicationDetails(UUID applicationId, UUID userId, UpdateApplicationRequest request) {
+        ApplicationEntity application = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new IllegalArgumentException("Application not found"));
+        if (!application.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Application does not belong to user");
+        }
+
+        if (request.status() != null && !request.status().isBlank()) {
+            application.setStatus(ApplicationStatus.valueOf(request.status().toUpperCase()));
+        }
+        if (request.clearDeadline()) {
+            application.setDeadline(null);
+        } else if (request.deadline() != null) {
+            application.setDeadline(request.deadline());
+        }
+        if (request.clearNotes()) {
+            application.setNotes(null);
+        } else if (request.notes() != null) {
+            application.setNotes(request.notes());
+        }
     }
 
     @Transactional

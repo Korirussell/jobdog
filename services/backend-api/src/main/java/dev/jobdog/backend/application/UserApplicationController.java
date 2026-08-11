@@ -36,4 +36,11 @@ public class UserApplicationController {
         applicationService.updateStatus(applicationId, currentUser.require().userId(), newStatus);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/{applicationId}")
+    public ResponseEntity<Void> updateApplication(@PathVariable UUID applicationId, @RequestBody UpdateApplicationRequest request) {
+        var userId = currentUser.require().userId();
+        applicationService.updateApplicationDetails(applicationId, userId, request);
+        return ResponseEntity.noContent().build();
+    }
 }

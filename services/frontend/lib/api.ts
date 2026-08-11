@@ -281,6 +281,8 @@ export class ApiClient {
       percentile: number | null;
       applicantCount: number;
       appliedAt: string;
+      deadline: string | null;
+      notes: string | null;
     }>>('/api/v1/applications');
   }
 
@@ -288,6 +290,23 @@ export class ApiClient {
     return this.request<void>(`/api/v1/applications/${applicationId}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
+    });
+  }
+
+  async updateApplicationDetails(applicationId: string, updates: { status?: string; deadline?: string | null; notes?: string | null }) {
+    const body: Record<string, unknown> = {};
+    if (updates.status !== undefined) body.status = updates.status;
+    if (updates.deadline !== undefined) {
+      if (updates.deadline === null) body.clearDeadline = true;
+      else body.deadline = updates.deadline;
+    }
+    if (updates.notes !== undefined) {
+      if (updates.notes === null) body.clearNotes = true;
+      else body.notes = updates.notes;
+    }
+    return this.request<void>(`/api/v1/applications/${applicationId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
     });
   }
 
