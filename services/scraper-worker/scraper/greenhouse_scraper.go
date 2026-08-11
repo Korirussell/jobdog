@@ -50,39 +50,48 @@ func NewGreenhouseScraper(repo *repository.JobRepository) *GreenhouseScraper {
 func (s *GreenhouseScraper) ScrapeCompany(ctx context.Context, company, boardToken string) error {
 	log.Info().Str("company", company).Msg("Starting Greenhouse scrape")
 
-	// Rate limit
-	if err := s.limiter.Wait(ctx); err != nil {
-		return err
-	}
-
-	url := fmt.Sprintf("https://boards-api.greenhouse.io/v1/boards/%s/jobs?content=true", boardToken)
-
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "JobDog/1.0")
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to fetch jobs: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response: %w", err)
-	}
-
 	var ghResp GreenhouseResponse
-	if err := json.Unmarshal(body, &ghResp); err != nil {
-		return fmt.Errorf("failed to parse JSON: %w", err)
+
+	err := RetryWithBackoff(ctx, 3, fmt.Sprintf("greenhouse:%s", company), func() error {
+		// Rate limit
+		if err := s.limiter.Wait(ctx); err != nil {
+			return err
+		}
+
+		url := fmt.Sprintf("https://boards-api.greenhouse.io/v1/boards/%s/jobs?content=true", boardToken)
+
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			return fmt.Errorf("failed to create request: %w", err)
+		}
+
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("User-Agent", "JobDog/1.0")
+
+		resp, err := s.client.Do(req)
+		if err != nil {
+			return fmt.Errorf("failed to fetch jobs: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read response: %w", err)
+		}
+
+		if err := json.Unmarshal(body, &ghResp); err != nil {
+			return fmt.Errorf("failed to parse JSON: %w", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
 	}
 
 	log.Info().Int("count", len(ghResp.Jobs)).Str("company", company).Msg("Parsed Greenhouse jobs")

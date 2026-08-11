@@ -77,32 +77,41 @@ func (s *GitHubScraper) fetchSimplifyReadme(ctx context.Context) (string, error)
 	}
 
 	for _, url := range urls {
-		// Rate limit
-		if err := s.limiter.Wait(ctx); err != nil {
-			return "", err
-		}
+		var body string
 
-		request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-		if err != nil {
-			return "", fmt.Errorf("failed to create simplify README request: %w", err)
-		}
+		err := RetryWithBackoff(ctx, 3, "github:simplify-readme", func() error {
+			// Rate limit
+			if err := s.limiter.Wait(ctx); err != nil {
+				return err
+			}
 
-		response, err := s.client.Do(request)
-		if err != nil {
-			continue
-		}
+			request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+			if err != nil {
+				return fmt.Errorf("failed to create simplify README request: %w", err)
+			}
 
-		body, readErr := io.ReadAll(response.Body)
-		response.Body.Close()
-		if readErr != nil {
-			continue
-		}
+			response, err := s.client.Do(request)
+			if err != nil {
+				return err
+			}
 
-		if response.StatusCode != http.StatusOK {
-			continue
-		}
+			bodyBytes, readErr := io.ReadAll(response.Body)
+			response.Body.Close()
+			if readErr != nil {
+				return readErr
+			}
 
-		return string(body), nil
+			if response.StatusCode != http.StatusOK {
+				return fmt.Errorf("unexpected status code: %d", response.StatusCode)
+			}
+
+			body = string(bodyBytes)
+			return nil
+		})
+
+		if err == nil {
+			return body, nil
+		}
 	}
 
 	return "", fmt.Errorf("failed to fetch simplify README from known branches")
