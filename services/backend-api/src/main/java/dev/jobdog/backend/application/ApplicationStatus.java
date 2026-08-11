@@ -7,8 +7,5 @@ public enum ApplicationStatus {
     OFFER,
     REJECTED,
     WITHDRAWN,
-    RUNNING,
-    ORPHANED,
-    KILLED,
     FAILED
 }
