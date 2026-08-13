@@ -256,11 +256,8 @@ export default function VaultPage() {
 
   async function fetchJobs() {
     try {
-      const res = await fetch('/api/v1/jobs?page=0&size=50');
-      if (res.ok) {
-        const data = await res.json();
-        setJobs((data.items ?? []).map((j: any) => ({ jobId: j.jobId, title: j.title, company: j.company })));
-      }
+      const data = await api.getJobs(new URLSearchParams({ page: '0', size: '50' }));
+      setJobs(data.items.map((j) => ({ jobId: j.jobId, title: j.title, company: j.company })));
     } catch {}
   }
 
