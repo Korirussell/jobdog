@@ -1,0 +1,31 @@
+{
+ "jobPostingInfo": {
+  "id": "4ba46795f8651000e79551b5714b0000",
+  "title": "Non-Tech Proj/Prg Mgmt - (B2)",
+  "jobDescription": "<p><b>Who We Are</b></p><p></p><p>Applied Materials is a global leader in materials engineering solutions used to produce virtually every new chip and advanced display in the world. We design, build a",
+  "location": "Hsinchu,TWN",
+  "postedOn": "Posted Yesterday",
+  "startDate": "2026-08-12",
+  "timeType": "Full time",
+  "jobReqId": "R2623639",
+  "jobPostingId": "Non-Tech-Proj-Prg-Mgmt----B2-_R2623639",
+  "jobPostingSiteId": "External",
+  "country": {
+   "descriptor": "Taiwan",
+   "id": "a4e08b475d6a4176853c9d1cb9854e02"
+  },
+  "canApply": true,
+  "posted": true,
+  "includeResumeParsing": true,
+  "jobRequisitionLocation": {
+   "descriptor": "Hsinchu,TWN",
+   "country": {
+    "descriptor": "Taiwan",
+    "id": "a4e08b475d6a4176853c9d1cb9854e02",
+    "alpha2Code": "TW"
+   }
+  },
+  "externalUrl": "https://amat.wd1.myworkdayjobs.com/External/job/HsinchuTWN/Non-Tech-Proj-Prg-Mgmt----B2-_R2623639",
+  "questionnaireId": "1258610ee1cc10015f922179cf090000"
+ }
+}

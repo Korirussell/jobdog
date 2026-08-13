@@ -67,7 +67,7 @@ func main() {
 			s := source
 			pool.Submit(func(ctx context.Context) error {
 				log.Info().Str("company", s.Company).Msg("Running scheduled Workday scrape")
-				if err := workdayScraper.ScrapeCompany(ctx, s.Company, s.URL); err != nil {
+				if err := workdayScraper.ScrapeCompany(ctx, s.Company, s.Tenant, s.Datacenter, s.Site); err != nil {
 					log.Error().Err(err).Str("company", s.Company).Msg("Workday scrape failed")
 					return err
 				}
@@ -167,7 +167,7 @@ func main() {
 			s := source
 			initialPool.Submit(func(ctx context.Context) error {
 				log.Info().Str("company", s.Company).Msg("Starting initial Workday scrape")
-				if err := workdayScraper.ScrapeCompany(ctx, s.Company, s.URL); err != nil {
+				if err := workdayScraper.ScrapeCompany(ctx, s.Company, s.Tenant, s.Datacenter, s.Site); err != nil {
 					log.Error().Err(err).Str("company", s.Company).Msg("Initial Workday scrape failed")
 					return err
 				}

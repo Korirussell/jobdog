@@ -370,5 +370,49 @@
       "company": "Zapier",
       "slug": "zapier"
     }
+  ],
+  "workday": [
+    {
+      "company": "NVIDIA",
+      "tenant": "nvidia",
+      "datacenter": "wd5",
+      "site": "NVIDIAExternalCareerSite"
+    },
+    {
+      "company": "Salesforce",
+      "tenant": "salesforce",
+      "datacenter": "wd12",
+      "site": "External_Career_Site"
+    },
+    {
+      "company": "Micron",
+      "tenant": "micron",
+      "datacenter": "wd1",
+      "site": "External"
+    },
+    {
+      "company": "HPE",
+      "tenant": "hpe",
+      "datacenter": "wd5",
+      "site": "Jobsathpe"
+    },
+    {
+      "company": "Adobe",
+      "tenant": "adobe",
+      "datacenter": "wd5",
+      "site": "external_experienced"
+    },
+    {
+      "company": "Cadence",
+      "tenant": "cadence",
+      "datacenter": "wd1",
+      "site": "External_Careers"
+    },
+    {
+      "company": "Applied Materials",
+      "tenant": "amat",
+      "datacenter": "wd1",
+      "site": "External"
+    }
   ]
 }

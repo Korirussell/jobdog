@@ -1,0 +1,49 @@
+{
+ "total": 1858,
+ "jobPostings": [
+  {
+   "title": "Non-Tech Proj/Prg Mgmt - (B2)",
+   "externalPath": "/job/HsinchuTWN/Non-Tech-Proj-Prg-Mgmt----B2-_R2623639",
+   "locationsText": "Hsinchu,TWN",
+   "postedOn": "Posted Yesterday",
+   "bulletFields": [
+    "R2623639"
+   ]
+  }
+ ],
+ "facets": [
+  {
+   "facetParameter": "Country",
+   "descriptor": "Country/Region",
+   "values": [
+    {
+     "descriptor": "United States of America",
+     "id": "bc33aa3152ec42d4995f4791a106ed09",
+     "count": 874
+    },
+    {
+     "descriptor": "Singapore",
+     "id": "80938777cac5440fab50d729f9634969",
+     "count": 280
+    }
+   ]
+  },
+  {
+   "facetParameter": "State_Region_Province",
+   "descriptor": "State/Province",
+   "values": [
+    {
+     "descriptor": "California",
+     "id": "ec3d210e4240442e99a28fa70419aec5",
+     "count": 552
+    },
+    {
+     "descriptor": "South East",
+     "id": "ac86fdf18bbb4fc7a2cc6cca3952e108",
+     "count": 280
+    }
+   ]
+  }
+ ],
+ "userAuthenticated": false
+}

@@ -8,9 +8,17 @@ import (
 	"time"
 )
 
+// WorkdaySource addresses one Workday tenant's CxS API. The datacenter segment
+// (wd1, wd3, wd5, wd12, …) is assigned per customer and cannot be derived from
+// the tenant name, so all three parts must be configured.
+//
+// For a careers URL like https://amat.wd1.myworkdayjobs.com/External/job/...
+// the tenant is "amat", the datacenter "wd1", and the site "External".
 type WorkdaySource struct {
-	Company string
-	URL     string
+	Company    string `json:"company"`
+	Tenant     string `json:"tenant"`
+	Datacenter string `json:"datacenter"`
+	Site       string `json:"site"`
 }
 
 type GreenhouseSource struct {
@@ -27,6 +35,7 @@ type LeverSource struct {
 type sourcesFile struct {
 	Greenhouse []GreenhouseSource `json:"greenhouse"`
 	Lever      []LeverSource      `json:"lever"`
+	Workday    []WorkdaySource    `json:"workday"`
 }
 
 // defaultSourcesConfigPath is used when SOURCES_CONFIG_PATH is not set.
@@ -54,23 +63,10 @@ func Load() (*Config, error) {
 		ScrapeInterval:   2 * time.Hour,
 	}
 
-	greenhouseSources, leverSources := loadSources()
+	greenhouseSources, leverSources, workdaySources := loadSources()
 	cfg.GreenhouseSources = greenhouseSources
 	cfg.LeverSources = leverSources
-
-	// Workday sources - disabled by default, only enabled if explicitly configured
-	workdayCompany := getEnv("WORKDAY_COMPANY", "")
-	workdayURL := getEnv("WORKDAY_URL", "")
-
-	if workdayCompany != "" && workdayURL != "" {
-		cfg.WorkdaySources = []WorkdaySource{{
-			Company: workdayCompany,
-			URL:     workdayURL,
-		}}
-	} else {
-		// No default Workday sources - must be explicitly configured
-		cfg.WorkdaySources = []WorkdaySource{}
-	}
+	cfg.WorkdaySources = workdaySources
 
 	if cfg.DatabaseURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL is required")
@@ -79,32 +75,61 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
-// loadSources attempts to load Greenhouse/Lever sources from an external JSON
-// config file (path taken from SOURCES_CONFIG_PATH, defaulting to
+// loadSources attempts to load Greenhouse/Lever/Workday sources from an external
+// JSON config file (path taken from SOURCES_CONFIG_PATH, defaulting to
 // "config/sources.json"). If the file is missing, unreadable, or fails to
 // parse, it logs a warning and falls back to the embedded default lists so
 // the scraper always has a usable source list.
-func loadSources() ([]GreenhouseSource, []LeverSource) {
+func loadSources() ([]GreenhouseSource, []LeverSource, []WorkdaySource) {
 	path := getEnv("SOURCES_CONFIG_PATH", defaultSourcesConfigPath)
 
 	data, err := os.ReadFile(path)
 	if err != nil {
 		log.Printf("warning: sources config %q not found or unreadable (%v); falling back to embedded defaults", path, err)
-		return defaultGreenhouseSources, defaultLeverSources
+		return defaultGreenhouseSources, defaultLeverSources, defaultWorkdaySources
 	}
 
 	var sf sourcesFile
 	if err := json.Unmarshal(data, &sf); err != nil {
 		log.Printf("warning: sources config %q could not be parsed (%v); falling back to embedded defaults", path, err)
-		return defaultGreenhouseSources, defaultLeverSources
+		return defaultGreenhouseSources, defaultLeverSources, defaultWorkdaySources
 	}
 
-	if len(sf.Greenhouse) == 0 && len(sf.Lever) == 0 {
+	if len(sf.Greenhouse) == 0 && len(sf.Lever) == 0 && len(sf.Workday) == 0 {
 		log.Printf("warning: sources config %q contained no entries; falling back to embedded defaults", path)
-		return defaultGreenhouseSources, defaultLeverSources
+		return defaultGreenhouseSources, defaultLeverSources, defaultWorkdaySources
 	}
 
-	return sf.Greenhouse, sf.Lever
+	return sf.Greenhouse, sf.Lever, validWorkdaySources(sf.Workday)
+}
+
+// validWorkdaySources drops entries missing any part of the tenant address. A
+// half-configured tenant would otherwise build a URL like
+// "https://acme..myworkdayjobs.com/..." and fail on every request.
+func validWorkdaySources(sources []WorkdaySource) []WorkdaySource {
+	valid := make([]WorkdaySource, 0, len(sources))
+	for _, s := range sources {
+		if s.Company == "" || s.Tenant == "" || s.Datacenter == "" || s.Site == "" {
+			log.Printf("warning: skipping incomplete Workday source %+v (company, tenant, datacenter and site are all required)", s)
+			continue
+		}
+		valid = append(valid, s)
+	}
+	return valid
+}
+
+// defaultWorkdaySources is the embedded fallback list used when the external
+// sources.json config is missing or invalid. Every entry here was verified
+// against the live CxS API — a wrong site name returns either 422 or, worse,
+// HTTP 200 with zero postings, so entries should not be added without checking.
+var defaultWorkdaySources = []WorkdaySource{
+	{Company: "NVIDIA", Tenant: "nvidia", Datacenter: "wd5", Site: "NVIDIAExternalCareerSite"},
+	{Company: "Salesforce", Tenant: "salesforce", Datacenter: "wd12", Site: "External_Career_Site"},
+	{Company: "Micron", Tenant: "micron", Datacenter: "wd1", Site: "External"},
+	{Company: "HPE", Tenant: "hpe", Datacenter: "wd5", Site: "Jobsathpe"},
+	{Company: "Adobe", Tenant: "adobe", Datacenter: "wd5", Site: "external_experienced"},
+	{Company: "Cadence", Tenant: "cadence", Datacenter: "wd1", Site: "External_Careers"},
+	{Company: "Applied Materials", Tenant: "amat", Datacenter: "wd1", Site: "External"},
 }
 
 // defaultGreenhouseSources is the embedded fallback list used when the

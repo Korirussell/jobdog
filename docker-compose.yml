@@ -86,8 +86,6 @@ services:
       DATABASE_USERNAME: jobdog
       DATABASE_PASSWORD: jobdog
       OPENAI_API_KEY: ${APP_OPENAI_API_KEY}
-      WORKDAY_COMPANY: ${WORKDAY_COMPANY:-}
-      WORKDAY_URL: ${WORKDAY_URL:-}
     networks:
       - jobdog-network
 
