@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 import FilterBar, { FilterState } from '@/components/FolderTabs';
 import JobListRow from '@/components/JobListRow';
@@ -31,36 +31,101 @@ function formatSyncTime(dateString: string): string {
   return `${Math.floor(diffHours / 24)}d ago`;
 }
 
+// Reads the current filter state out of the URL. The URL is the single source
+// of truth — see the comment on FilterBarProps in FolderTabs.tsx for why: a
+// client-only `useState` here previously filtered only the ~100 jobs fetched
+// for the current page, so a real, existing combination (e.g. New Grad + Class
+// of 2027, which matches roughly 14 of 1,000+ active postings) would routinely
+// show zero results just because none of the 14 landed on that page. Deriving
+// filters from the URL keeps this component and app/page.tsx (which does the
+// actual server-side filtering) reading the same values.
+function filtersFromSearchParams(params: URLSearchParams): FilterState {
+  const tab = params.get('tab') === 'newgrad' ? 'newgrad' : 'intern';
+  const companyTierRaw = params.get('companyTier');
+  const gradYearRaw = params.get('gradYear');
+  return {
+    tab,
+    remote: params.get('remote') === 'true',
+    location: params.get('location') ?? '',
+    hideApplied: params.get('hideApplied') === 'true',
+    companyTier: companyTierRaw === 'FAANG' || companyTierRaw === 'UNICORN' ? companyTierRaw : '',
+    gradYear: tab === 'newgrad' && (gradYearRaw === '2026' || gradYearRaw === '2027') ? gradYearRaw : '',
+    hasSalary: params.get('hasSalary') === 'true',
+  };
+}
+
 export default function HomePageClient({ initialJobs, initialTotal, initialLastSync, initialPage, pageSize }: HomePageClientProps) {
-  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { isAuthenticated } = useAuth();
-  const [allJobs] = useState<JobSummary[]>(initialJobs);
+  // Server-filtered by app/page.tsx according to the current URL — this is
+  // already the correct result set, not a superset that needs re-filtering.
+  const allJobs = initialJobs;
   const [loading] = useState(false);
   const [error] = useState<string | null>(null);
-  const [totalFromApi] = useState(initialTotal);
-  const [page] = useState(initialPage);
-  const [lastSync] = useState<string | null>(initialLastSync);
+  const totalFromApi = initialTotal;
+  const page = initialPage;
+  const lastSync = initialLastSync;
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [applyModal, setApplyModal] = useState<{ jobId: string; title: string; company: string; applyUrl: string } | null>(null);
   const [conveyorJobs, setConveyorJobs] = useState<Array<{ jobId: string; company: string; title: string }>>([]);
-  const [filters, setFilters] = useState<FilterState>({
-    tab: 'intern',
-    remote: false,
-    location: '',
-    hideApplied: false,
-    companyTier: '',
-    gradYear: '',
-    hasSalary: false,
-  });
-  const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const filters = useMemo(() => filtersFromSearchParams(searchParams), [searchParams]);
+  const searchQuery = searchParams.get('search') ?? '';
 
   const focusSearch = useCallback(() => {
     searchInputRef.current?.focus();
     searchInputRef.current?.select();
   }, []);
+
+  // Navigates to the current path with `changes` merged into the existing query
+  // string. Page resets to 0 on any filter/search change — staying on page 4 of
+  // the old result set makes no sense once the set itself has changed. `search`
+  // is handled separately (debounced) rather than through this path.
+  const navigateWithFilters = useCallback((changes: Partial<Record<string, string | null>>) => {
+    const next = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(changes)) {
+      if (value == null || value === '') next.delete(key);
+      else next.set(key, value);
+    }
+    next.delete('page');
+    // A hard navigation, not router.push. The App Router's client-side Router
+    // Cache can reuse the previous render of this same route/segment when only
+    // searchParams change — confirmed by observing window.location.href update
+    // correctly via router.push (even combined with router.refresh()) while the
+    // DOM kept showing the previous filter's results. A full navigation forces
+    // app/page.tsx to genuinely re-run server-side with the new searchParams,
+    // at the cost of a full page load instead of a client transition.
+    window.location.href = `${pathname}?${next.toString()}`;
+  }, [pathname, searchParams]);
+
+  const handleFilterChange = useCallback((next: FilterState) => {
+    navigateWithFilters({
+      tab: next.tab === 'newgrad' ? 'newgrad' : null,
+      remote: next.remote ? 'true' : null,
+      location: next.location || null,
+      companyTier: next.companyTier || null,
+      gradYear: next.gradYear || null,
+      hasSalary: next.hasSalary ? 'true' : null,
+      // hideApplied is intentionally excluded — see the render-time filter below.
+    });
+  }, [navigateWithFilters]);
+
+  // hideApplied depends on which jobs *this browser* has applied to, which the
+  // backend has no way to filter by for anonymous users — it stays client-side,
+  // applied over the page the server already returned.
+  const [hideApplied, setHideApplied] = useState(false);
+
+  const handleSearchChange = useCallback((value: string) => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      navigateWithFilters({ search: value || null });
+    }, 400);
+  }, [navigateWithFilters]);
 
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_ENABLE_REALTIME !== 'true') return;
@@ -126,54 +191,24 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
     setAppliedJobIds((prev) => new Set(prev).add(jobId));
   }, []);
 
-  const q = searchQuery.trim().toLowerCase();
+  // The only filtering left on the client: hideApplied, which can't be done
+  // server-side (see above). Everything else — tab, remote, location, search,
+  // companyTier, gradYear, hasSalary — was already applied server-side by
+  // app/page.tsx against the full dataset, so allJobs is already correct.
+  const visibleJobs = hideApplied ? allJobs.filter((job) => !appliedJobIds.has(job.jobId)) : allJobs;
 
-  const visibleJobs = allJobs.filter((job) => {
-    const type = (job.employmentType ?? '').toUpperCase();
-    // Prefer entryType, the cohort classifier's verdict — it reads the
-    // description, not just the title, so it catches internships whose title
-    // doesn't say "intern" and vice versa. Postings the classifier hasn't
-    // reached yet (entryType null) fall back to the old title/type heuristic.
-    const isIntern = job.entryType
-      ? job.entryType === 'INTERN'
-      : type === 'INTERNSHIP' || job.title.toLowerCase().includes('intern');
-
-    if (filters.tab === 'intern') {
-      if (!isIntern) return false;
-    } else if (isIntern) {
-      return false;
-    }
-
-    if (filters.remote && !job.location.toLowerCase().includes('remote')) return false;
-
-    if (filters.location) {
-      const loc = filters.location.toLowerCase();
-      if (!job.location.toLowerCase().includes(loc)) return false;
-    }
-
-    if (filters.hideApplied && appliedJobIds.has(job.jobId)) return false;
-
-    if (filters.companyTier && job.companyTier !== filters.companyTier) return false;
-
-    if (filters.gradYear) {
-      const year = Number(filters.gradYear);
-      // A posting with no recorded window can't be confirmed to include this
-      // year, so it's excluded rather than assumed to match.
-      if (job.gradYearMin == null || job.gradYearMax == null) return false;
-      if (year < job.gradYearMin || year > job.gradYearMax) return false;
-    }
-
-    if (filters.hasSalary && !job.salaryRaw) return false;
-
-    if (q) {
-      const haystack = `${job.title} ${job.company} ${job.location}`.toLowerCase();
-      if (!haystack.includes(q)) return false;
-    }
-
-    return true;
-  });
+  const hasActiveFilters = filters.remote || !!filters.location || hideApplied ||
+    !!filters.companyTier || !!filters.gradYear || filters.hasSalary || !!searchQuery;
 
   const totalPages = Math.ceil(totalFromApi / pageSize);
+
+  const goToPage = useCallback((targetPage: number) => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.set('page', String(targetPage));
+    // Hard navigation — see the comment in navigateWithFilters for why
+    // router.push (even combined with router.refresh()) isn't reliable here.
+    window.location.href = `${pathname}?${next.toString()}`;
+  }, [pathname, searchParams]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -194,8 +229,13 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
         <div className="bg-white">
           <FilterBar
             searchInputRef={searchInputRef}
-            onFilterChange={(f) => { setFilters(f); }}
-            onSearchChange={(s) => { setSearchQuery(s); }}
+            filters={{ ...filters, hideApplied }}
+            onFilterChange={(f) => {
+              setHideApplied(f.hideApplied);
+              handleFilterChange(f);
+            }}
+            initialSearch={searchQuery}
+            onSearchChange={handleSearchChange}
           />
         </div>
 
@@ -209,10 +249,10 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
             <p className="font-mono text-xs font-bold text-red-600">⚠ {error}</p>
           ) : (
             <p className="font-mono text-xs text-text-secondary">
-              {q ? (
-                <><span className="font-bold text-text-primary">{visibleJobs.length}</span> results for "<span className="text-primary">{searchQuery}</span>"</>
+              {searchQuery ? (
+                <><span className="font-bold text-text-primary">{totalFromApi.toLocaleString()}</span> results for "<span className="text-primary">{searchQuery}</span>"</>
               ) : (
-                <><span className="font-bold text-text-primary">{visibleJobs.length}</span> {filters.tab === 'intern' ? 'internships' : 'new grad roles'} on this page</>
+                <><span className="font-bold text-text-primary">{totalFromApi.toLocaleString()}</span> {filters.tab === 'intern' ? 'internships' : 'new grad roles'}{hasActiveFilters && !searchQuery ? ' matching filters' : ''}</>
               )}
             </p>
           )}
@@ -225,19 +265,19 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
 
         {visibleJobs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="mb-4 text-5xl">{q ? '🔍' : '📭'}</div>
+            <div className="mb-4 text-5xl">{searchQuery ? '🔍' : '📭'}</div>
             <p className="font-mono text-base font-bold text-text-secondary">
-              {q ? `No ${filters.tab === 'intern' ? 'internships' : 'new grad roles'} matching "${searchQuery}"` : `No ${filters.tab === 'intern' ? 'internships' : 'new grad roles'} found`}
+              {searchQuery ? `No ${filters.tab === 'intern' ? 'internships' : 'new grad roles'} matching "${searchQuery}"` : `No ${filters.tab === 'intern' ? 'internships' : 'new grad roles'} found`}
             </p>
             <p className="mt-2 font-mono text-sm text-text-tertiary">
-              {q ? 'Try a different search or clear filters' : 'Try switching tabs or removing filters'}
+              {searchQuery ? 'Try a different search or clear filters' : 'Try switching tabs or removing filters'}
             </p>
-            {(q || filters.remote || filters.location || filters.companyTier || filters.gradYear || filters.hasSalary) && (
+            {hasActiveFilters && (
               <button
                 onClick={() => {
-                  setSearchQuery('');
                   if (searchInputRef.current) searchInputRef.current.value = '';
-                  setFilters({ tab: filters.tab, remote: false, location: '', hideApplied: false, companyTier: '', gradYear: '', hasSalary: false });
+                  setHideApplied(false);
+                  navigateWithFilters({ remote: null, location: null, companyTier: null, gradYear: null, hasSalary: null, search: null });
                 }}
                 className="mt-5 border-2 border-black bg-primary px-5 py-2 font-mono text-xs font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
               >
@@ -280,7 +320,7 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
         {totalPages > 1 && (
           <div className="flex items-center justify-between border-t border-black/8 py-6 pb-20">
             <button
-              onClick={() => router.push(`/?page=${Math.max(0, page - 1)}`)}
+              onClick={() => goToPage(Math.max(0, page - 1))}
               disabled={page === 0}
               className="border border-black/20 bg-white px-4 py-2 font-mono text-xs font-bold transition-all hover:border-black/40 disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -290,7 +330,7 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
               Page <span className="font-bold text-text-primary">{page + 1}</span> of {totalPages}
             </span>
             <button
-              onClick={() => router.push(`/?page=${Math.min(totalPages - 1, page + 1)}`)}
+              onClick={() => goToPage(Math.min(totalPages - 1, page + 1))}
               disabled={page >= totalPages - 1}
               className="border border-black/20 bg-white px-4 py-2 font-mono text-xs font-bold transition-all hover:border-black/40 disabled:cursor-not-allowed disabled:opacity-40"
             >

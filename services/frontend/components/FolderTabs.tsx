@@ -5,7 +5,13 @@ import { useState } from 'react';
 export type JobTab = 'intern' | 'newgrad';
 
 interface FilterBarProps {
+  // Controlled: the URL (via HomePageClient's useSearchParams) is the single
+  // source of truth for filter state, so a page refresh, back-button press, or
+  // shared link reproduces exactly what was showing. This component only owns
+  // UI-only state (the search textbox's live value, whether the panel is open).
+  filters: FilterState;
   onFilterChange?: (filters: FilterState) => void;
+  initialSearch?: string;
   onSearchChange?: (search: string) => void;
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
@@ -25,17 +31,8 @@ export interface FilterState {
   hasSalary: boolean;
 }
 
-export default function FilterBar({ onFilterChange, onSearchChange, searchInputRef }: FilterBarProps) {
-  const [searchValue, setSearchValue] = useState('');
-  const [filters, setFilters] = useState<FilterState>({
-    tab: 'intern',
-    remote: false,
-    location: '',
-    hideApplied: false,
-    companyTier: '',
-    gradYear: '',
-    hasSalary: false,
-  });
+export default function FilterBar({ filters, onFilterChange, initialSearch, onSearchChange, searchInputRef }: FilterBarProps) {
+  const [searchValue, setSearchValue] = useState(initialSearch ?? '');
   const [showMore, setShowMore] = useState(false);
 
   const update = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
@@ -45,7 +42,6 @@ export default function FilterBar({ onFilterChange, onSearchChange, searchInputR
     if (key === 'tab' && value !== 'newgrad') {
       next.gradYear = '';
     }
-    setFilters(next);
     onFilterChange?.(next);
   };
 
@@ -353,7 +349,6 @@ export default function FilterBar({ onFilterChange, onSearchChange, searchInputR
               <button
                 onClick={() => {
                   const reset: FilterState = { tab: filters.tab, remote: false, location: '', hideApplied: false, companyTier: '', gradYear: '', hasSalary: false };
-                  setFilters(reset);
                   onFilterChange?.(reset);
                 }}
                 className="mb-0 border border-black/15 px-3 py-1.5 font-mono text-xs text-text-tertiary transition-colors hover:border-black/30 hover:text-text-primary"

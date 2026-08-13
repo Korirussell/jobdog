@@ -66,13 +66,17 @@ public class JobService {
                     // filter is inactive here so its contents are never evaluated.
                     : Set.of("__none__");
 
+            boolean entryTypesActive = filter.entryTypes() != null && !filter.entryTypes().isEmpty();
+            List<String> entryTypes = entryTypesActive ? filter.entryTypes() : List.of("__none__");
+
             jobPage = jobRepository.findByFilters(
                     JobStatus.ACTIVE,
                     filter.location(),
                     filter.remote(),
                     filter.company(),
                     filter.search(),
-                    filter.entryType(),
+                    entryTypesActive,
+                    entryTypes,
                     filter.gradYear(),
                     companyTierActive,
                     companyTierCompanies,
@@ -177,7 +181,7 @@ public class JobService {
                filter.remote() != null ||
                filter.company() != null ||
                filter.search() != null ||
-               filter.entryType() != null ||
+               (filter.entryTypes() != null && !filter.entryTypes().isEmpty()) ||
                filter.gradYear() != null ||
                filter.companyTier() != null ||
                Boolean.TRUE.equals(filter.hasSalary());

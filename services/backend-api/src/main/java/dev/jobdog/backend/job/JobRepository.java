@@ -37,7 +37,7 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
            "AND (:company IS NULL OR LOWER(j.company) LIKE LOWER(CONCAT('%', CAST(:company AS string), '%'))) " +
            "AND (:search IS NULL OR (LOWER(j.title) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
            "     OR LOWER(j.company) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
-           "AND (:entryType IS NULL OR j.entryType = :entryType) " +
+           "AND (:entryTypesActive = false OR j.entryType IN :entryTypes) " +
            // A job whose window doesn't include gradYear never matches — including
            // jobs with no window recorded at all (both bounds null), which is
            // correct: "graduating 2027" should not surface a posting with no known
@@ -53,7 +53,8 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
             @Param("remote") Boolean remote,
             @Param("company") String company,
             @Param("search") String search,
-            @Param("entryType") String entryType,
+            @Param("entryTypesActive") boolean entryTypesActive,
+            @Param("entryTypes") Collection<String> entryTypes,
             @Param("gradYear") Integer gradYear,
             @Param("companyTierActive") boolean companyTierActive,
             @Param("companyTierCompanies") Collection<String> companyTierCompanies,

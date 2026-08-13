@@ -1,5 +1,7 @@
 package dev.jobdog.backend.job;
 
+import java.util.List;
+
 public record JobFilterRequest(
         int page,
         int size,
@@ -7,9 +9,12 @@ public record JobFilterRequest(
         Boolean remote,
         String company,
         String search,
-        // "NEW_GRAD_COHORT" | "ENTRY_LEVEL_OPEN" | "INTERN" | "EXPERIENCED" — see
-        // scraper.EntryType. Null means no cohort filter applied.
-        String entryType,
+        // Each value is "NEW_GRAD_COHORT" | "ENTRY_LEVEL_OPEN" | "INTERN" |
+        // "EXPERIENCED" — see scraper.EntryType. A job matches if its entryType is
+        // any of these; null/empty means no cohort filter applied. Plural because
+        // the frontend's "New Grad" tab means "cohort-gated OR open entry-level",
+        // not one single type.
+        List<String> entryTypes,
         // Matches a job whose [gradYearMin, gradYearMax] window includes this year.
         // A job with no window recorded never matches a gradYear filter.
         Integer gradYear,

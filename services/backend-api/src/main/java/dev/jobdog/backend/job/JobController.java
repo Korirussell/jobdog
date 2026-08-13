@@ -2,6 +2,8 @@ package dev.jobdog.backend.job;
 
 import dev.jobdog.backend.auth.AuthenticatedUser;
 import dev.jobdog.backend.auth.CurrentUser;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
@@ -53,13 +55,18 @@ public class JobController {
             @RequestParam(required = false) Boolean remote,
             @RequestParam(required = false) String company,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) String entryType,
+            @RequestParam(required = false) String entryTypes,
             @RequestParam(required = false) Integer gradYear,
             @RequestParam(required = false) String companyTier,
             @RequestParam(required = false) Boolean hasSalary
     ) {
+        // Comma-separated on the wire ("NEW_GRAD_COHORT,ENTRY_LEVEL_OPEN") rather than
+        // repeated query params — simpler for the frontend to build with URLSearchParams.
+        List<String> entryTypeList = entryTypes == null || entryTypes.isBlank()
+                ? null
+                : Arrays.stream(entryTypes.split(",")).map(String::trim).filter(s -> !s.isBlank()).toList();
         JobFilterRequest filter = new JobFilterRequest(
-                page, size, location, remote, company, search, entryType, gradYear, companyTier, hasSalary);
+                page, size, location, remote, company, search, entryTypeList, gradYear, companyTier, hasSalary);
         // Pass userId if authenticated, null otherwise for local matching
         UUID userId = currentUser.get().map(AuthenticatedUser::userId).orElse(null);
         return ResponseEntity.ok(jobService.listActiveJobs(filter, userId));

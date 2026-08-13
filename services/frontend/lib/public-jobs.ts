@@ -139,7 +139,9 @@ export function buildJobsSearchParams(input: {
   remote?: string;
   company?: string;
   search?: string;
-  entryType?: string;
+  // Comma-separated, e.g. "NEW_GRAD_COHORT,ENTRY_LEVEL_OPEN" — a job matches if
+  // its entryType is any of these.
+  entryTypes?: string;
   gradYear?: string;
   companyTier?: string;
   hasSalary?: string;
@@ -152,7 +154,7 @@ export function buildJobsSearchParams(input: {
   if (input.remote === 'true') params.set('remote', 'true');
   if (input.company) params.set('company', input.company);
   if (input.search) params.set('search', input.search);
-  if (input.entryType) params.set('entryType', input.entryType);
+  if (input.entryTypes) params.set('entryTypes', input.entryTypes);
   if (input.gradYear) params.set('gradYear', input.gradYear);
   if (input.companyTier) params.set('companyTier', input.companyTier);
   if (input.hasSalary === 'true') params.set('hasSalary', 'true');
