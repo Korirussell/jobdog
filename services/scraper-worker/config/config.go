@@ -31,6 +31,13 @@ type LeverSource struct {
 	Slug    string `json:"slug"`
 }
 
+// AshbySource addresses one Ashby job board. Ashby exposes a public posting API
+// keyed on the organization slug from the board URL.
+type AshbySource struct {
+	Company string `json:"company"`
+	Token   string `json:"token"`
+}
+
 // AggregatorSource is a community-maintained GitHub repo whose README lists open
 // roles. These are hiring-cycle specific — "Summer2027-Internships" is a different
 // repo from "Summer2026-Internships", not a branch of it — so they must be updated
@@ -47,6 +54,7 @@ type sourcesFile struct {
 	Greenhouse  []GreenhouseSource `json:"greenhouse"`
 	Lever       []LeverSource      `json:"lever"`
 	Workday     []WorkdaySource    `json:"workday"`
+	Ashby       []AshbySource      `json:"ashby"`
 	Aggregators []AggregatorSource `json:"aggregators"`
 }
 
@@ -63,6 +71,7 @@ type Config struct {
 	WorkdaySources    []WorkdaySource
 	GreenhouseSources []GreenhouseSource
 	LeverSources      []LeverSource
+	AshbySources      []AshbySource
 	Aggregators       []AggregatorSource
 }
 
@@ -80,6 +89,7 @@ func Load() (*Config, error) {
 	cfg.GreenhouseSources = sources.Greenhouse
 	cfg.LeverSources = sources.Lever
 	cfg.WorkdaySources = sources.Workday
+	cfg.AshbySources = sources.Ashby
 	cfg.Aggregators = sources.Aggregators
 
 	if cfg.DatabaseURL == "" {

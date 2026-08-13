@@ -124,7 +124,11 @@ func (s *GitHubScraper) fetchReadme(ctx context.Context, repo string) (string, e
 }
 
 func (s *GitHubScraper) parseMarkdownTable(content, employmentType string) []models.Job {
-	if strings.Contains(content, "<table>") {
+	// Match the opening tag by prefix, not exactly: these READMEs are rendered by
+	// tooling that emits attributes ("<table style=...>"), and requiring the bare
+	// tag silently routes an HTML table into the markdown parser, which finds no
+	// pipe-delimited rows and returns nothing.
+	if strings.Contains(content, "<table") {
 		return s.parseHTMLTable(content, employmentType)
 	}
 
@@ -270,4 +274,12 @@ func simplifySourceJobID(sourceURL string) string {
 
 func timePtr(t time.Time) *time.Time {
 	return &t
+}
+
+// ParseAggregatorReadme exposes the aggregator table parser for tooling that
+// needs the parsed rows without persisting them — notably the discovery command,
+// which reads the ATS links out of each row to build the board registry.
+func ParseAggregatorReadme(content, employmentType string) []models.Job {
+	s := &GitHubScraper{}
+	return s.parseMarkdownTable(content, employmentType)
 }

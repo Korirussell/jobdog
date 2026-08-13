@@ -29,16 +29,16 @@ var preferredIndicators = []string{
 
 func ExtractSkills(description string) (required []string, preferred []string) {
 	lowerDesc := strings.ToLower(description)
-	
+
 	requiredSkills := make(map[string]bool)
 	preferredSkills := make(map[string]bool)
-	
+
 	lines := strings.Split(lowerDesc, "\n")
-	
+
 	for _, line := range lines {
 		isRequired := containsAny(line, requiredIndicators)
 		isPreferred := containsAny(line, preferredIndicators)
-		
+
 		for _, skill := range skillKeywords {
 			pattern := regexp.MustCompile(`\b` + regexp.QuoteMeta(skill) + `\b`)
 			if pattern.MatchString(line) {
@@ -52,7 +52,7 @@ func ExtractSkills(description string) (required []string, preferred []string) {
 			}
 		}
 	}
-	
+
 	for skill := range requiredSkills {
 		required = append(required, skill)
 	}
@@ -61,7 +61,7 @@ func ExtractSkills(description string) (required []string, preferred []string) {
 			preferred = append(preferred, skill)
 		}
 	}
-	
+
 	return required, preferred
 }
 

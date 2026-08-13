@@ -32,8 +32,8 @@ type LeverPosting struct {
 		Location   string `json:"location"`
 		Commitment string `json:"commitment"`
 	} `json:"categories"`
-	CreatedAt   int64              `json:"createdAt"`
-	SalaryRange *LeverSalaryRange  `json:"salaryRange"`
+	CreatedAt   int64             `json:"createdAt"`
+	SalaryRange *LeverSalaryRange `json:"salaryRange"`
 }
 
 type LeverSalaryRange struct {

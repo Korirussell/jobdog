@@ -36,11 +36,11 @@ func (c *URLChecker) CheckAndPruneURLs(ctx context.Context) error {
 	log.Info().Int("count", len(jobs)).Msg("Starting URL liveness check")
 
 	var (
-		wg         sync.WaitGroup
-		mu         sync.Mutex
-		pruned     int
-		errors     int
-		jobsChan   = make(chan repository.ActiveJob, len(jobs))
+		wg       sync.WaitGroup
+		mu       sync.Mutex
+		pruned   int
+		errors   int
+		jobsChan = make(chan repository.ActiveJob, len(jobs))
 	)
 
 	for _, j := range jobs {
