@@ -23,7 +23,10 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
-    // TODO: Send to monitoring service (Sentry, DataDog, etc.)
+    // No error-monitoring service (Sentry, DataDog, etc.) is wired up yet —
+    // that requires picking a provider and provisioning an account/API key,
+    // which is a product decision, not something to add silently here.
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
   }
 
   render() {
