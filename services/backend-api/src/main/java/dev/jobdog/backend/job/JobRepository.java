@@ -21,12 +21,31 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
 
     Page<JobEntity> findByStatus(JobStatus status, Pageable pageable);
 
+    // CAST(... AS string) on every nullable String parameter that is used inside a
+    // function call (LOWER, CONCAT) is required, not decorative: PostgreSQL's JDBC
+    // driver cannot infer a type for an untyped NULL parameter, defaults it to
+    // bytea, and then "function lower(bytea) does not exist" fails the whole
+    // query — even for filter combinations that never touch that specific
+    // parameter, because Postgres type-checks a prepared statement before any
+    // predicate runs. This affected :company and :search before this change too;
+    // it was only ever masked by every prior filtered request also setting
+    // :location, which happened to be the one parameter Hibernate could type
+    // correctly on its own.
     @Query("SELECT j FROM JobEntity j WHERE j.status = :status " +
-           "AND (:location IS NULL OR LOWER(j.location) LIKE LOWER(CONCAT('%', :location, '%'))) " +
+           "AND (:location IS NULL OR LOWER(j.location) LIKE LOWER(CONCAT('%', CAST(:location AS string), '%'))) " +
            "AND (:remote IS NULL OR :remote = false OR LOWER(j.location) LIKE '%remote%') " +
-           "AND (:company IS NULL OR LOWER(j.company) LIKE LOWER(CONCAT('%', :company, '%'))) " +
-           "AND (:search IS NULL OR (LOWER(j.title) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "     OR LOWER(j.company) LIKE LOWER(CONCAT('%', :search, '%')))) " +
+           "AND (:company IS NULL OR LOWER(j.company) LIKE LOWER(CONCAT('%', CAST(:company AS string), '%'))) " +
+           "AND (:search IS NULL OR (LOWER(j.title) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+           "     OR LOWER(j.company) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
+           "AND (:entryType IS NULL OR j.entryType = :entryType) " +
+           // A job whose window doesn't include gradYear never matches — including
+           // jobs with no window recorded at all (both bounds null), which is
+           // correct: "graduating 2027" should not surface a posting with no known
+           // eligibility window just because neither bound excludes it.
+           "AND (:gradYear IS NULL OR (j.gradYearMin IS NOT NULL AND j.gradYearMax IS NOT NULL " +
+           "     AND j.gradYearMin <= :gradYear AND j.gradYearMax >= :gradYear)) " +
+           "AND (:companyTierActive = false OR LOWER(j.company) IN :companyTierCompanies) " +
+           "AND (:hasSalary IS NULL OR :hasSalary = false OR j.salaryRaw IS NOT NULL) " +
            "ORDER BY COALESCE(j.postedAt, j.scrapedAt) DESC")
     Page<JobEntity> findByFilters(
             @Param("status") JobStatus status,
@@ -34,6 +53,11 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
             @Param("remote") Boolean remote,
             @Param("company") String company,
             @Param("search") String search,
+            @Param("entryType") String entryType,
+            @Param("gradYear") Integer gradYear,
+            @Param("companyTierActive") boolean companyTierActive,
+            @Param("companyTierCompanies") Collection<String> companyTierCompanies,
+            @Param("hasSalary") Boolean hasSalary,
             Pageable pageable
     );
 

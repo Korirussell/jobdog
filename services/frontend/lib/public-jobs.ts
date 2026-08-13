@@ -12,6 +12,13 @@ export interface JobSummary {
   companyTier: string | null;
   ghostScore: number | null;
   experienceLevel: string | null;
+  // "NEW_GRAD_COHORT" | "ENTRY_LEVEL_OPEN" | "INTERN" | "EXPERIENCED" | null.
+  // NEW_GRAD_COHORT is a role gated on a graduation window (gradYearMin/Max);
+  // ENTRY_LEVEL_OPEN is a junior role anyone can apply to, no cohort gate.
+  entryType: string | null;
+  gradYearMin: number | null;
+  gradYearMax: number | null;
+  salaryRaw: string | null;
 }
 
 export interface JobsResponse {
@@ -24,6 +31,9 @@ export interface JobsResponse {
 
 export interface JobDetail extends JobSummary {
   description: string;
+  // The sentence the classifier based entryType on, when the model pass ran.
+  // Null for deterministic-only verdicts and for jobs still unclassified.
+  gradEvidence: string | null;
 }
 
 function getApiOrigin() {
@@ -129,6 +139,10 @@ export function buildJobsSearchParams(input: {
   remote?: string;
   company?: string;
   search?: string;
+  entryType?: string;
+  gradYear?: string;
+  companyTier?: string;
+  hasSalary?: string;
 }) {
   const params = new URLSearchParams();
 
@@ -138,6 +152,10 @@ export function buildJobsSearchParams(input: {
   if (input.remote === 'true') params.set('remote', 'true');
   if (input.company) params.set('company', input.company);
   if (input.search) params.set('search', input.search);
+  if (input.entryType) params.set('entryType', input.entryType);
+  if (input.gradYear) params.set('gradYear', input.gradYear);
+  if (input.companyTier) params.set('companyTier', input.companyTier);
+  if (input.hasSalary === 'true') params.set('hasSalary', 'true');
 
   return params;
 }

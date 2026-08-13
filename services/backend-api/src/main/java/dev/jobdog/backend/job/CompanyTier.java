@@ -23,6 +23,23 @@ public final class CompanyTier {
     private CompanyTier() {
     }
 
+    /**
+     * Returns the (lowercased) company names belonging to a tier, for use in a
+     * {@code company IN (...)} filter. Unknown or null tiers return an empty set
+     * rather than throwing, since a filter with no matches is a valid outcome and
+     * simpler for the caller than a checked exception.
+     */
+    public static Set<String> companiesForTier(String tier) {
+        if (tier == null) {
+            return Set.of();
+        }
+        return switch (tier.trim().toUpperCase()) {
+            case "FAANG" -> FAANG;
+            case "UNICORN" -> UNICORN;
+            default -> Set.of();
+        };
+    }
+
     public static String lookup(String company) {
         if (company == null || company.isBlank()) {
             return null;

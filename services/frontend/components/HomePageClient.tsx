@@ -49,6 +49,9 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
     remote: false,
     location: '',
     hideApplied: false,
+    companyTier: '',
+    gradYear: '',
+    hasSalary: false,
   });
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -127,12 +130,18 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
 
   const visibleJobs = allJobs.filter((job) => {
     const type = (job.employmentType ?? '').toUpperCase();
+    // Prefer entryType, the cohort classifier's verdict — it reads the
+    // description, not just the title, so it catches internships whose title
+    // doesn't say "intern" and vice versa. Postings the classifier hasn't
+    // reached yet (entryType null) fall back to the old title/type heuristic.
+    const isIntern = job.entryType
+      ? job.entryType === 'INTERN'
+      : type === 'INTERNSHIP' || job.title.toLowerCase().includes('intern');
+
     if (filters.tab === 'intern') {
-      const isIntern = type === 'INTERNSHIP' || job.title.toLowerCase().includes('intern');
       if (!isIntern) return false;
-    } else {
-      const isIntern = type === 'INTERNSHIP' && !job.title.toLowerCase().includes('new grad');
-      if (isIntern) return false;
+    } else if (isIntern) {
+      return false;
     }
 
     if (filters.remote && !job.location.toLowerCase().includes('remote')) return false;
@@ -143,6 +152,18 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
     }
 
     if (filters.hideApplied && appliedJobIds.has(job.jobId)) return false;
+
+    if (filters.companyTier && job.companyTier !== filters.companyTier) return false;
+
+    if (filters.gradYear) {
+      const year = Number(filters.gradYear);
+      // A posting with no recorded window can't be confirmed to include this
+      // year, so it's excluded rather than assumed to match.
+      if (job.gradYearMin == null || job.gradYearMax == null) return false;
+      if (year < job.gradYearMin || year > job.gradYearMax) return false;
+    }
+
+    if (filters.hasSalary && !job.salaryRaw) return false;
 
     if (q) {
       const haystack = `${job.title} ${job.company} ${job.location}`.toLowerCase();
@@ -211,12 +232,12 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
             <p className="mt-2 font-mono text-sm text-text-tertiary">
               {q ? 'Try a different search or clear filters' : 'Try switching tabs or removing filters'}
             </p>
-            {(q || filters.remote || filters.location) && (
+            {(q || filters.remote || filters.location || filters.companyTier || filters.gradYear || filters.hasSalary) && (
               <button
                 onClick={() => {
                   setSearchQuery('');
                   if (searchInputRef.current) searchInputRef.current.value = '';
-                  setFilters({ tab: filters.tab, remote: false, location: '', hideApplied: false });
+                  setFilters({ tab: filters.tab, remote: false, location: '', hideApplied: false, companyTier: '', gradYear: '', hasSalary: false });
                 }}
                 className="mt-5 border-2 border-black bg-primary px-5 py-2 font-mono text-xs font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
               >
@@ -242,6 +263,10 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
                 companyTier={job.companyTier}
                 ghostScore={job.ghostScore}
                 experienceLevel={job.experienceLevel}
+                entryType={job.entryType}
+                gradYearMin={job.gradYearMin}
+                gradYearMax={job.gradYearMax}
+                salaryRaw={job.salaryRaw}
                 alreadyApplied={appliedJobIds.has(job.jobId)}
                 isSaved={savedJobIds.has(job.jobId)}
                 onApply={isAuthenticated ? handleApply : undefined}

@@ -13,6 +13,13 @@ public record JobDetailResponse(
         Instant scrapedAt,
         String jobStatus,
         String applyUrl,
-        String description
+        String description,
+        String companyTier,
+        String experienceLevel,
+        String entryType,
+        Integer gradYearMin,
+        Integer gradYearMax,
+        String gradEvidence,
+        String salaryRaw
 ) {
 }

@@ -53,6 +53,27 @@ public class JobEntity extends BaseEntity {
     @Column(length = 16)
     private String experienceLevel;
 
+    @Column(length = 24)
+    private String entryType;
+
+    @Column
+    private Short gradYearMin;
+
+    @Column
+    private Short gradYearMax;
+
+    @Column(length = 8)
+    private String gradSource;
+
+    @Column
+    private Float gradConfidence;
+
+    @Column(columnDefinition = "TEXT")
+    private String gradEvidence;
+
+    @Column(columnDefinition = "TEXT")
+    private String salaryRaw;
+
     @Column
     private Instant postedAt;
 
@@ -161,6 +182,62 @@ public class JobEntity extends BaseEntity {
 
     public void setExperienceLevel(String experienceLevel) {
         this.experienceLevel = experienceLevel;
+    }
+
+    public String getEntryType() {
+        return entryType;
+    }
+
+    public void setEntryType(String entryType) {
+        this.entryType = entryType;
+    }
+
+    public Short getGradYearMin() {
+        return gradYearMin;
+    }
+
+    public void setGradYearMin(Short gradYearMin) {
+        this.gradYearMin = gradYearMin;
+    }
+
+    public Short getGradYearMax() {
+        return gradYearMax;
+    }
+
+    public void setGradYearMax(Short gradYearMax) {
+        this.gradYearMax = gradYearMax;
+    }
+
+    public String getGradSource() {
+        return gradSource;
+    }
+
+    public void setGradSource(String gradSource) {
+        this.gradSource = gradSource;
+    }
+
+    public Float getGradConfidence() {
+        return gradConfidence;
+    }
+
+    public void setGradConfidence(Float gradConfidence) {
+        this.gradConfidence = gradConfidence;
+    }
+
+    public String getGradEvidence() {
+        return gradEvidence;
+    }
+
+    public void setGradEvidence(String gradEvidence) {
+        this.gradEvidence = gradEvidence;
+    }
+
+    public String getSalaryRaw() {
+        return salaryRaw;
+    }
+
+    public void setSalaryRaw(String salaryRaw) {
+        this.salaryRaw = salaryRaw;
     }
 
     public Instant getPostedAt() {

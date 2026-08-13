@@ -10,11 +10,19 @@ interface FilterBarProps {
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
+// "" = any grad year. Only meaningful on the New Grad tab — an intern posting
+// has no graduation-cohort gate to filter by.
+export type GradYearFilter = '' | '2026' | '2027';
+
 export interface FilterState {
   tab: JobTab;
   remote: boolean;
   location: string;
   hideApplied: boolean;
+  // "" = any company. "FAANG" / "UNICORN" match CompanyTier.lookup on the backend.
+  companyTier: '' | 'FAANG' | 'UNICORN';
+  gradYear: GradYearFilter;
+  hasSalary: boolean;
 }
 
 export default function FilterBar({ onFilterChange, onSearchChange, searchInputRef }: FilterBarProps) {
@@ -24,16 +32,25 @@ export default function FilterBar({ onFilterChange, onSearchChange, searchInputR
     remote: false,
     location: '',
     hideApplied: false,
+    companyTier: '',
+    gradYear: '',
+    hasSalary: false,
   });
   const [showMore, setShowMore] = useState(false);
 
   const update = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     const next = { ...filters, [key]: value };
+    // A grad-year filter only means something on the New Grad tab; switching to
+    // Internships with one still set would silently filter out every result.
+    if (key === 'tab' && value !== 'newgrad') {
+      next.gradYear = '';
+    }
     setFilters(next);
     onFilterChange?.(next);
   };
 
-  const hasExtraFilters = filters.remote || !!filters.location || filters.hideApplied;
+  const hasExtraFilters = filters.remote || !!filters.location || filters.hideApplied ||
+    !!filters.companyTier || !!filters.gradYear || filters.hasSalary;
 
   return (
     <div className="border-b border-black/10 bg-white">
@@ -78,7 +95,7 @@ export default function FilterBar({ onFilterChange, onSearchChange, searchInputR
             Filters
             {hasExtraFilters && (
               <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-text-primary">
-                {[filters.remote, !!filters.location, filters.hideApplied].filter(Boolean).length}
+                {[filters.remote, !!filters.location, filters.hideApplied, !!filters.companyTier, !!filters.gradYear, filters.hasSalary].filter(Boolean).length}
               </span>
             )}
           </button>
@@ -101,6 +118,24 @@ export default function FilterBar({ onFilterChange, onSearchChange, searchInputR
               <span className="flex items-center gap-1 border border-black/20 bg-black/5 px-2 py-1 font-mono text-[10px] font-bold">
                 Hide applied
                 <button onClick={() => update('hideApplied', false)} className="ml-0.5 text-text-tertiary hover:text-text-primary">✕</button>
+              </span>
+            )}
+            {filters.companyTier && (
+              <span className="flex items-center gap-1 border border-black/20 bg-black/5 px-2 py-1 font-mono text-[10px] font-bold">
+                {filters.companyTier}
+                <button onClick={() => update('companyTier', '')} className="ml-0.5 text-text-tertiary hover:text-text-primary">✕</button>
+              </span>
+            )}
+            {filters.gradYear && (
+              <span className="flex items-center gap-1 border border-black/20 bg-black/5 px-2 py-1 font-mono text-[10px] font-bold">
+                Class of {filters.gradYear}
+                <button onClick={() => update('gradYear', '')} className="ml-0.5 text-text-tertiary hover:text-text-primary">✕</button>
+              </span>
+            )}
+            {filters.hasSalary && (
+              <span className="flex items-center gap-1 border border-black/20 bg-black/5 px-2 py-1 font-mono text-[10px] font-bold">
+                Pay listed
+                <button onClick={() => update('hasSalary', false)} className="ml-0.5 text-text-tertiary hover:text-text-primary">✕</button>
               </span>
             )}
           </div>
@@ -175,6 +210,24 @@ export default function FilterBar({ onFilterChange, onSearchChange, searchInputR
                   <button onClick={() => update('hideApplied', false)} className="ml-0.5 text-text-tertiary hover:text-text-primary">✕</button>
                 </span>
               )}
+              {filters.companyTier && (
+                <span className="flex items-center gap-1 border border-black/20 bg-black/5 px-2 py-1 font-mono text-[10px] font-bold">
+                  {filters.companyTier}
+                  <button onClick={() => update('companyTier', '')} className="ml-0.5 text-text-tertiary hover:text-text-primary">✕</button>
+                </span>
+              )}
+              {filters.gradYear && (
+                <span className="flex items-center gap-1 border border-black/20 bg-black/5 px-2 py-1 font-mono text-[10px] font-bold">
+                  Class of {filters.gradYear}
+                  <button onClick={() => update('gradYear', '')} className="ml-0.5 text-text-tertiary hover:text-text-primary">✕</button>
+                </span>
+              )}
+              {filters.hasSalary && (
+                <span className="flex items-center gap-1 border border-black/20 bg-black/5 px-2 py-1 font-mono text-[10px] font-bold">
+                  Pay listed
+                  <button onClick={() => update('hasSalary', false)} className="ml-0.5 text-text-tertiary hover:text-text-primary">✕</button>
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -231,11 +284,75 @@ export default function FilterBar({ onFilterChange, onSearchChange, searchInputR
               </button>
             </div>
 
+            {/* Company tier */}
+            <div>
+              <p className="mb-1.5 font-mono text-[10px] font-bold uppercase text-text-tertiary">Company tier</p>
+              <div className="flex border border-black/15">
+                {(['', 'FAANG', 'UNICORN'] as const).map((tier) => (
+                  <button
+                    key={tier || 'all'}
+                    onClick={() => update('companyTier', tier)}
+                    className={`
+                      px-3 py-1.5 font-mono text-xs font-bold transition-colors
+                      ${filters.companyTier === tier
+                        ? 'bg-primary text-text-primary'
+                        : 'bg-white text-text-secondary hover:bg-black/5 hover:text-text-primary'
+                      }
+                    `}
+                  >
+                    {tier || 'All'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Graduation cohort — only meaningful once cohort-gated roles can be
+                distinguished from open entry-level ones, which is New Grad only. */}
+            {filters.tab === 'newgrad' && (
+              <div>
+                <p className="mb-1.5 font-mono text-[10px] font-bold uppercase text-text-tertiary">Graduating</p>
+                <div className="flex border border-black/15">
+                  {(['', '2026', '2027'] as const).map((year) => (
+                    <button
+                      key={year || 'any'}
+                      onClick={() => update('gradYear', year)}
+                      className={`
+                        px-3 py-1.5 font-mono text-xs font-bold transition-colors
+                        ${filters.gradYear === year
+                          ? 'bg-primary text-text-primary'
+                          : 'bg-white text-text-secondary hover:bg-black/5 hover:text-text-primary'
+                        }
+                      `}
+                    >
+                      {year || 'Any year'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Pay listed */}
+            <div>
+              <p className="mb-1.5 font-mono text-[10px] font-bold uppercase text-text-tertiary">Compensation</p>
+              <button
+                onClick={() => update('hasSalary', !filters.hasSalary)}
+                className={`
+                  flex items-center gap-1.5 border px-3 py-1.5 font-mono text-xs font-bold transition-colors
+                  ${filters.hasSalary
+                    ? 'border-black bg-primary text-text-primary'
+                    : 'border-black/20 bg-white text-text-secondary hover:border-black/40'
+                  }
+                `}
+              >
+                {filters.hasSalary ? '✓ Pay listed only' : 'All postings'}
+              </button>
+            </div>
+
             {/* Clear all */}
             {hasExtraFilters && (
               <button
                 onClick={() => {
-                  const reset: FilterState = { tab: filters.tab, remote: false, location: '', hideApplied: false };
+                  const reset: FilterState = { tab: filters.tab, remote: false, location: '', hideApplied: false, companyTier: '', gradYear: '', hasSalary: false };
                   setFilters(reset);
                   onFilterChange?.(reset);
                 }}

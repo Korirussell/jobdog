@@ -59,12 +59,24 @@ public class JobService {
         Page<JobEntity> jobPage;
 
         if (hasFilters(filter)) {
+            boolean companyTierActive = filter.companyTier() != null;
+            Set<String> companyTierCompanies = companyTierActive
+                    ? CompanyTier.companiesForTier(filter.companyTier())
+                    // Hibernate needs a non-empty collection to bind an IN clause; the
+                    // filter is inactive here so its contents are never evaluated.
+                    : Set.of("__none__");
+
             jobPage = jobRepository.findByFilters(
                     JobStatus.ACTIVE,
                     filter.location(),
                     filter.remote(),
                     filter.company(),
                     filter.search(),
+                    filter.entryType(),
+                    filter.gradYear(),
+                    companyTierActive,
+                    companyTierCompanies,
+                    filter.hasSalary(),
                     pageable
             );
         } else {
@@ -113,7 +125,11 @@ public class JobService {
                             matchPercentage,
                             companyTier,
                             ghostScore,
-                            job.getExperienceLevel()
+                            job.getExperienceLevel(),
+                            job.getEntryType(),
+                            job.getGradYearMin() == null ? null : job.getGradYearMin().intValue(),
+                            job.getGradYearMax() == null ? null : job.getGradYearMax().intValue(),
+                            job.getSalaryRaw()
                     );
                 })
                 .toList();
@@ -145,7 +161,14 @@ public class JobService {
                 job.getScrapedAt(),
                 job.getStatus().name(),
                 job.getSourceUrl(),
-                job.getDescriptionText()
+                job.getDescriptionText(),
+                CompanyTier.lookup(job.getCompany()),
+                job.getExperienceLevel(),
+                job.getEntryType(),
+                job.getGradYearMin() == null ? null : job.getGradYearMin().intValue(),
+                job.getGradYearMax() == null ? null : job.getGradYearMax().intValue(),
+                job.getGradEvidence(),
+                job.getSalaryRaw()
         );
     }
 
@@ -153,6 +176,10 @@ public class JobService {
         return filter.location() != null ||
                filter.remote() != null ||
                filter.company() != null ||
-               filter.search() != null;
+               filter.search() != null ||
+               filter.entryType() != null ||
+               filter.gradYear() != null ||
+               filter.companyTier() != null ||
+               Boolean.TRUE.equals(filter.hasSalary());
     }
 }

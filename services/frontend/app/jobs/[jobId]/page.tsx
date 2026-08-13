@@ -98,6 +98,34 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
               {postedLabel && <span>Posted {postedLabel}</span>}
               {scrapedLabel && <span>Synced {scrapedLabel}</span>}
             </div>
+            <div className="mt-3 flex flex-wrap gap-2 font-mono text-xs font-bold">
+              {job.companyTier && (
+                <span className="border border-primary/40 bg-primary/10 px-2 py-1 text-primary">{job.companyTier}</span>
+              )}
+              {job.entryType === 'NEW_GRAD_COHORT' && (
+                <span
+                  className="border border-primary/40 bg-primary/10 px-2 py-1 text-primary"
+                  title={job.gradEvidence ?? undefined}
+                >
+                  {job.gradYearMin && job.gradYearMax
+                    ? job.gradYearMin === job.gradYearMax
+                      ? `Class of ${job.gradYearMin}`
+                      : `Grad ${job.gradYearMin}–${job.gradYearMax}`
+                    : 'New Grad Cohort'}
+                </span>
+              )}
+              {job.entryType === 'ENTRY_LEVEL_OPEN' && (
+                <span
+                  className="border border-black/15 bg-black/[0.03] px-2 py-1 text-text-secondary"
+                  title="Junior role open to any recent grad — not restricted to a specific graduation window"
+                >
+                  Entry Level
+                </span>
+              )}
+              {job.salaryRaw && (
+                <span className="border border-emerald-600/30 bg-emerald-50 px-2 py-1 text-emerald-700">{job.salaryRaw}</span>
+              )}
+            </div>
             <div className="mt-6">
               <JobDetailApplyButton
                 jobId={job.jobId}

@@ -89,6 +89,10 @@ interface JobListRowProps {
   companyTier?: string | null;
   ghostScore?: number | null;
   experienceLevel?: string | null;
+  entryType?: string | null;
+  gradYearMin?: number | null;
+  gradYearMax?: number | null;
+  salaryRaw?: string | null;
   applyUrl: string;
   detailHref?: string;
   alreadyApplied?: boolean;
@@ -127,6 +131,10 @@ const JobListRow = memo(function JobListRow({
   companyTier,
   ghostScore,
   experienceLevel,
+  entryType,
+  gradYearMin,
+  gradYearMax,
+  salaryRaw,
   applyUrl,
   detailHref,
   alreadyApplied = false,
@@ -236,10 +244,35 @@ const JobListRow = memo(function JobListRow({
                   <span className="font-bold text-primary">{companyTier}</span>
                 </>
               )}
-              {experienceLevel === 'NEW_GRAD' && (
+              {entryType === 'NEW_GRAD_COHORT' ? (
+                <>
+                  <span className="text-black/20">·</span>
+                  <span className="font-bold text-primary">
+                    {gradYearMin && gradYearMax
+                      ? gradYearMin === gradYearMax
+                        ? `Class of ${gradYearMin}`
+                        : `Grad ${gradYearMin}–${gradYearMax}`
+                      : 'New Grad Cohort'}
+                  </span>
+                </>
+              ) : entryType === 'ENTRY_LEVEL_OPEN' ? (
+                <>
+                  <span className="text-black/20">·</span>
+                  <span className="font-bold text-text-secondary" title="Junior role open to any recent grad — not restricted to a specific graduation window">
+                    Entry Level
+                  </span>
+                </>
+              ) : experienceLevel === 'NEW_GRAD' ? (
+                // Fallback for jobs the cohort classifier hasn't reached yet.
                 <>
                   <span className="text-black/20">·</span>
                   <span className="font-bold text-primary">New Grad</span>
+                </>
+              ) : null}
+              {salaryRaw && (
+                <>
+                  <span className="text-black/20">·</span>
+                  <span className="font-bold text-emerald-700">{salaryRaw}</span>
                 </>
               )}
               {ghostScore !== undefined && ghostScore !== null && ghostScore > 50 && (
@@ -345,6 +378,10 @@ const JobListRow = memo(function JobListRow({
   prev.companyTier === next.companyTier &&
   prev.ghostScore === next.ghostScore &&
   prev.experienceLevel === next.experienceLevel &&
+  prev.entryType === next.entryType &&
+  prev.gradYearMin === next.gradYearMin &&
+  prev.gradYearMax === next.gradYearMax &&
+  prev.salaryRaw === next.salaryRaw &&
   prev.matchPercentage === next.matchPercentage &&
   prev.matchPercentile === next.matchPercentile &&
   prev.techStack === next.techStack

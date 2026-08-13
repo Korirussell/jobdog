@@ -16,6 +16,10 @@ public record JobSummaryResponse(
         Integer matchPercentage,
         String companyTier,
         Double ghostScore,
-        String experienceLevel
+        String experienceLevel,
+        String entryType,
+        Integer gradYearMin,
+        Integer gradYearMax,
+        String salaryRaw
 ) {
 }

@@ -52,9 +52,14 @@ public class JobController {
             @RequestParam(required = false) String location,
             @RequestParam(required = false) Boolean remote,
             @RequestParam(required = false) String company,
-            @RequestParam(required = false) String search
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String entryType,
+            @RequestParam(required = false) Integer gradYear,
+            @RequestParam(required = false) String companyTier,
+            @RequestParam(required = false) Boolean hasSalary
     ) {
-        JobFilterRequest filter = new JobFilterRequest(page, size, location, remote, company, search);
+        JobFilterRequest filter = new JobFilterRequest(
+                page, size, location, remote, company, search, entryType, gradYear, companyTier, hasSalary);
         // Pass userId if authenticated, null otherwise for local matching
         UUID userId = currentUser.get().map(AuthenticatedUser::userId).orElse(null);
         return ResponseEntity.ok(jobService.listActiveJobs(filter, userId));
