@@ -2,8 +2,10 @@ package repository
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -291,4 +293,88 @@ func jsonMarshal(v interface{}) (string, error) {
 		return "", err
 	}
 	return string(bytes), nil
+}
+
+// LookupGradClassification returns a cached model verdict for a description
+// hash. The cache is the reason the model pass is affordable: the scraper runs
+// every 2 hours, so an uncached classifier would re-answer the same question
+// about the same corpus twelve times a day.
+func (r *JobRepository) LookupGradClassification(descriptionHash, model string) (*models.GradClassification, error) {
+	if descriptionHash == "" {
+		return nil, nil
+	}
+
+	row := r.db.QueryRow(`
+		SELECT entry_type, grad_year_min, grad_year_max, confidence, evidence
+		FROM grad_classifications
+		WHERE description_hash = $1 AND model = $2
+	`, descriptionHash, model)
+
+	var (
+		result           models.GradClassification
+		yearMin, yearMax sql.NullInt16
+		confidence       sql.NullFloat64
+		evidence         sql.NullString
+	)
+	if err := row.Scan(&result.EntryType, &yearMin, &yearMax, &confidence, &evidence); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	result.YearMin = int(yearMin.Int16)
+	result.YearMax = int(yearMax.Int16)
+	result.Confidence = confidence.Float64
+	result.Evidence = evidence.String
+	return &result, nil
+}
+
+// SaveGradClassification caches a model verdict. Re-classifying the same content
+// overwrites, so a prompt change followed by a targeted re-run converges rather
+// than accumulating stale rows.
+func (r *JobRepository) SaveGradClassification(descriptionHash, model string, c models.GradClassification) error {
+	if descriptionHash == "" {
+		return nil
+	}
+
+	_, err := r.db.Exec(`
+		INSERT INTO grad_classifications
+			(description_hash, entry_type, grad_year_min, grad_year_max, confidence, evidence, model, classified_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+		ON CONFLICT (description_hash) DO UPDATE SET
+			entry_type    = EXCLUDED.entry_type,
+			grad_year_min = EXCLUDED.grad_year_min,
+			grad_year_max = EXCLUDED.grad_year_max,
+			confidence    = EXCLUDED.confidence,
+			evidence      = EXCLUDED.evidence,
+			model         = EXCLUDED.model,
+			classified_at = NOW()
+	`, descriptionHash, c.EntryType, nullableYear(c.YearMin), nullableYear(c.YearMax), c.Confidence, c.Evidence, model)
+	return err
+}
+
+// UpdateJobGradCohort writes the resolved cohort onto the job row.
+func (r *JobRepository) UpdateJobGradCohort(jobID string, c models.GradClassification) error {
+	_, err := r.db.Exec(`
+		UPDATE jobs SET
+			entry_type      = $2,
+			grad_year_min   = $3,
+			grad_year_max   = $4,
+			grad_source     = $5,
+			grad_confidence = $6,
+			grad_evidence   = $7,
+			updated_at      = NOW()
+		WHERE id = $1
+	`, jobID, c.EntryType, nullableYear(c.YearMin), nullableYear(c.YearMax), c.Source, c.Confidence, c.Evidence)
+	return err
+}
+
+// nullableYear maps the zero value used for "no year known" onto SQL NULL, so
+// the column never claims a posting targets the year 0.
+func nullableYear(year int) any {
+	if year == 0 {
+		return nil
+	}
+	return year
 }

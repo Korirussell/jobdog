@@ -66,6 +66,7 @@ type Config struct {
 	DatabaseUser      string
 	DatabasePassword  string
 	OpenAIAPIKey      string
+	GradModel         string
 	LogLevel          string
 	ScrapeInterval    time.Duration
 	WorkdaySources    []WorkdaySource
@@ -81,8 +82,10 @@ func Load() (*Config, error) {
 		DatabaseUser:     getEnv("DATABASE_USERNAME", "jobdog"),
 		DatabasePassword: getEnv("DATABASE_PASSWORD", "jobdog"),
 		OpenAIAPIKey:     getEnv("OPENAI_API_KEY", ""),
-		LogLevel:         getEnv("LOG_LEVEL", "info"),
-		ScrapeInterval:   2 * time.Hour,
+		// Configurable so the cost/accuracy tradeoff can be tuned without a deploy.
+		GradModel:      getEnv("GRAD_CLASSIFIER_MODEL", "gpt-4o-mini"),
+		LogLevel:       getEnv("LOG_LEVEL", "info"),
+		ScrapeInterval: 2 * time.Hour,
 	}
 
 	sources := loadSources()

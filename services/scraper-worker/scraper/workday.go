@@ -31,6 +31,7 @@ type WorkdayScraper struct {
 	repo       *repository.JobRepository
 	limiter    *rate.Limiter
 	workerPool int
+	cohorts    *CohortResolver
 }
 
 // workdaySearchRequest is the POST body for the job-list endpoint.
@@ -383,6 +384,10 @@ func (w *WorkdayScraper) fetchDetailAndUpsert(ctx context.Context, company, base
 		return fmt.Errorf("upserting workday job: %w", err)
 	}
 
+	// Classify the graduation cohort. Deterministic first, model only for the
+	// genuinely ambiguous, and never fatal to the scrape.
+	w.cohorts.Resolve(ctx, jobID, job)
+
 	required, preferred := ExtractSkills(job.DescriptionText)
 	profile := &models.JobRequirementProfile{
 		JobID:            jobID,
@@ -457,4 +462,10 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// SetCohortResolver attaches graduation-cohort classification. When unset the
+// scraper still imports jobs, just without cohort data.
+func (s *WorkdayScraper) SetCohortResolver(r *CohortResolver) {
+	s.cohorts = r
 }

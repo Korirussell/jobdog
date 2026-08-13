@@ -22,6 +22,7 @@ type GitHubScraper struct {
 	client  *http.Client
 	repo    *repository.JobRepository
 	limiter *rate.Limiter
+	cohorts *CohortResolver
 }
 
 func NewGitHubScraper(repo *repository.JobRepository) *GitHubScraper {
@@ -53,6 +54,10 @@ func (s *GitHubScraper) ScrapeRepo(ctx context.Context, repo, employmentType str
 			log.Error().Err(err).Str("company", job.Company).Msg("Failed to upsert job")
 			continue
 		}
+
+		// Classify the graduation cohort. Deterministic first, model only for the
+		// genuinely ambiguous, and never fatal to the scrape.
+		s.cohorts.Resolve(ctx, jobID, &job)
 
 		required, preferred := ExtractSkills(job.DescriptionText)
 
@@ -282,4 +287,10 @@ func timePtr(t time.Time) *time.Time {
 func ParseAggregatorReadme(content, employmentType string) []models.Job {
 	s := &GitHubScraper{}
 	return s.parseMarkdownTable(content, employmentType)
+}
+
+// SetCohortResolver attaches graduation-cohort classification. When unset the
+// scraper still imports jobs, just without cohort data.
+func (s *GitHubScraper) SetCohortResolver(r *CohortResolver) {
+	s.cohorts = r
 }

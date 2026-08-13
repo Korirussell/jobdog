@@ -47,6 +47,24 @@ func main() {
 	leverScraper := scraper.NewLeverScraper(jobRepo)
 	ashbyScraper := scraper.NewAshbyScraper(jobRepo)
 
+	// Graduation-cohort classification is shared by every scraper: deterministic
+	// keyword extraction first, a cached model verdict second, and a live model
+	// call only for postings that are genuinely ambiguous. With no API key set the
+	// scrapers still run, just without model-assisted cohort data.
+	gradClassifier := scraper.NewGradYearClassifier(scraper.GradYearClassifierConfig{
+		APIKey: cfg.OpenAIAPIKey,
+		Model:  cfg.GradModel,
+	})
+	if !gradClassifier.Enabled() {
+		log.Warn().Msg("OPENAI_API_KEY not set; grad-cohort classification will use deterministic rules only")
+	}
+	cohorts := scraper.NewCohortResolver(jobRepo, gradClassifier)
+	githubScraper.SetCohortResolver(cohorts)
+	workdayScraper.SetCohortResolver(cohorts)
+	greenhouseScraper.SetCohortResolver(cohorts)
+	leverScraper.SetCohortResolver(cohorts)
+	ashbyScraper.SetCohortResolver(cohorts)
+
 	c := cron.New()
 
 	_, err = c.AddFunc("@every 2h", func() {

@@ -21,6 +21,7 @@ type GreenhouseScraper struct {
 	client  *http.Client
 	repo    *repository.JobRepository
 	limiter *rate.Limiter
+	cohorts *CohortResolver
 }
 
 type GreenhouseResponse struct {
@@ -132,6 +133,10 @@ func (s *GreenhouseScraper) ScrapeCompany(ctx context.Context, company, boardTok
 			continue
 		}
 
+		// Classify the graduation cohort. Deterministic first, model only for the
+		// genuinely ambiguous, and never fatal to the scrape.
+		s.cohorts.Resolve(ctx, jobID, &job)
+
 		required, preferred := ExtractSkills(job.DescriptionText)
 
 		profile := &models.JobRequirementProfile{
@@ -164,4 +169,10 @@ func stripHTML(html string) string {
 	// Clean up multiple spaces
 	text = strings.Join(strings.Fields(text), " ")
 	return strings.TrimSpace(text)
+}
+
+// SetCohortResolver attaches graduation-cohort classification. When unset the
+// scraper still imports jobs, just without cohort data.
+func (s *GreenhouseScraper) SetCohortResolver(r *CohortResolver) {
+	s.cohorts = r
 }

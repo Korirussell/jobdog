@@ -20,6 +20,7 @@ type LeverScraper struct {
 	client  *http.Client
 	repo    *repository.JobRepository
 	limiter *rate.Limiter
+	cohorts *CohortResolver
 }
 
 type LeverPosting struct {
@@ -143,6 +144,10 @@ func (s *LeverScraper) ScrapeCompany(ctx context.Context, company, slug string) 
 			continue
 		}
 
+		// Classify the graduation cohort. Deterministic first, model only for the
+		// genuinely ambiguous, and never fatal to the scrape.
+		s.cohorts.Resolve(ctx, jobID, &job)
+
 		required, preferred := ExtractSkills(job.DescriptionText)
 
 		profile := &models.JobRequirementProfile{
@@ -159,4 +164,10 @@ func (s *LeverScraper) ScrapeCompany(ctx context.Context, company, slug string) 
 
 	log.Info().Str("company", company).Msg("Completed Lever scrape")
 	return nil
+}
+
+// SetCohortResolver attaches graduation-cohort classification. When unset the
+// scraper still imports jobs, just without cohort data.
+func (s *LeverScraper) SetCohortResolver(r *CohortResolver) {
+	s.cohorts = r
 }

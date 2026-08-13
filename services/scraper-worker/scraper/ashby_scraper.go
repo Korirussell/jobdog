@@ -24,6 +24,7 @@ type AshbyScraper struct {
 	client  *http.Client
 	repo    *repository.JobRepository
 	limiter *rate.Limiter
+	cohorts *CohortResolver
 }
 
 type ashbyResponse struct {
@@ -124,6 +125,10 @@ func (s *AshbyScraper) ScrapeCompany(ctx context.Context, company, token string)
 				Msg("Failed to upsert Ashby job")
 			continue
 		}
+
+		// Classify the graduation cohort. Deterministic first, model only for the
+		// genuinely ambiguous, and never fatal to the scrape.
+		s.cohorts.Resolve(ctx, jobID, job)
 		imported++
 
 		required, preferred := ExtractSkills(job.DescriptionText)
@@ -203,4 +208,10 @@ func ashbySalary(posting ashbyJob) *string {
 		return nil
 	}
 	return &summary
+}
+
+// SetCohortResolver attaches graduation-cohort classification. When unset the
+// scraper still imports jobs, just without cohort data.
+func (s *AshbyScraper) SetCohortResolver(r *CohortResolver) {
+	s.cohorts = r
 }
