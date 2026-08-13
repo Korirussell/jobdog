@@ -414,5 +414,15 @@
       "datacenter": "wd1",
       "site": "External"
     }
+  ],
+  "aggregators": [
+    {
+      "repo": "SimplifyJobs/Summer2027-Internships",
+      "employmentType": "INTERNSHIP"
+    },
+    {
+      "repo": "SimplifyJobs/New-Grad-Positions",
+      "employmentType": "FULL_TIME"
+    }
   ]
 }

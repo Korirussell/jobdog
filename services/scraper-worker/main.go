@@ -52,15 +52,18 @@ func main() {
 		pool := workerpool.NewWorkerPool(10)
 		pool.Start()
 
-		// GitHub scraper
-		pool.Submit(func(ctx context.Context) error {
-			log.Info().Msg("Running scheduled GitHub scrape")
-			if err := githubScraper.ScrapeSimplifyRepo(ctx); err != nil {
-				log.Error().Err(err).Msg("GitHub scrape failed")
-				return err
-			}
-			return nil
-		})
+		// Aggregator repos (community-maintained job lists)
+		for _, agg := range cfg.Aggregators {
+			a := agg
+			pool.Submit(func(ctx context.Context) error {
+				log.Info().Str("repo", a.Repo).Msg("Running scheduled aggregator scrape")
+				if err := githubScraper.ScrapeRepo(ctx, a.Repo, a.EmploymentType); err != nil {
+					log.Error().Err(err).Str("repo", a.Repo).Msg("Aggregator scrape failed")
+					return err
+				}
+				return nil
+			})
+		}
 
 		// Workday scrapers
 		for _, source := range cfg.WorkdaySources {
@@ -148,17 +151,20 @@ func main() {
 	initialPool := workerpool.NewWorkerPool(10)
 	initialPool.Start()
 
-	// Initial GitHub scrape
-	log.Info().Msg("Submitting initial GitHub scrape task")
-	initialPool.Submit(func(ctx context.Context) error {
-		log.Info().Msg("Starting initial GitHub scrape")
-		if err := githubScraper.ScrapeSimplifyRepo(ctx); err != nil {
-			log.Error().Err(err).Msg("Initial GitHub scrape failed")
-			return err
-		}
-		log.Info().Msg("Initial GitHub scrape completed successfully")
-		return nil
-	})
+	// Initial aggregator scrapes
+	log.Info().Int("count", len(cfg.Aggregators)).Msg("Submitting initial aggregator scrape tasks")
+	for _, agg := range cfg.Aggregators {
+		a := agg
+		initialPool.Submit(func(ctx context.Context) error {
+			log.Info().Str("repo", a.Repo).Msg("Starting initial aggregator scrape")
+			if err := githubScraper.ScrapeRepo(ctx, a.Repo, a.EmploymentType); err != nil {
+				log.Error().Err(err).Str("repo", a.Repo).Msg("Initial aggregator scrape failed")
+				return err
+			}
+			log.Info().Str("repo", a.Repo).Msg("Initial aggregator scrape completed successfully")
+			return nil
+		})
+	}
 
 	// Initial Workday scrapes
 	if len(cfg.WorkdaySources) > 0 {

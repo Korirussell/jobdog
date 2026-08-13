@@ -11,7 +11,8 @@ import (
 func TestLoadSourcesFromJSONMatchesEmbeddedDefaults(t *testing.T) {
 	t.Setenv("SOURCES_CONFIG_PATH", "sources.json")
 
-	greenhouse, lever, _ := loadSources()
+	sources := loadSources()
+	greenhouse, lever := sources.Greenhouse, sources.Lever
 
 	if len(greenhouse) != len(defaultGreenhouseSources) {
 		t.Errorf("greenhouse source count mismatch: sources.json has %d, embedded defaults have %d",
@@ -29,7 +30,8 @@ func TestLoadSourcesFromJSONMatchesEmbeddedDefaults(t *testing.T) {
 func TestLoadSourcesFallsBackWhenFileMissing(t *testing.T) {
 	t.Setenv("SOURCES_CONFIG_PATH", "does-not-exist.json")
 
-	greenhouse, lever, _ := loadSources()
+	sources := loadSources()
+	greenhouse, lever := sources.Greenhouse, sources.Lever
 
 	if len(greenhouse) != len(defaultGreenhouseSources) {
 		t.Errorf("expected fallback greenhouse sources of length %d, got %d",
@@ -50,7 +52,8 @@ func TestLoadSourcesFallsBackOnInvalidJSON(t *testing.T) {
 	}
 	t.Setenv("SOURCES_CONFIG_PATH", tmpFile)
 
-	greenhouse, lever, _ := loadSources()
+	sources := loadSources()
+	greenhouse, lever := sources.Greenhouse, sources.Lever
 
 	if len(greenhouse) != len(defaultGreenhouseSources) {
 		t.Errorf("expected fallback greenhouse sources of length %d, got %d",

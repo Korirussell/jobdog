@@ -23,7 +23,7 @@ func TestParseMarkdownTable_ParsesSimplifyHTMLTable(t *testing.T) {
 </tbody>
 </table>`
 
-	jobs := s.parseMarkdownTable(content)
+	jobs := s.parseMarkdownTable(content, "INTERNSHIP")
 	if len(jobs) != 2 {
 		t.Fatalf("expected 2 jobs, got %d", len(jobs))
 	}

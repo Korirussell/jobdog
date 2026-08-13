@@ -32,17 +32,19 @@ func NewGitHubScraper(repo *repository.JobRepository) *GitHubScraper {
 	}
 }
 
-func (s *GitHubScraper) ScrapeSimplifyRepo(ctx context.Context) error {
-	log.Info().Msg("Starting Simplify repo scrape")
+// ScrapeRepo ingests one aggregator README. employmentType applies to every row,
+// since each aggregator repo covers a single kind of role.
+func (s *GitHubScraper) ScrapeRepo(ctx context.Context, repo, employmentType string) error {
+	log.Info().Str("repo", repo).Msg("Starting aggregator repo scrape")
 
-	content, err := s.fetchSimplifyReadme(ctx)
+	content, err := s.fetchReadme(ctx, repo)
 	if err != nil {
 		return err
 	}
 
-	jobs := s.parseMarkdownTable(content)
+	jobs := s.parseMarkdownTable(content, employmentType)
 
-	log.Info().Int("count", len(jobs)).Msg("Parsed jobs from Simplify repo")
+	log.Info().Str("repo", repo).Int("count", len(jobs)).Msg("Parsed jobs from aggregator repo")
 
 	for _, job := range jobs {
 		job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
@@ -66,14 +68,18 @@ func (s *GitHubScraper) ScrapeSimplifyRepo(ctx context.Context) error {
 		}
 	}
 
-	log.Info().Msg("Completed Simplify repo scrape")
+	log.Info().Str("repo", repo).Msg("Completed aggregator repo scrape")
 	return nil
 }
 
-func (s *GitHubScraper) fetchSimplifyReadme(ctx context.Context) (string, error) {
-	urls := []string{
-		"https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/master/README.md",
-		"https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/dev/README.md",
+// fetchReadme tries each branch a repo might publish on. Aggregators vary in
+// which branch holds the live table — some update dev and merge to master
+// periodically, so dev is tried first to get the freshest listings.
+func (s *GitHubScraper) fetchReadme(ctx context.Context, repo string) (string, error) {
+	branches := []string{"dev", "master", "main"}
+	urls := make([]string, 0, len(branches))
+	for _, branch := range branches {
+		urls = append(urls, fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/README.md", repo, branch))
 	}
 
 	for _, url := range urls {
@@ -114,12 +120,12 @@ func (s *GitHubScraper) fetchSimplifyReadme(ctx context.Context) (string, error)
 		}
 	}
 
-	return "", fmt.Errorf("failed to fetch simplify README from known branches")
+	return "", fmt.Errorf("failed to fetch README for %s from branches %v", repo, []string{"dev", "master", "main"})
 }
 
-func (s *GitHubScraper) parseMarkdownTable(content string) []models.Job {
+func (s *GitHubScraper) parseMarkdownTable(content, employmentType string) []models.Job {
 	if strings.Contains(content, "<table>") {
-		return s.parseHTMLTable(content)
+		return s.parseHTMLTable(content, employmentType)
 	}
 
 	var jobs []models.Job
@@ -168,7 +174,7 @@ func (s *GitHubScraper) parseMarkdownTable(content string) []models.Job {
 			Title:           role,
 			Company:         company,
 			Location:        location,
-			EmploymentType:  "INTERNSHIP",
+			EmploymentType:  employmentType,
 			DescriptionText: fmt.Sprintf("%s at %s - %s", role, company, location),
 			Status:          "ACTIVE",
 			PostedAt:        nil, // Set to nil until we can parse real dates
@@ -180,7 +186,7 @@ func (s *GitHubScraper) parseMarkdownTable(content string) []models.Job {
 	return jobs
 }
 
-func (s *GitHubScraper) parseHTMLTable(content string) []models.Job {
+func (s *GitHubScraper) parseHTMLTable(content, employmentType string) []models.Job {
 	var jobs []models.Job
 
 	rowRegex := regexp.MustCompile(`(?is)<tr>(.*?)</tr>`)
@@ -217,7 +223,7 @@ func (s *GitHubScraper) parseHTMLTable(content string) []models.Job {
 			Title:           role,
 			Company:         company,
 			Location:        location,
-			EmploymentType:  "INTERNSHIP",
+			EmploymentType:  employmentType,
 			DescriptionText: fmt.Sprintf("%s at %s - %s", role, company, location),
 			Status:          "ACTIVE",
 			PostedAt:        nil, // Set to nil until we can parse real dates
