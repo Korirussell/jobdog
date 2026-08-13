@@ -3,6 +3,7 @@ package scraper
 import (
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -222,4 +223,23 @@ func TestWorkdayDecodesLiveAPIShape(t *testing.T) {
 			t.Error("startDate from a real response should parse into a posted date")
 		}
 	})
+}
+
+// TestWorkdayDetailURL guards a bug that silently emptied the whole source:
+// externalPath already starts with "/job/", so adding another "/job" produced
+// "/job/job/..." and every detail fetch returned 406. The job-list call kept
+// returning 200, so logs showed a healthy scrape importing zero jobs.
+func TestWorkdayDetailURL(t *testing.T) {
+	base := "https://cadence.wd1.myworkdayjobs.com/wday/cxs/cadence/External_Careers"
+	path := "/job/SAN-JOSE/Principal-Analog-IC-Design-Engineer_R55853-1"
+
+	got := workdayDetailURL(base, path)
+	want := base + path
+
+	if got != want {
+		t.Errorf("workdayDetailURL() = %q, want %q", got, want)
+	}
+	if strings.Contains(got, "/job/job/") {
+		t.Errorf("URL double-prefixes the job segment: %q", got)
+	}
 }

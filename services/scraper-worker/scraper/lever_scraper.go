@@ -102,7 +102,7 @@ func (s *LeverScraper) ScrapeCompany(ctx context.Context, company, slug string) 
 
 	for _, posting := range postings {
 		commitmentIsIntern := strings.Contains(strings.ToLower(posting.Categories.Commitment), "intern")
-		if !isInternship(posting.Text) && !commitmentIsIntern {
+		if !IsEarlyCareerRelevant(posting.Text) && !commitmentIsIntern {
 			continue
 		}
 

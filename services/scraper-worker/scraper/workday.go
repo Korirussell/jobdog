@@ -337,7 +337,7 @@ func (w *WorkdayScraper) fetchDetailAndUpsert(ctx context.Context, company, base
 			return err
 		}
 
-		httpReq, err := http.NewRequestWithContext(ctx, "GET", baseURL+"/job"+listing.ExternalPath, nil)
+		httpReq, err := http.NewRequestWithContext(ctx, "GET", workdayDetailURL(baseURL, listing.ExternalPath), nil)
 		if err != nil {
 			return err
 		}
@@ -400,6 +400,16 @@ func (w *WorkdayScraper) fetchDetailAndUpsert(ctx context.Context, company, base
 	}
 
 	return nil
+}
+
+// workdayDetailURL joins the CxS base to a listing's detail path.
+//
+// externalPath already begins with "/job/", so the base must not add its own —
+// concatenating one produces "/job/job/..." which Workday answers with 406, and
+// since every detail fetch fails identically the scraper imports nothing while
+// the job-list call keeps succeeding.
+func workdayDetailURL(baseURL, externalPath string) string {
+	return baseURL + externalPath
 }
 
 // parseWorkdayPostedAt reads the posting date from startDate. Workday's postedOn

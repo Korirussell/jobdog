@@ -100,7 +100,7 @@ func (s *GreenhouseScraper) ScrapeCompany(ctx context.Context, company, boardTok
 
 	for _, ghJob := range ghResp.Jobs {
 		// Filter for internships
-		if !isInternship(ghJob.Title) {
+		if !IsEarlyCareerRelevant(ghJob.Title) {
 			continue
 		}
 
@@ -153,13 +153,6 @@ func (s *GreenhouseScraper) ScrapeCompany(ctx context.Context, company, boardTok
 
 	log.Info().Str("company", company).Msg("Completed Greenhouse scrape")
 	return nil
-}
-
-func isInternship(title string) bool {
-	lowerTitle := strings.ToLower(title)
-	return strings.Contains(lowerTitle, "intern") ||
-		strings.Contains(lowerTitle, "co-op") ||
-		strings.Contains(lowerTitle, "coop")
 }
 
 func stripHTML(html string) string {
