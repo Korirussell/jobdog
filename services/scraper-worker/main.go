@@ -45,6 +45,7 @@ func main() {
 	workdayScraper := scraper.NewWorkdayScraper(jobRepo)
 	greenhouseScraper := scraper.NewGreenhouseScraper(jobRepo)
 	leverScraper := scraper.NewLeverScraper(jobRepo)
+	ashbyScraper := scraper.NewAshbyScraper(jobRepo)
 
 	c := cron.New()
 
@@ -98,6 +99,19 @@ func main() {
 				log.Info().Str("company", s.Company).Msg("Running scheduled Lever scrape")
 				if err := leverScraper.ScrapeCompany(ctx, s.Company, s.Slug); err != nil {
 					log.Error().Err(err).Str("company", s.Company).Msg("Lever scrape failed")
+					return err
+				}
+				return nil
+			})
+		}
+
+		// Ashby scrapers
+		for _, source := range cfg.AshbySources {
+			s := source
+			pool.Submit(func(ctx context.Context) error {
+				log.Info().Str("company", s.Company).Msg("Running scheduled Ashby scrape")
+				if err := ashbyScraper.ScrapeCompany(ctx, s.Company, s.Token); err != nil {
+					log.Error().Err(err).Str("company", s.Company).Msg("Ashby scrape failed")
 					return err
 				}
 				return nil
@@ -213,6 +227,22 @@ func main() {
 			log.Info().Str("company", s.Company).Msg("Initial Lever scrape completed")
 			return nil
 		})
+	}
+
+	// Initial Ashby scrapes
+	if len(cfg.AshbySources) > 0 {
+		log.Info().Int("count", len(cfg.AshbySources)).Msg("Submitting Ashby scrape tasks")
+		for _, source := range cfg.AshbySources {
+			s := source
+			initialPool.Submit(func(ctx context.Context) error {
+				log.Info().Str("company", s.Company).Msg("Starting initial Ashby scrape")
+				if err := ashbyScraper.ScrapeCompany(ctx, s.Company, s.Token); err != nil {
+					log.Error().Err(err).Str("company", s.Company).Msg("Initial Ashby scrape failed")
+					return err
+				}
+				return nil
+			})
+		}
 	}
 
 	log.Info().Msg("Waiting for all initial scraper tasks to complete...")

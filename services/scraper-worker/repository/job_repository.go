@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+	"github.com/rs/zerolog/log"
 )
 
 type JobRepository struct {
@@ -34,9 +35,9 @@ func (r *JobRepository) UpsertJob(job *models.Job) (string, error) {
 		INSERT INTO jobs (
 			id, source, source_job_id, source_url, title, company, location,
 			employment_type, description_text, description_hash, status,
-			minimum_years_experience, education_level, experience_level, posted_at, scraped_at,
+			minimum_years_experience, education_level, experience_level, salary_raw, posted_at, scraped_at,
 			created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $17)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $18)
 		ON CONFLICT (source_url)
 		DO UPDATE SET
 			title = EXCLUDED.title,
@@ -47,6 +48,9 @@ func (r *JobRepository) UpsertJob(job *models.Job) (string, error) {
 			description_hash = EXCLUDED.description_hash,
 			status = 'ACTIVE',
 			experience_level = EXCLUDED.experience_level,
+			-- Keep a previously captured salary if the board stops publishing it,
+			-- rather than nulling out data we already have.
+			salary_raw = COALESCE(EXCLUDED.salary_raw, jobs.salary_raw),
 			posted_at = COALESCE(jobs.posted_at, EXCLUDED.posted_at),
 			scraped_at = EXCLUDED.scraped_at,
 			updated_at = EXCLUDED.updated_at
@@ -58,15 +62,34 @@ func (r *JobRepository) UpsertJob(job *models.Job) (string, error) {
 		query,
 		job.ID, job.Source, job.SourceJobID, job.SourceURL, job.Title, job.Company,
 		job.Location, job.EmploymentType, job.DescriptionText, job.DescriptionHash,
-		job.Status, job.MinimumYearsExperience, job.EducationLevel, job.ExperienceLevel, job.PostedAt,
-		job.ScrapedAt, time.Now(),
+		job.Status, job.MinimumYearsExperience, job.EducationLevel, job.ExperienceLevel, job.SalaryRaw,
+		job.PostedAt, job.ScrapedAt, time.Now(),
 	).Scan(&id)
 
 	if err != nil {
 		return "", fmt.Errorf("failed to upsert job: %w", err)
 	}
 
+	// Record what this posting looked like on this cycle. Snapshot failures are
+	// logged but never fail the upsert: the serving path must keep working even if
+	// the analytics history falls behind.
+	if err := r.recordSnapshot(id, job); err != nil {
+		log.Warn().Err(err).Str("job_id", id).Msg("Failed to record job snapshot")
+	}
+
 	return id, nil
+}
+
+// recordSnapshot appends the posting's current state to the append-only history
+// that feeds the trend layer. History cannot be reconstructed after the fact —
+// once a scrape overwrites `jobs`, the previous state is gone — so this is
+// written on every cycle rather than only on change.
+func (r *JobRepository) recordSnapshot(jobID string, job *models.Job) error {
+	_, err := r.db.Exec(`
+		INSERT INTO job_snapshots (job_id, observed_at, status, description_hash, experience_level, salary_raw)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, jobID, job.ScrapedAt, job.Status, job.DescriptionHash, job.ExperienceLevel, job.SalaryRaw)
+	return err
 }
 
 func (r *JobRepository) UpsertJobRequirementProfile(profile *models.JobRequirementProfile) error {
@@ -74,7 +97,7 @@ func (r *JobRepository) UpsertJobRequirementProfile(profile *models.JobRequireme
 	if requiredSkills == nil {
 		requiredSkills = []string{}
 	}
-	
+
 	preferredSkills := profile.PreferredSkills
 	if preferredSkills == nil {
 		preferredSkills = []string{}
