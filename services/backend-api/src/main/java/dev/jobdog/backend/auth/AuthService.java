@@ -60,6 +60,20 @@ public class AuthService {
     public Map<String, Object> getUserProfile(UUID userId) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return toProfileMap(user);
+    }
+
+    @Transactional
+    public Map<String, Object> updateProfileVisibility(UUID userId, String profileVisibility) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        if (profileVisibility != null) {
+            user.setProfileVisibility(profileVisibility);
+        }
+        return toProfileMap(userRepository.save(user));
+    }
+
+    private Map<String, Object> toProfileMap(UserEntity user) {
         Map<String, Object> profile = new HashMap<>();
         profile.put("userId", user.getId());
         profile.put("email", user.getEmail());

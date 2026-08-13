@@ -160,7 +160,14 @@ export class ApiClient {
   }
 
   async me() {
-    return this.request<{ userId: string; email: string; displayName: string }>('/api/v1/auth/me');
+    return this.request<{ userId: string; email: string; displayName: string; profileVisibility: string }>('/api/v1/auth/me');
+  }
+
+  async updateProfile(profileVisibility: string) {
+    return this.request<{ userId: string; email: string; displayName: string; profileVisibility: string }>('/api/v1/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ profileVisibility }),
+    });
   }
 
   logout() {

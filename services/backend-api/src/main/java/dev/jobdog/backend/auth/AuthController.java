@@ -3,6 +3,7 @@ package dev.jobdog.backend.auth;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,5 +37,11 @@ public class AuthController {
     public ResponseEntity<Map<String, Object>> me() {
         AuthenticatedUser user = currentUser.require();
         return ResponseEntity.ok(authService.getUserProfile(user.userId()));
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<Map<String, Object>> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        AuthenticatedUser user = currentUser.require();
+        return ResponseEntity.ok(authService.updateProfileVisibility(user.userId(), request.profileVisibility()));
     }
 }

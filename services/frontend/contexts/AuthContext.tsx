@@ -7,6 +7,7 @@ interface User {
   userId: string;
   email: string;
   displayName: string;
+  profileVisibility?: string;
 }
 
 interface AuthContextType {
@@ -16,6 +17,7 @@ interface AuthContextType {
   register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => void;
   setUserFromOAuth: (user: User) => void;
+  updateProfileVisibility: (visibility: string) => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -34,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             userId: data.userId,
             email: data.email,
             displayName: data.displayName,
+            profileVisibility: data.profileVisibility,
           });
         })
         .catch(() => {
@@ -72,6 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(oauthUser);
   }, []);
 
+  const updateProfileVisibility = async (visibility: string) => {
+    const data = await api.updateProfile(visibility);
+    setUser((current) => current ? { ...current, profileVisibility: data.profileVisibility } : current);
+  };
+
   const value: AuthContextType = {
     user,
     loading,
@@ -79,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     register,
     logout,
     setUserFromOAuth,
+    updateProfileVisibility,
     isAuthenticated: !!user,
   };
 
