@@ -23,7 +23,7 @@ func TestParseMarkdownTable_ParsesSimplifyHTMLTable(t *testing.T) {
 </tbody>
 </table>`
 
-	jobs := s.parseMarkdownTable(content, "INTERNSHIP")
+	jobs := s.parseMarkdownTable(content, "INTERNSHIP", "github-simplifyjobs")
 	if len(jobs) != 2 {
 		t.Fatalf("expected 2 jobs, got %d", len(jobs))
 	}
@@ -78,7 +78,7 @@ func TestParsesTableWithAttributes(t *testing.T) {
 </table>`
 
 	s := &GitHubScraper{}
-	jobs := s.parseMarkdownTable(readme, "FULL_TIME")
+	jobs := s.parseMarkdownTable(readme, "FULL_TIME", "github-simplifyjobs")
 
 	if len(jobs) != 1 {
 		t.Fatalf("parsed %d jobs from an attributed <table>, want 1", len(jobs))
@@ -93,5 +93,51 @@ func TestParsesTableWithAttributes(t *testing.T) {
 	// is what board discovery reads to find the company's job board.
 	if jobs[0].SourceURL != "https://job-boards.greenhouse.io/andurilindustries/jobs/4520123" {
 		t.Errorf("SourceURL = %q, want the Greenhouse apply URL", jobs[0].SourceURL)
+	}
+}
+
+// TestParseMarkdownTable_ParsesHTMLAnchorInsideMarkdownPipeTable guards the
+// vansh/Ouckah repo format: a genuine markdown pipe table (not an HTML
+// <table>), but with an <a href><img></a> badge inside the Application
+// column instead of a plain markdown link. Before this fix, the markdown
+// link regex found nothing here and every row was silently dropped.
+func TestParseMarkdownTable_ParsesHTMLAnchorInsideMarkdownPipeTable(t *testing.T) {
+	content := `| Company | Role | Location | Application/Link | Date Posted |
+| ------- | ---- | -------- | ---------------- | ----------- |
+| **DV Group** | Quantitative Risk Intern | Chicago, IL | <a href="https://job-boards.greenhouse.io/dvtrading/jobs/4719118005?utm_source=github-vansh-ouckah"><img src="https://i.imgur.com/u1KNU8z.png" width="118" alt="Apply"></a> | Aug 06 |
+`
+
+	s := &GitHubScraper{}
+	jobs := s.parseMarkdownTable(content, "INTERNSHIP", "github-vanshb03")
+
+	if len(jobs) != 1 {
+		t.Fatalf("parsed %d jobs from a markdown table with HTML anchor links, want 1", len(jobs))
+	}
+	if jobs[0].Company != "DV Group" {
+		t.Errorf("Company = %q, want DV Group (bold markdown stripped)", jobs[0].Company)
+	}
+	// Tracking query params must be stripped so the same posting scraped from a
+	// different aggregator (a different utm_source) dedupes to the same row.
+	if jobs[0].SourceURL != "https://job-boards.greenhouse.io/dvtrading/jobs/4719118005" {
+		t.Errorf("SourceURL = %q, want the canonical Greenhouse URL with tracking params stripped", jobs[0].SourceURL)
+	}
+	if jobs[0].Source != "github-vanshb03" {
+		t.Errorf("Source = %q, want github-vanshb03", jobs[0].Source)
+	}
+}
+
+// TestCanonicalizeApplyURL_DedupesAcrossAggregatorTrackingParams is the crux of
+// cross-aggregator dedup: two aggregators linking the identical ATS posting
+// with different tracking query params must canonicalize to the same URL, so
+// UpsertJob's ON CONFLICT (source_url) treats them as one job, not two.
+func TestCanonicalizeApplyURL_DedupesAcrossAggregatorTrackingParams(t *testing.T) {
+	fromSimplify := canonicalizeApplyURL("https://job-boards.greenhouse.io/andurilindustries/jobs/4520123?utm_source=Simplify")
+	fromVansh := canonicalizeApplyURL("https://job-boards.greenhouse.io/andurilindustries/jobs/4520123?utm_source=github-vansh-ouckah")
+
+	if fromSimplify != fromVansh {
+		t.Fatalf("expected canonicalized URLs to match, got %q and %q", fromSimplify, fromVansh)
+	}
+	if fromSimplify != "https://job-boards.greenhouse.io/andurilindustries/jobs/4520123" {
+		t.Errorf("canonicalizeApplyURL result = %q, want query string stripped", fromSimplify)
 	}
 }

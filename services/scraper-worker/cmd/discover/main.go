@@ -69,7 +69,7 @@ func run(ctx context.Context, sourcesPath string, write, skipProbe bool) error {
 			fmt.Fprintf(os.Stderr, "  warning: %s: %v\n", agg.Repo, err)
 			continue
 		}
-		parsed := scraper.ParseAggregatorReadme(readme, agg.EmploymentType)
+		parsed := scraper.ParseAggregatorReadme(readme, agg.EmploymentType, agg.Repo)
 		fmt.Printf("  %-46s %5d rows\n", agg.Repo, len(parsed))
 		jobs = append(jobs, parsed...)
 	}

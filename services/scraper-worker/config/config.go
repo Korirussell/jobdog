@@ -151,6 +151,11 @@ func defaultSources() sourcesFile {
 var defaultAggregatorSources = []AggregatorSource{
 	{Repo: "SimplifyJobs/Summer2027-Internships", EmploymentType: "INTERNSHIP"},
 	{Repo: "SimplifyJobs/New-Grad-Positions", EmploymentType: "FULL_TIME"},
+	// vansh/Ouckah's repos (the ones powering cvrve.me) are maintained
+	// independently of Simplify's and carry postings the other doesn't have —
+	// two community aggregators, not two views of the same list.
+	{Repo: "vanshb03/Summer2027-Internships", EmploymentType: "INTERNSHIP"},
+	{Repo: "vanshb03/New-Grad-2027", EmploymentType: "FULL_TIME"},
 }
 
 // validWorkdaySources drops entries missing any part of the tenant address. A

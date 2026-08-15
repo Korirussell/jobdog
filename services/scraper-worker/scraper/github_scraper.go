@@ -7,6 +7,7 @@ import (
 	"html"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -43,7 +44,7 @@ func (s *GitHubScraper) ScrapeRepo(ctx context.Context, repo, employmentType str
 		return err
 	}
 
-	jobs := s.parseMarkdownTable(content, employmentType)
+	jobs := s.parseMarkdownTable(content, employmentType, sourceTagForRepo(repo))
 
 	log.Info().Str("repo", repo).Int("count", len(jobs)).Msg("Parsed jobs from aggregator repo")
 
@@ -128,19 +129,34 @@ func (s *GitHubScraper) fetchReadme(ctx context.Context, repo string) (string, e
 	return "", fmt.Errorf("failed to fetch README for %s from branches %v", repo, []string{"dev", "master", "main"})
 }
 
-func (s *GitHubScraper) parseMarkdownTable(content, employmentType string) []models.Job {
+// sourceTagForRepo derives a short, stable Source tag ("github-simplify",
+// "github-vanshb03") from an aggregator's "owner/repo" string, so jobs stay
+// traceable to which aggregator found them without needing a schema change.
+func sourceTagForRepo(repo string) string {
+	owner := repo
+	if idx := strings.Index(repo, "/"); idx >= 0 {
+		owner = repo[:idx]
+	}
+	return "github-" + strings.ToLower(owner)
+}
+
+func (s *GitHubScraper) parseMarkdownTable(content, employmentType, sourceTag string) []models.Job {
 	// Match the opening tag by prefix, not exactly: these READMEs are rendered by
 	// tooling that emits attributes ("<table style=...>"), and requiring the bare
 	// tag silently routes an HTML table into the markdown parser, which finds no
 	// pipe-delimited rows and returns nothing.
 	if strings.Contains(content, "<table") {
-		return s.parseHTMLTable(content, employmentType)
+		return s.parseHTMLTable(content, employmentType, sourceTag)
 	}
 
 	var jobs []models.Job
 
 	lines := strings.Split(content, "\n")
 
+	// Some aggregators (SimplifyJobs) write a plain markdown link in the
+	// Application column; others (vansh/Ouckah's repos) wrap an <img> badge in
+	// an HTML anchor instead. Try the markdown form first, then fall back to
+	// extractApplyURL's href scan — same fallback parseHTMLTable already uses.
 	urlRegex := regexp.MustCompile(`\[.*?\]\((https?://[^\)]+)\)`)
 
 	for _, line := range lines {
@@ -159,27 +175,27 @@ func (s *GitHubScraper) parseMarkdownTable(content, employmentType string) []mod
 			continue
 		}
 
-		company := strings.TrimSpace(parts[1])
-		role := strings.TrimSpace(parts[2])
-		location := strings.TrimSpace(parts[3])
+		company := stripMarkdownEmphasis(strings.TrimSpace(parts[1]))
+		role := stripMarkdownEmphasis(strings.TrimSpace(parts[2]))
+		location := cleanHTMLText(strings.TrimSpace(parts[3]))
 		linkPart := strings.TrimSpace(parts[4])
 
-		matches := urlRegex.FindStringSubmatch(linkPart)
-
-		if len(matches) < 2 {
-			continue
+		var applyURL string
+		if matches := urlRegex.FindStringSubmatch(linkPart); len(matches) >= 2 {
+			applyURL = matches[1]
+		} else {
+			applyURL = extractApplyURL(linkPart)
 		}
+		applyURL = canonicalizeApplyURL(applyURL)
 
-		url := matches[1]
-
-		if company == "" || role == "" || url == "" {
+		if company == "" || role == "" || applyURL == "" {
 			continue
 		}
 
 		job := models.Job{
-			Source:          "github-simplify",
-			SourceJobID:     simplifySourceJobID(url),
-			SourceURL:       url,
+			Source:          sourceTag,
+			SourceJobID:     simplifySourceJobID(applyURL),
+			SourceURL:       applyURL,
 			Title:           role,
 			Company:         company,
 			Location:        location,
@@ -195,7 +211,40 @@ func (s *GitHubScraper) parseMarkdownTable(content, employmentType string) []mod
 	return jobs
 }
 
-func (s *GitHubScraper) parseHTMLTable(content, employmentType string) []models.Job {
+// stripMarkdownEmphasis removes bold/italic wrapping ("**Quora**" -> "Quora")
+// that some aggregators apply to the company or role column.
+func stripMarkdownEmphasis(value string) string {
+	value = strings.TrimSpace(value)
+	for _, marker := range []string{"***", "**", "*", "__", "_"} {
+		if strings.HasPrefix(value, marker) && strings.HasSuffix(value, marker) && len(value) > 2*len(marker) {
+			value = strings.TrimSpace(value[len(marker) : len(value)-len(marker)])
+		}
+	}
+	return value
+}
+
+// canonicalizeApplyURL strips query string and fragment from an ATS apply
+// link. Every aggregator appends its own tracking params (utm_source, ref,
+// jr_id, ...) to what is otherwise the identical underlying posting URL, so
+// hashing/storing the raw link means the same job scraped from two aggregators
+// gets stored twice — ON CONFLICT (source_url) never fires because the two
+// tracking-tagged URLs differ. The job identity lives in the path for every
+// ATS we support (Greenhouse, Lever, Ashby, Workday), never the query string,
+// so dropping it is safe and makes cross-aggregator dedup actually work.
+func canonicalizeApplyURL(rawURL string) string {
+	if rawURL == "" {
+		return ""
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	return parsed.String()
+}
+
+func (s *GitHubScraper) parseHTMLTable(content, employmentType, sourceTag string) []models.Job {
 	var jobs []models.Job
 
 	rowRegex := regexp.MustCompile(`(?is)<tr>(.*?)</tr>`)
@@ -213,7 +262,7 @@ func (s *GitHubScraper) parseHTMLTable(content, employmentType string) []models.
 		company := cleanHTMLText(cells[0][1])
 		role := cleanHTMLText(cells[1][1])
 		location := cleanHTMLText(cells[2][1])
-		applyURL := extractApplyURL(cells[3][1])
+		applyURL := canonicalizeApplyURL(extractApplyURL(cells[3][1]))
 
 		if company == "↳" || company == "" {
 			company = lastCompany
@@ -226,7 +275,7 @@ func (s *GitHubScraper) parseHTMLTable(content, employmentType string) []models.
 		}
 
 		job := models.Job{
-			Source:          "github-simplify",
+			Source:          sourceTag,
 			SourceJobID:     simplifySourceJobID(applyURL),
 			SourceURL:       applyURL,
 			Title:           role,
@@ -284,9 +333,9 @@ func timePtr(t time.Time) *time.Time {
 // ParseAggregatorReadme exposes the aggregator table parser for tooling that
 // needs the parsed rows without persisting them — notably the discovery command,
 // which reads the ATS links out of each row to build the board registry.
-func ParseAggregatorReadme(content, employmentType string) []models.Job {
+func ParseAggregatorReadme(content, employmentType, repo string) []models.Job {
 	s := &GitHubScraper{}
-	return s.parseMarkdownTable(content, employmentType)
+	return s.parseMarkdownTable(content, employmentType, sourceTagForRepo(repo))
 }
 
 // SetCohortResolver attaches graduation-cohort classification. When unset the
