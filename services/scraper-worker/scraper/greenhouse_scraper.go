@@ -127,9 +127,12 @@ func (s *GreenhouseScraper) ScrapeCompany(ctx context.Context, company, boardTok
 		}
 		job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
 
-		jobID, err := s.repo.UpsertJob(&job)
+		jobID, descriptionAccepted, err := s.repo.UpsertJob(&job)
 		if err != nil {
 			log.Error().Err(err).Str("company", company).Msg("Failed to upsert job")
+			continue
+		}
+		if !descriptionAccepted {
 			continue
 		}
 

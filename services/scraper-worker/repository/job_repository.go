@@ -25,7 +25,26 @@ func NewJobRepository(db *database.DB) *JobRepository {
 	return &JobRepository{db: db}
 }
 
-func (r *JobRepository) UpsertJob(job *models.Job) (string, error) {
+// UpsertJob writes a scraped posting and reports whether the description text
+// passed in became (or stayed) the row's authoritative one.
+//
+// The same posting is often scraped from more than one place — a community
+// aggregator repo covers it with a synthesized one-line stub ("Role at
+// Company - Location"), while polling the company's own Greenhouse/Lever/
+// Ashby/Workday board directly pulls the real posting body. Both paths write
+// to the same source_url once it's canonicalized, and they run concurrently
+// with no ordering guarantee, so an unconditional overwrite meant whichever
+// scraper happened to finish last could silently replace a rich description
+// with a thin one — degrading every downstream classification (experience
+// level, grad-year cohort, skills) that was correctly derived from the richer
+// text on an earlier cycle. Never regressing to a shorter description fixes
+// that regardless of scrape order.
+//
+// descriptionAccepted tells the caller whether it's safe to (re)run
+// classification against job.DescriptionText: false means a richer
+// description already on file won this round, so reclassifying now would
+// overwrite a good verdict with one derived from worse data.
+func (r *JobRepository) UpsertJob(job *models.Job) (id string, descriptionAccepted bool, err error) {
 	if job.ID == "" {
 		job.ID = uuid.New().String()
 	}
@@ -46,30 +65,42 @@ func (r *JobRepository) UpsertJob(job *models.Job) (string, error) {
 			company = EXCLUDED.company,
 			location = EXCLUDED.location,
 			employment_type = EXCLUDED.employment_type,
-			description_text = EXCLUDED.description_text,
-			description_hash = EXCLUDED.description_hash,
+			-- Never let a thinner description (and the classification derived from
+			-- it) replace a richer one just because this scrape happened to run
+			-- last. Equal-length keeps taking the fresh copy so a genuinely
+			-- unchanged repost still refreshes normally.
+			description_text = CASE
+				WHEN length(EXCLUDED.description_text) >= length(jobs.description_text) THEN EXCLUDED.description_text
+				ELSE jobs.description_text
+			END,
+			description_hash = CASE
+				WHEN length(EXCLUDED.description_text) >= length(jobs.description_text) THEN EXCLUDED.description_hash
+				ELSE jobs.description_hash
+			END,
 			status = 'ACTIVE',
-			experience_level = EXCLUDED.experience_level,
+			experience_level = CASE
+				WHEN length(EXCLUDED.description_text) >= length(jobs.description_text) THEN EXCLUDED.experience_level
+				ELSE jobs.experience_level
+			END,
 			-- Keep a previously captured salary if the board stops publishing it,
 			-- rather than nulling out data we already have.
 			salary_raw = COALESCE(EXCLUDED.salary_raw, jobs.salary_raw),
 			posted_at = COALESCE(jobs.posted_at, EXCLUDED.posted_at),
 			scraped_at = EXCLUDED.scraped_at,
 			updated_at = EXCLUDED.updated_at
-		RETURNING id
+		RETURNING id, description_text = $9
 	`
 
-	var id string
-	err := r.db.QueryRow(
+	err = r.db.QueryRow(
 		query,
 		job.ID, job.Source, job.SourceJobID, job.SourceURL, job.Title, job.Company,
 		job.Location, job.EmploymentType, job.DescriptionText, job.DescriptionHash,
 		job.Status, job.MinimumYearsExperience, job.EducationLevel, job.ExperienceLevel, job.SalaryRaw,
 		job.PostedAt, job.ScrapedAt, time.Now(),
-	).Scan(&id)
+	).Scan(&id, &descriptionAccepted)
 
 	if err != nil {
-		return "", fmt.Errorf("failed to upsert job: %w", err)
+		return "", false, fmt.Errorf("failed to upsert job: %w", err)
 	}
 
 	// Record what this posting looked like on this cycle. Snapshot failures are
@@ -79,7 +110,7 @@ func (r *JobRepository) UpsertJob(job *models.Job) (string, error) {
 		log.Warn().Err(err).Str("job_id", id).Msg("Failed to record job snapshot")
 	}
 
-	return id, nil
+	return id, descriptionAccepted, nil
 }
 
 // recordSnapshot appends the posting's current state to the append-only history

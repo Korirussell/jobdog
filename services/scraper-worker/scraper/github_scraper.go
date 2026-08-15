@@ -50,9 +50,18 @@ func (s *GitHubScraper) ScrapeRepo(ctx context.Context, repo, employmentType str
 
 	for _, job := range jobs {
 		job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
-		jobID, err := s.repo.UpsertJob(&job)
+		jobID, descriptionAccepted, err := s.repo.UpsertJob(&job)
 		if err != nil {
 			log.Error().Err(err).Str("company", job.Company).Msg("Failed to upsert job")
+			continue
+		}
+
+		// A richer description already on file (most likely from polling this
+		// company's own board directly) won this round — this aggregator row's
+		// synthesized "Role at Company - Location" stub isn't worth reclassifying
+		// from. Skip straight to the next row rather than downgrading a good
+		// grad-cohort/skills verdict with one derived from thinner text.
+		if !descriptionAccepted {
 			continue
 		}
 

@@ -379,9 +379,12 @@ func (w *WorkdayScraper) fetchDetailAndUpsert(ctx context.Context, company, base
 	}
 	job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
 
-	jobID, err := w.repo.UpsertJob(job)
+	jobID, descriptionAccepted, err := w.repo.UpsertJob(job)
 	if err != nil {
 		return fmt.Errorf("upserting workday job: %w", err)
+	}
+	if !descriptionAccepted {
+		return nil
 	}
 
 	// Classify the graduation cohort. Deterministic first, model only for the

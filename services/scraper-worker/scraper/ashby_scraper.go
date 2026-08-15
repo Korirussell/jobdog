@@ -119,17 +119,20 @@ func (s *AshbyScraper) ScrapeCompany(ctx context.Context, company, token string)
 		}
 		job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
 
-		jobID, err := s.repo.UpsertJob(job)
+		jobID, descriptionAccepted, err := s.repo.UpsertJob(job)
 		if err != nil {
 			log.Error().Err(err).Str("company", company).Str("posting", posting.ID).
 				Msg("Failed to upsert Ashby job")
+			continue
+		}
+		imported++
+		if !descriptionAccepted {
 			continue
 		}
 
 		// Classify the graduation cohort. Deterministic first, model only for the
 		// genuinely ambiguous, and never fatal to the scrape.
 		s.cohorts.Resolve(ctx, jobID, job)
-		imported++
 
 		required, preferred := ExtractSkills(job.DescriptionText)
 		profile := &models.JobRequirementProfile{
