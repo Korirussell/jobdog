@@ -35,13 +35,15 @@ func NewGitHubScraper(repo *repository.JobRepository) *GitHubScraper {
 }
 
 // ScrapeRepo ingests one aggregator README. employmentType applies to every row,
-// since each aggregator repo covers a single kind of role.
-func (s *GitHubScraper) ScrapeRepo(ctx context.Context, repo, employmentType string) error {
+// since each aggregator repo covers a single kind of role. Returns the parsed
+// rows so the caller can run board discovery over them without re-fetching or
+// re-parsing the README a second time.
+func (s *GitHubScraper) ScrapeRepo(ctx context.Context, repo, employmentType string) ([]models.Job, error) {
 	log.Info().Str("repo", repo).Msg("Starting aggregator repo scrape")
 
 	content, err := s.fetchReadme(ctx, repo)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	jobs := s.parseMarkdownTable(content, employmentType, sourceTagForRepo(repo))
@@ -84,7 +86,7 @@ func (s *GitHubScraper) ScrapeRepo(ctx context.Context, repo, employmentType str
 	}
 
 	log.Info().Str("repo", repo).Msg("Completed aggregator repo scrape")
-	return nil
+	return jobs, nil
 }
 
 // fetchReadme tries each branch a repo might publish on. Aggregators vary in

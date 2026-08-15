@@ -202,6 +202,13 @@ func DiscoverBoards(jobs []models.Job) []Board {
 	return boards
 }
 
+// BoardKey exposes the board's dedup key to callers outside this package —
+// notably main.go, which needs to check a freshly discovered board against
+// the boards it already has configured before deciding to poll it.
+func BoardKey(b Board) string {
+	return boardKey(b)
+}
+
 func boardKey(b Board) string {
 	if b.Platform == PlatformWorkday {
 		return strings.Join([]string{b.Platform, b.Tenant, b.Datacenter, b.Site}, "|")
