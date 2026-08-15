@@ -41,13 +41,16 @@ func NewCohortResolver(store gradCohortStore, classifier *GradYearClassifier) *C
 	return &CohortResolver{store: store, classifier: classifier, model: model}
 }
 
-// Resolve classifies one posting and writes the verdict to its job row.
+// Resolve classifies one posting, writes the verdict to its job row, and
+// returns what it settled on (the zero-value EntryTypeUnknown/GradSourceNone
+// verdict when there was nothing useful to record) — callers that only need
+// the side effect, like every scraper's synchronous path, can ignore it.
 //
 // Errors are logged rather than returned: a posting that cannot be classified is
 // still a posting worth showing, so classification never fails a scrape.
-func (r *CohortResolver) Resolve(ctx context.Context, jobID string, job *models.Job) {
+func (r *CohortResolver) Resolve(ctx context.Context, jobID string, job *models.Job) GradClassification {
 	if r == nil || r.store == nil {
-		return
+		return GradClassification{}
 	}
 
 	result := ClassifyGradCohort(job.Title, job.DescriptionText, job.SourceURL)
@@ -61,12 +64,14 @@ func (r *CohortResolver) Resolve(ctx context.Context, jobID string, job *models.
 	if result.EntryType == EntryTypeUnknown && result.Source == GradSourceNone {
 		// Nothing useful to record; leave the columns null rather than writing a
 		// verdict that claims more certainty than we have.
-		return
+		return result
 	}
 
 	if err := r.store.UpdateJobGradCohort(jobID, toPersisted(result)); err != nil {
 		log.Warn().Err(err).Str("job_id", jobID).Msg("Failed to persist grad cohort")
 	}
+
+	return result
 }
 
 // resolveWithModel consults the cache before spending a call, and writes any new

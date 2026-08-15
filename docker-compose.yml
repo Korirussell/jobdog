@@ -86,6 +86,66 @@ services:
       DATABASE_USERNAME: jobdog
       DATABASE_PASSWORD: jobdog
       OPENAI_API_KEY: ${APP_OPENAI_API_KEY}
+      # Unset by default: scrapers upsert directly, exactly as before. Set this
+      # (and start the redpanda service) to switch to the streaming path — see
+      # docs/kafka.md. Local/dev opt-in only; nothing here touches production
+      # until this var is actually set wherever this compose file is deployed.
+      KAFKA_BROKERS: ${KAFKA_BROKERS:-}
+    networks:
+      - jobdog-network
+
+  # Kafka-wire-compatible broker for the streaming ingestion pipeline (see
+  # docs/kafka.md). Off the critical path by default: nothing depends on it,
+  # and the scraper/classifier only touch it when KAFKA_BROKERS is set. Runs
+  # in dev-container mode (single node, auto-created topics, no persistent
+  # volume) — fine for local experimentation, not how you'd run this for real.
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    container_name: jobdog-redpanda
+    restart: unless-stopped
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --memory=512M
+      - --overprovisioned
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092
+    ports:
+      - "9092:9092"
+    networks:
+      - jobdog-network
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # Consumes raw.postings, runs the same classification the synchronous
+  # scrapers do, and persists — see docs/kafka.md. Only meaningful once
+  # KAFKA_BROKERS is set and at least one scraper is publishing to it.
+  classifier:
+    build:
+      context: ./services/scraper-worker
+      dockerfile: Dockerfile
+    container_name: jobdog-classifier
+    restart: unless-stopped
+    entrypoint: ["/app/classifier"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://jobdog:jobdog@postgres:5432/jobdog?sslmode=disable
+      DATABASE_USERNAME: jobdog
+      DATABASE_PASSWORD: jobdog
+      OPENAI_API_KEY: ${APP_OPENAI_API_KEY}
+      KAFKA_BROKERS: redpanda:9092
     networks:
       - jobdog-network
 

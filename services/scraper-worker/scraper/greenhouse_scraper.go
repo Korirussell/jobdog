@@ -12,16 +12,26 @@ import (
 
 	"jobdog/scraper-worker/models"
 	"jobdog/scraper-worker/repository"
+	"jobdog/scraper-worker/streaming"
 
 	"github.com/rs/zerolog/log"
 	"golang.org/x/time/rate"
 )
 
 type GreenhouseScraper struct {
-	client  *http.Client
-	repo    *repository.JobRepository
-	limiter *rate.Limiter
-	cohorts *CohortResolver
+	client   *http.Client
+	repo     *repository.JobRepository
+	limiter  *rate.Limiter
+	cohorts  *CohortResolver
+	producer *streaming.Producer
+}
+
+// SetProducer switches this scraper onto the streaming path: instead of
+// classifying and upserting synchronously, it publishes each raw posting to
+// Kafka and lets the classifier consumer do the rest. Leave unset (the
+// default) to keep the direct-upsert behavior this scraper always had.
+func (s *GreenhouseScraper) SetProducer(p *streaming.Producer) {
+	s.producer = p
 }
 
 type GreenhouseResponse struct {
@@ -125,6 +135,19 @@ func (s *GreenhouseScraper) ScrapeCompany(ctx context.Context, company, boardTok
 			Status:          "ACTIVE",
 			PostedAt:        &postedAt,
 		}
+
+		// Streaming path: hand the raw posting to Kafka and move on. The
+		// classifier consumer does experience-level/grad-cohort/skills and the
+		// actual upsert on its own schedule — that decoupling (see
+		// docs/kafka.md) is the entire point, so this scraper's job stops here
+		// rather than duplicating that work synchronously.
+		if s.producer != nil {
+			if err := s.producer.PublishRawPosting(ctx, job); err != nil {
+				log.Error().Err(err).Str("company", company).Msg("Failed to publish raw posting")
+			}
+			continue
+		}
+
 		job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
 
 		jobID, descriptionAccepted, err := s.repo.UpsertJob(&job)

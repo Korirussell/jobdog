@@ -10,10 +10,12 @@ RUN go mod download
 
 COPY . .
 
-# 3. Disable CGO so the binary runs perfectly on Alpine Linux
+# 3. Disable CGO so the binaries run perfectly on Alpine Linux
 RUN CGO_ENABLED=0 GOOS=linux go build -o scraper-worker .
+RUN CGO_ENABLED=0 GOOS=linux go build -o classifier ./cmd/classifier
 
 FROM alpine:3.20
 WORKDIR /app
 COPY --from=build /app/scraper-worker /app/scraper-worker
+COPY --from=build /app/classifier /app/classifier
 ENTRYPOINT ["/app/scraper-worker"]

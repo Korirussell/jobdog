@@ -15,6 +15,7 @@ import (
 	"jobdog/scraper-worker/models"
 	"jobdog/scraper-worker/repository"
 	"jobdog/scraper-worker/scraper"
+	"jobdog/scraper-worker/streaming"
 	"jobdog/scraper-worker/workerpool"
 
 	"github.com/robfig/cron/v3"
@@ -78,6 +79,21 @@ func main() {
 	s.greenhouse.SetCohortResolver(cohorts)
 	s.lever.SetCohortResolver(cohorts)
 	s.ashby.SetCohortResolver(cohorts)
+
+	// Streaming is opt-in: unset KAFKA_BROKERS and every scraper keeps
+	// classifying and upserting synchronously, exactly as before this existed.
+	// Greenhouse is wired first as the proof of concept — see docs/kafka.md and
+	// GreenhouseScraper.SetProducer. The classifier consumer (cmd/classifier)
+	// does the actual classification/persistence for whatever gets published.
+	if len(cfg.KafkaBrokers) > 0 {
+		log.Info().Strs("brokers", cfg.KafkaBrokers).Msg("KAFKA_BROKERS set; Greenhouse will publish to the streaming pipeline instead of upserting directly")
+		if err := streaming.EnsureTopics(cfg.KafkaBrokers); err != nil {
+			log.Warn().Err(err).Msg("Failed to ensure Kafka topics exist; continuing (they may already exist)")
+		}
+		producer := streaming.NewProducer(cfg.KafkaBrokers, "scraper-worker")
+		defer producer.Close()
+		s.greenhouse.SetProducer(producer)
+	}
 
 	c := cron.New()
 

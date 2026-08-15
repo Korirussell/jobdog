@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -74,6 +75,11 @@ type Config struct {
 	LeverSources      []LeverSource
 	AshbySources      []AshbySource
 	Aggregators       []AggregatorSource
+	// KafkaBrokers is empty by default, which keeps every scraper on the
+	// direct-upsert path exactly as before the streaming package existed. Set
+	// KAFKA_BROKERS (comma-separated host:port) to opt a deployment into
+	// publishing through Kafka/Redpanda instead — see docs/kafka.md.
+	KafkaBrokers []string
 }
 
 func Load() (*Config, error) {
@@ -86,6 +92,7 @@ func Load() (*Config, error) {
 		GradModel:      getEnv("GRAD_CLASSIFIER_MODEL", "gpt-4o-mini"),
 		LogLevel:       getEnv("LOG_LEVEL", "info"),
 		ScrapeInterval: 2 * time.Hour,
+		KafkaBrokers:   parseKafkaBrokers(getEnv("KAFKA_BROKERS", "")),
 	}
 
 	sources := loadSources()
@@ -100,6 +107,23 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// parseKafkaBrokers splits a comma-separated KAFKA_BROKERS value into a
+// clean slice, trimming whitespace and dropping empty entries. Returns nil
+// (not an empty non-nil slice) when the env var is unset, so
+// len(cfg.KafkaBrokers) == 0 reliably means "Kafka is off."
+func parseKafkaBrokers(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	var brokers []string
+	for _, b := range strings.Split(raw, ",") {
+		if b = strings.TrimSpace(b); b != "" {
+			brokers = append(brokers, b)
+		}
+	}
+	return brokers
 }
 
 // loadSources attempts to load Greenhouse/Lever/Workday sources from an external

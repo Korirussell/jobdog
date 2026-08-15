@@ -3,8 +3,21 @@
 This document covers the streaming ingestion pipeline: what it does, the decisions
 behind it, and how to discuss those decisions with confidence.
 
-Status: **design** — numbers marked `[MEASURE]` must be filled in from real runs
-before they go on a résumé.
+Status: **implemented, not yet the default path.** `services/scraper-worker/streaming`
+has the producer, consumer, and topic setup described below; `cmd/classifier`
+is the consumer process. Greenhouse is wired as the first producer
+(`GreenhouseScraper.SetProducer`) — set `KAFKA_BROKERS` to opt it onto the
+streaming path; unset (the default), every scraper still classifies and
+upserts synchronously exactly as before this existed. Verified end-to-end
+against a real Redpanda + Postgres: publish → consume → classify → persist →
+republish to `enriched.postings`, including that dedup and the
+description-richness guard on `UpsertJob` hold on the streaming path too.
+The other four scrapers (Lever, Ashby, Workday, the GitHub aggregators) still
+only support the synchronous path — extending `SetProducer` to them is
+mechanical, same pattern, not yet done. Numbers marked `[MEASURE]` still need
+filling in from a real run with real traffic before they go on a résumé —
+one canary message through a local pipeline proves the mechanism works, not
+a throughput number.
 
 ---
 
