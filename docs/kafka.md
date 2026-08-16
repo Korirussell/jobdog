@@ -3,21 +3,30 @@
 This document covers the streaming ingestion pipeline: what it does, the decisions
 behind it, and how to discuss those decisions with confidence.
 
-Status: **implemented, not yet the default path.** `services/scraper-worker/streaming`
-has the producer, consumer, and topic setup described below; `cmd/classifier`
-is the consumer process. Greenhouse is wired as the first producer
-(`GreenhouseScraper.SetProducer`) — set `KAFKA_BROKERS` to opt it onto the
+Status: **fully implemented end to end, not yet the default path.**
+`services/scraper-worker/streaming` has the producer, consumer, and topic
+setup described below; `cmd/classifier` is the consumer process;
+`services/scraper-worker/sink` + `cmd/s3sink` is the Spark-aggregation half.
+All five scrapers (Greenhouse, Lever, Ashby, Workday, GitHub aggregators)
+support `SetProducer` — set `KAFKA_BROKERS` to opt a deployment onto the
 streaming path; unset (the default), every scraper still classifies and
-upserts synchronously exactly as before this existed. Verified end-to-end
-against a real Redpanda + Postgres: publish → consume → classify → persist →
-republish to `enriched.postings`, including that dedup and the
-description-richness guard on `UpsertJob` hold on the streaming path too.
-The other four scrapers (Lever, Ashby, Workday, the GitHub aggregators) still
-only support the synchronous path — extending `SetProducer` to them is
-mechanical, same pattern, not yet done. Numbers marked `[MEASURE]` still need
-filling in from a real run with real traffic before they go on a résumé —
-one canary message through a local pipeline proves the mechanism works, not
-a throughput number.
+upserts synchronously exactly as before this existed. The S3 sink is
+separately gated on `S3_BUCKET` and targets any S3-compatible endpoint —
+Cloudflare R2 (already in use for resume storage), real AWS S3, or MinIO for
+local testing — not specifically AWS.
+
+Verified end-to-end against real infrastructure at every stage, not just
+unit tests: scraper → Kafka → classifier → Postgres → `enriched.postings` →
+S3 sink → Parquet → read back and confirmed correct. Also found and fixed a
+real latency bug along the way: kafka-go's `Writer` defaults to a 1s
+`BatchTimeout`, so a synchronous single-message publish waited out that
+whole window every time (measured at exactly ~1.00s/call against a live
+broker) — an 85-posting company would've cost 85+ seconds of pure batching
+delay. Fixed to 10ms; same scrape now completes in ~1.2s.
+
+Numbers marked `[MEASURE]` still need filling in from a real run with real
+traffic before they go on a résumé — a handful of canary messages through a
+local pipeline proves the mechanism is correct, not a throughput number.
 
 ---
 
