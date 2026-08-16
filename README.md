@@ -148,7 +148,7 @@ JobDog is a production microservices platform that solves the internship search 
 **DevOps**
 - Docker + Docker Compose
 - Nginx (reverse proxy)
-- DigitalOcean (production deployment)
+- AWS EC2 (production deployment)
 - GitHub Actions (CI/CD ready)
 
 ## Project Structure
@@ -203,7 +203,7 @@ docker-compose up --build
 ### Production Deployment
 
 ```bash
-# Build and deploy to DigitalOcean
+# Build and deploy to an AWS EC2 instance
 docker-compose -f docker-compose.yml up -d
 
 # Configure Nginx reverse proxy

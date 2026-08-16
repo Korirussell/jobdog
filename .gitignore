@@ -4,10 +4,10 @@ services/backend-api/mvnw
 services/backend-api/mvnw.cmd
 services/scraper-worker/bin/
 .env
+.env.production
 .idea/
 .vscode/
 .aws/
-digitalocean
 *.pem
 *-dump.sql
 SENIOR_ENGINEER_AUDIT.md
