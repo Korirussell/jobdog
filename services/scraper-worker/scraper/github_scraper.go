@@ -14,16 +14,18 @@ import (
 
 	"jobdog/scraper-worker/models"
 	"jobdog/scraper-worker/repository"
+	"jobdog/scraper-worker/streaming"
 
 	"github.com/rs/zerolog/log"
 	"golang.org/x/time/rate"
 )
 
 type GitHubScraper struct {
-	client  *http.Client
-	repo    *repository.JobRepository
-	limiter *rate.Limiter
-	cohorts *CohortResolver
+	client   *http.Client
+	repo     *repository.JobRepository
+	limiter  *rate.Limiter
+	cohorts  *CohortResolver
+	producer *streaming.Producer
 }
 
 func NewGitHubScraper(repo *repository.JobRepository) *GitHubScraper {
@@ -32,6 +34,16 @@ func NewGitHubScraper(repo *repository.JobRepository) *GitHubScraper {
 		repo:    repo,
 		limiter: rate.NewLimiter(rate.Every(time.Second), 5), // 5 requests per second
 	}
+}
+
+// SetProducer switches this scraper onto the streaming path — see
+// GreenhouseScraper.SetProducer for the full rationale. Leave unset (the
+// default) to keep classifying and upserting synchronously. Note this
+// scraper's rows always carry the thin synthesized description (see
+// ScrapeRepo) — the description-richness guard on UpsertJob still applies on
+// the classifier's end of the pipe, exactly as it does synchronously.
+func (s *GitHubScraper) SetProducer(p *streaming.Producer) {
+	s.producer = p
 }
 
 // ScrapeRepo ingests one aggregator README. employmentType applies to every row,
@@ -51,6 +63,13 @@ func (s *GitHubScraper) ScrapeRepo(ctx context.Context, repo, employmentType str
 	log.Info().Str("repo", repo).Int("count", len(jobs)).Msg("Parsed jobs from aggregator repo")
 
 	for _, job := range jobs {
+		if s.producer != nil {
+			if err := s.producer.PublishRawPosting(ctx, job); err != nil {
+				log.Error().Err(err).Str("company", job.Company).Msg("Failed to publish raw posting")
+			}
+			continue
+		}
+
 		job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
 		jobID, descriptionAccepted, err := s.repo.UpsertJob(&job)
 		if err != nil {

@@ -10,6 +10,7 @@ import (
 
 	"jobdog/scraper-worker/models"
 	"jobdog/scraper-worker/repository"
+	"jobdog/scraper-worker/streaming"
 
 	"github.com/rs/zerolog/log"
 	"golang.org/x/time/rate"
@@ -21,10 +22,18 @@ import (
 // detail fetch — and includes plain-text descriptions and compensation, so it is
 // both the cheapest source to poll and the richest one we have.
 type AshbyScraper struct {
-	client  *http.Client
-	repo    *repository.JobRepository
-	limiter *rate.Limiter
-	cohorts *CohortResolver
+	client   *http.Client
+	repo     *repository.JobRepository
+	limiter  *rate.Limiter
+	cohorts  *CohortResolver
+	producer *streaming.Producer
+}
+
+// SetProducer switches this scraper onto the streaming path — see
+// GreenhouseScraper.SetProducer for the full rationale. Leave unset (the
+// default) to keep classifying and upserting synchronously.
+func (s *AshbyScraper) SetProducer(p *streaming.Producer) {
+	s.producer = p
 }
 
 type ashbyResponse struct {
@@ -117,6 +126,15 @@ func (s *AshbyScraper) ScrapeCompany(ctx context.Context, company, token string)
 			PostedAt:        parseAshbyPublishedAt(posting.PublishedAt, posting.ID),
 			SalaryRaw:       ashbySalary(posting),
 		}
+
+		if s.producer != nil {
+			if err := s.producer.PublishRawPosting(ctx, *job); err != nil {
+				log.Error().Err(err).Str("company", company).Str("posting", posting.ID).
+					Msg("Failed to publish raw posting")
+			}
+			continue
+		}
+
 		job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
 
 		jobID, descriptionAccepted, err := s.repo.UpsertJob(job)

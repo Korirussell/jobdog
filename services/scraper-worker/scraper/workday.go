@@ -12,6 +12,7 @@ import (
 
 	"jobdog/scraper-worker/models"
 	"jobdog/scraper-worker/repository"
+	"jobdog/scraper-worker/streaming"
 
 	"github.com/rs/zerolog/log"
 	"golang.org/x/time/rate"
@@ -32,6 +33,14 @@ type WorkdayScraper struct {
 	limiter    *rate.Limiter
 	workerPool int
 	cohorts    *CohortResolver
+	producer   *streaming.Producer
+}
+
+// SetProducer switches this scraper onto the streaming path — see
+// GreenhouseScraper.SetProducer for the full rationale. Leave unset (the
+// default) to keep classifying and upserting synchronously.
+func (s *WorkdayScraper) SetProducer(p *streaming.Producer) {
+	s.producer = p
 }
 
 // workdaySearchRequest is the POST body for the job-list endpoint.
@@ -377,6 +386,14 @@ func (w *WorkdayScraper) fetchDetailAndUpsert(ctx context.Context, company, base
 		Status:          "ACTIVE",
 		PostedAt:        parseWorkdayPostedAt(detail.StartDate, listing.ExternalPath),
 	}
+
+	if w.producer != nil {
+		if err := w.producer.PublishRawPosting(ctx, *job); err != nil {
+			log.Error().Err(err).Str("company", company).Msg("Failed to publish raw posting")
+		}
+		return nil
+	}
+
 	job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
 
 	jobID, descriptionAccepted, err := w.repo.UpsertJob(job)

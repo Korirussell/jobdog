@@ -39,6 +39,17 @@ func NewProducer(brokers []string, producedBy string) *Producer {
 			// pipeline doesn't need.
 			RequiredAcks: kafka.RequireOne,
 			Async:        false,
+			// kafka-go's default BatchTimeout is 1s: a synchronous WriteMessages
+			// call for a single message waits out that whole batching window
+			// before flushing, since there's nothing else to fill the batch. A
+			// scraper publishing dozens of postings per cycle in a plain
+			// sequential loop would otherwise spend one full second per posting
+			// on pure batching delay — 85 postings would take over a minute of
+			// nothing but waiting. Discovered by timing repeated
+			// PublishRawPosting calls against a real broker: every call took
+			// ~1.00s regardless of payload size, which only makes sense as a
+			// fixed batch-timer wait, not network latency.
+			BatchTimeout: 10 * time.Millisecond,
 		},
 		producedBy: producedBy,
 	}

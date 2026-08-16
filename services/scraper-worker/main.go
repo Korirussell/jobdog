@@ -82,17 +82,21 @@ func main() {
 
 	// Streaming is opt-in: unset KAFKA_BROKERS and every scraper keeps
 	// classifying and upserting synchronously, exactly as before this existed.
-	// Greenhouse is wired first as the proof of concept — see docs/kafka.md and
-	// GreenhouseScraper.SetProducer. The classifier consumer (cmd/classifier)
-	// does the actual classification/persistence for whatever gets published.
+	// See docs/kafka.md and GreenhouseScraper.SetProducer. The classifier
+	// consumer (cmd/classifier) does the actual classification/persistence for
+	// whatever gets published.
 	if len(cfg.KafkaBrokers) > 0 {
-		log.Info().Strs("brokers", cfg.KafkaBrokers).Msg("KAFKA_BROKERS set; Greenhouse will publish to the streaming pipeline instead of upserting directly")
+		log.Info().Strs("brokers", cfg.KafkaBrokers).Msg("KAFKA_BROKERS set; scrapers will publish to the streaming pipeline instead of upserting directly")
 		if err := streaming.EnsureTopics(cfg.KafkaBrokers); err != nil {
 			log.Warn().Err(err).Msg("Failed to ensure Kafka topics exist; continuing (they may already exist)")
 		}
 		producer := streaming.NewProducer(cfg.KafkaBrokers, "scraper-worker")
 		defer producer.Close()
+		s.github.SetProducer(producer)
+		s.workday.SetProducer(producer)
 		s.greenhouse.SetProducer(producer)
+		s.lever.SetProducer(producer)
+		s.ashby.SetProducer(producer)
 	}
 
 	c := cron.New()
