@@ -1,0 +1,75 @@
+name: Backend CI/CD
+
+# CI (build + test) runs automatically on every push and PR that touches
+# either backend service — cheap, safe, no side effects.
+#
+# Deploy is workflow_dispatch-only, deliberately: this stack lives on a
+# single t4g.small EC2 instance with no staging environment, so "merge to
+# master" and "deploy to production" are kept as two separate actions rather
+# than one triggering the other automatically. Run it from the Actions tab
+# when you actually want the running containers updated.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "services/backend-api/**"
+      - "services/scraper-worker/**"
+      - ".github/workflows/backend-ci-cd.yml"
+  pull_request:
+    paths:
+      - "services/backend-api/**"
+      - "services/scraper-worker/**"
+  workflow_dispatch: {}
+
+jobs:
+  test-backend-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: mvn test
+        working-directory: services/backend-api
+        run: mvn -B test
+
+  test-scraper-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: services/scraper-worker/go.sum
+      - name: go vet + test
+        working-directory: services/scraper-worker
+        run: |
+          go build ./...
+          go vet ./...
+          go test ./...
+
+  # Manual only — see the top-of-file comment. Requires the EC2_HOST,
+  # EC2_USER, and EC2_SSH_KEY repo secrets (SSH access to the production
+  # instance) to be set.
+  deploy:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [test-backend-api, test-scraper-worker]
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          # .env on the instance is populated from SSM by fetch-env.sh, not
+          # by this workflow — see docs/superpowers/plans/2026-08-10-aws-migration.md
+          # Task 4. This step only updates code and restarts containers.
+          script: |
+            set -e
+            cd ~/jobdog
+            git pull --ff-only origin master
+            docker compose up -d --build
+            docker compose ps
