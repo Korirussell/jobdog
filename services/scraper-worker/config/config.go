@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"jobdog/scraper-worker/sink"
 )
 
 // WorkdaySource addresses one Workday tenant's CxS API. The datacenter segment
@@ -80,6 +82,11 @@ type Config struct {
 	// KAFKA_BROKERS (comma-separated host:port) to opt a deployment into
 	// publishing through Kafka/Redpanda instead — see docs/kafka.md.
 	KafkaBrokers []string
+	// S3 is disabled (zero-value, empty Bucket) by default. Set S3_BUCKET (and
+	// S3_ENDPOINT for anything other than real AWS S3 — R2, MinIO, etc.) to
+	// opt cmd/s3sink into writing enriched.postings to Parquet — see
+	// docs/kafka.md's "Spark aggregation" section.
+	S3 sink.Config
 }
 
 func Load() (*Config, error) {
@@ -93,6 +100,14 @@ func Load() (*Config, error) {
 		LogLevel:       getEnv("LOG_LEVEL", "info"),
 		ScrapeInterval: 2 * time.Hour,
 		KafkaBrokers:   parseKafkaBrokers(getEnv("KAFKA_BROKERS", "")),
+		S3: sink.Config{
+			Endpoint:   getEnv("S3_ENDPOINT", ""),
+			Bucket:     getEnv("S3_BUCKET", ""),
+			AccessKey:  getEnv("S3_ACCESS_KEY", ""),
+			SecretKey:  getEnv("S3_SECRET_KEY", ""),
+			Region:     getEnv("S3_REGION", "auto"),
+			PathPrefix: getEnv("S3_PATH_PREFIX", "enriched-postings"),
+		},
 	}
 
 	sources := loadSources()

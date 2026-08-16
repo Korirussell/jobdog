@@ -149,6 +149,55 @@ services:
     networks:
       - jobdog-network
 
+  # Local S3-compatible store for testing the Databricks-side sink without
+  # touching real AWS or the R2 bucket backend-api already pays for. Point
+  # S3_ENDPOINT at this for local dev; point it at R2's endpoint (or omit it
+  # for real AWS S3) to use either of those instead — see cmd/s3sink.
+  minio:
+    image: minio/minio:RELEASE.2024-08-03T04-33-23Z
+    container_name: jobdog-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: jobdog
+      MINIO_ROOT_PASSWORD: jobdog-minio-local
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - jobdog-network
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # Consumes enriched.postings and writes Parquet to S3 for Databricks/Spark
+  # to read — see docs/kafka.md. Only meaningful once KAFKA_BROKERS and
+  # S3_BUCKET are both set; disabled otherwise (cmd/s3sink refuses to start).
+  s3sink:
+    build:
+      context: ./services/scraper-worker
+      dockerfile: Dockerfile
+    container_name: jobdog-s3sink
+    restart: unless-stopped
+    entrypoint: ["/app/s3sink"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-jobdog}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-jobdog-minio-local}
+      S3_REGION: ${S3_REGION:-auto}
+    networks:
+      - jobdog-network
+
 networks:
   jobdog-network:
     driver: bridge
@@ -156,3 +205,4 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  minio_data:

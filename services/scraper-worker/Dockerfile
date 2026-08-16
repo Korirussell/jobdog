@@ -13,9 +13,11 @@ COPY . .
 # 3. Disable CGO so the binaries run perfectly on Alpine Linux
 RUN CGO_ENABLED=0 GOOS=linux go build -o scraper-worker .
 RUN CGO_ENABLED=0 GOOS=linux go build -o classifier ./cmd/classifier
+RUN CGO_ENABLED=0 GOOS=linux go build -o s3sink ./cmd/s3sink
 
 FROM alpine:3.20
 WORKDIR /app
 COPY --from=build /app/scraper-worker /app/scraper-worker
 COPY --from=build /app/classifier /app/classifier
+COPY --from=build /app/s3sink /app/s3sink
 ENTRYPOINT ["/app/scraper-worker"]
