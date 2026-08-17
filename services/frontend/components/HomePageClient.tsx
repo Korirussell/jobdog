@@ -68,7 +68,7 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
   const lastSync = initialLastSync;
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
-  const [applyModal, setApplyModal] = useState<{ jobId: string; title: string; company: string; applyUrl: string } | null>(null);
+  const [applyModal, setApplyModal] = useState<{ jobId: string; title: string; company: string; applyUrl: string; postedAt: string | null; scrapedAt: string } | null>(null);
   const [conveyorJobs, setConveyorJobs] = useState<Array<{ jobId: string; company: string; title: string }>>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -184,7 +184,7 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
   const handleApply = useCallback((jobId: string) => {
     if (!isAuthenticated) return;
     const job = allJobs.find((j) => j.jobId === jobId);
-    if (job) setApplyModal({ jobId, title: job.title, company: job.company, applyUrl: job.applyUrl });
+    if (job) setApplyModal({ jobId, title: job.title, company: job.company, applyUrl: job.applyUrl, postedAt: job.postedAt, scrapedAt: job.scrapedAt });
   }, [isAuthenticated, allJobs]);
 
   const handleApplySuccess = useCallback((jobId: string) => {
@@ -346,6 +346,8 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
           jobTitle={applyModal.title}
           company={applyModal.company}
           applyUrl={applyModal.applyUrl}
+          postedAt={applyModal.postedAt}
+          scrapedAt={applyModal.scrapedAt}
           onClose={() => setApplyModal(null)}
           onSuccess={handleApplySuccess}
         />

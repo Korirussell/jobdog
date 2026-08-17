@@ -132,6 +132,8 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
                 jobTitle={job.title}
                 company={job.company}
                 applyUrl={job.applyUrl}
+                postedAt={job.postedAt}
+                scrapedAt={job.scrapedAt}
               />
             </div>
           </header>

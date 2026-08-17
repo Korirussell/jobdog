@@ -9,9 +9,11 @@ interface JobDetailApplyButtonProps {
   jobTitle: string;
   company: string;
   applyUrl: string;
+  postedAt: string | null;
+  scrapedAt: string;
 }
 
-export default function JobDetailApplyButton({ jobId, jobTitle, company, applyUrl }: JobDetailApplyButtonProps) {
+export default function JobDetailApplyButton({ jobId, jobTitle, company, applyUrl, postedAt, scrapedAt }: JobDetailApplyButtonProps) {
   const { isAuthenticated } = useAuth();
   const [open, setOpen] = useState(false);
 
@@ -42,6 +44,8 @@ export default function JobDetailApplyButton({ jobId, jobTitle, company, applyUr
           jobTitle={jobTitle}
           company={company}
           applyUrl={applyUrl}
+          postedAt={postedAt}
+          scrapedAt={scrapedAt}
           onClose={() => setOpen(false)}
           onSuccess={() => setOpen(false)}
         />

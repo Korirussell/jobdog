@@ -15,8 +15,28 @@ interface ApplyModalProps {
   jobTitle: string;
   company: string;
   applyUrl: string;
+  postedAt: string | null;
+  scrapedAt: string;
   onClose: () => void;
   onSuccess: (jobId: string) => void;
+}
+
+// Mirrors JobListRow's formatTimeAgo — duplicated rather than shared since
+// it's a few lines and the two components don't otherwise share a utils
+// module; not worth introducing one for this alone.
+function formatTimeAgo(dateString: string | null | undefined): string {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 0 || diffMs > 365 * 24 * 60 * 60 * 1000) return '';
+  const h = Math.floor(diffMs / 3600000);
+  if (h < 1) return 'just now';
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  if (d < 30) return `${Math.floor(d / 7)}w ago`;
+  return `${Math.floor(d / 30)}mo ago`;
 }
 
 function PercentileRing({ percentile }: { percentile: number }) {
@@ -65,7 +85,7 @@ function PercentileRing({ percentile }: { percentile: number }) {
   );
 }
 
-export default function ApplyModal({ jobId, jobTitle, company, applyUrl, onClose, onSuccess }: ApplyModalProps) {
+export default function ApplyModal({ jobId, jobTitle, company, applyUrl, postedAt, scrapedAt, onClose, onSuccess }: ApplyModalProps) {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -133,6 +153,13 @@ export default function ApplyModal({ jobId, jobTitle, company, applyUrl, onClose
           <div>
             <h2 className="font-mono text-sm font-bold uppercase">APPLY.EXE</h2>
             <p className="font-mono text-[10px] text-text-secondary truncate max-w-[220px]">{company} — {jobTitle}</p>
+            {(() => {
+              const dateLabel = postedAt ? 'Posted' : 'Added';
+              const timeAgo = formatTimeAgo(postedAt ?? scrapedAt);
+              return timeAgo ? (
+                <p className="font-mono text-[9px] text-text-tertiary">{dateLabel} {timeAgo}</p>
+              ) : null;
+            })()}
           </div>
           <button
             onClick={onClose}

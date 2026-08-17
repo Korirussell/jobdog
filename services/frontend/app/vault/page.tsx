@@ -5,8 +5,7 @@ import TopBar from '@/components/TopBar';
 import AuthGuard from '@/components/AuthGuard';
 import { api, ResumeAnalysis, BulletFeedback, JobFitResult, RecruiterTakeItem, AtsParsedSections } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { TIERS, getTier } from '@/lib/tiers';
-import { ShareCardSheet } from '@/components/ShareCardSheet';
+import { getTier } from '@/lib/tiers';
 
 interface Resume {
   resumeId: string;
@@ -152,17 +151,6 @@ export default function VaultPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState('');
   const [activeTab, setActiveTab] = useState<AnalysisTab>('overview');
-  const [shareOpen, setShareOpen] = useState(false);
-  // Share card is driven by the deterministic grading pipeline (POST /api/v1/roast),
-  // not by the separate LLM ResumeAnalysis scores shown elsewhere on this page.
-  const [shareGrade, setShareGrade] = useState<{
-    topDogRank: number;
-    tierName: string;
-    topPros: string[];
-    subScores: Record<string, number>;
-  } | null>(null);
-  const [shareLoading, setShareLoading] = useState(false);
-  const [shareError, setShareError] = useState('');
 
   // Role targeting
   const [userLevel, setUserLevel] = useState<'INTERN' | 'NEW_GRAD'>('INTERN');
@@ -208,37 +196,6 @@ export default function VaultPage() {
       })
       .catch(() => {});
   }, [selectedResumeId]);
-
-  // Reset any previously fetched share grade when the selected resume changes.
-  useEffect(() => {
-    setShareGrade(null);
-    setShareOpen(false);
-    setShareError('');
-  }, [selectedResumeId]);
-
-  async function handleShare() {
-    if (!selectedResumeId) return;
-    setShareError('');
-    if (shareGrade) {
-      setShareOpen(true);
-      return;
-    }
-    setShareLoading(true);
-    try {
-      const grade = await api.roastResume(selectedResumeId);
-      setShareGrade({
-        topDogRank: grade.topDogRank,
-        tierName: grade.tierName,
-        topPros: grade.topPros ?? [],
-        subScores: grade.subScores ?? {},
-      });
-      setShareOpen(true);
-    } catch (err: any) {
-      setShareError(err?.message || 'Failed to load your score. Try again.');
-    } finally {
-      setShareLoading(false);
-    }
-  }
 
   async function fetchResumes() {
     try {
@@ -676,18 +633,6 @@ export default function VaultPage() {
                                   Analyzed for: <span className="font-bold text-text-secondary">{currentAnalysis.userLevel === 'INTERN' ? 'Internship' : 'New Grad'} · {currentAnalysis.targetRole}</span>
                                 </p>
                               </div>
-                              <div className="shrink-0 flex flex-col items-end gap-1">
-                                <button
-                                  onClick={handleShare}
-                                  disabled={shareLoading}
-                                  className="flex items-center gap-1.5 border-2 border-black bg-primary px-3 py-1.5 font-mono text-xs font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none disabled:opacity-50"
-                                >
-                                  {shareLoading ? '⏳ Scoring…' : '🔗 Share score'}
-                                </button>
-                                {shareError && (
-                                  <span className="font-mono text-[10px] text-red-600">{shareError}</span>
-                                )}
-                              </div>
                             </div>
                           </div>
 
@@ -1042,16 +987,6 @@ export default function VaultPage() {
           </div>
         </div>
       </div>
-
-      {shareOpen && shareGrade && (
-        <ShareCardSheet
-          score={shareGrade.topDogRank}
-          tierLabel={getTier(shareGrade.topDogRank).label}
-          pros={shareGrade.topPros.slice(0, 3)}
-          subScores={shareGrade.subScores}
-          onClose={() => setShareOpen(false)}
-        />
-      )}
     </AuthGuard>
   );
 }

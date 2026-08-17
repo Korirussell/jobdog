@@ -5,8 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import TopBar from '@/components/TopBar';
 import { api } from '@/lib/api';
-import { TIERS, getTier } from '@/lib/tiers';
-import { ShareCardSheet } from '@/components/ShareCardSheet';
+import { getTier } from '@/lib/tiers';
 
 function ScoreRing({ score, size = 96 }: { score: number; size?: number }) {
   const tier = getTier(score);
@@ -53,7 +52,18 @@ export default function PublicProfilePage() {
   const [profile, setProfile] = useState<Awaited<ReturnType<typeof api.getPublicProfile>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [shareOpen, setShareOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Clipboard access can be denied by the browser; the URL bar already
+      // has the link, so there's nothing further to do here.
+    }
+  };
 
   useEffect(() => {
     if (!userId) return;
@@ -93,10 +103,10 @@ export default function PublicProfilePage() {
                 <h1 className="mt-1 font-mono text-2xl font-bold text-text-primary">{profile.displayName}</h1>
               </div>
               <button
-                onClick={() => setShareOpen(true)}
+                onClick={handleCopyLink}
                 className="flex items-center gap-1.5 border border-black/20 bg-white px-3 py-1.5 font-mono text-[10px] font-bold text-text-secondary transition-colors hover:border-black/40"
               >
-                🔗 Share
+                {linkCopied ? '✓ Copied' : '🔗 Copy link'}
               </button>
             </div>
 
@@ -209,16 +219,6 @@ export default function PublicProfilePage() {
           </div>
         )}
       </div>
-
-      {shareOpen && profile?.topScore && (
-        <ShareCardSheet
-          score={profile.topScore.overallScore}
-          tierLabel={getTier(profile.topScore.overallScore).label}
-          pros={profile.topScore.strengths.slice(0, 3)}
-          handle={profile.displayName}
-          onClose={() => setShareOpen(false)}
-        />
-      )}
     </div>
   );
 }
