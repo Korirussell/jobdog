@@ -99,10 +99,19 @@ services:
   # and the scraper/classifier only touch it when KAFKA_BROKERS is set. Runs
   # in dev-container mode (single node, auto-created topics, no persistent
   # volume) — fine for local experimentation, not how you'd run this for real.
+  #
+  # profiles: streaming — a bare `docker compose up -d` (what the deploy
+  # workflow runs) never starts this. Explicitly opt in with
+  # `docker compose --profile streaming up -d`. Learned the hard way: without
+  # this, a plain redeploy silently started Redpanda + classifier + MinIO +
+  # s3sink on the production t4g.small (2GB RAM) box, which was never the
+  # intent — this pipeline was meant to stay local/dev-only until a separate,
+  # deliberate decision to run it for real.
   redpanda:
     image: redpandadata/redpanda:v24.2.7
     container_name: jobdog-redpanda
     restart: unless-stopped
+    profiles: ["streaming"]
     command:
       - redpanda
       - start
@@ -134,6 +143,7 @@ services:
       dockerfile: Dockerfile
     container_name: jobdog-classifier
     restart: unless-stopped
+    profiles: ["streaming"]
     entrypoint: ["/app/classifier"]
     depends_on:
       postgres:
@@ -157,6 +167,7 @@ services:
     image: minio/minio:RELEASE.2024-08-03T04-33-23Z
     container_name: jobdog-minio
     restart: unless-stopped
+    profiles: ["streaming"]
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: jobdog
@@ -184,6 +195,7 @@ services:
       dockerfile: Dockerfile
     container_name: jobdog-s3sink
     restart: unless-stopped
+    profiles: ["streaming"]
     entrypoint: ["/app/s3sink"]
     depends_on:
       redpanda:
