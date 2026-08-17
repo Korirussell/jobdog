@@ -64,6 +64,12 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          # Default is 10m. The t4g.small's burstable ARM CPU can take longer
+          # than that to compile scraper-worker's Go deps (aws-sdk-go-v2,
+          # parquet-go, kafka-go, ...) alongside backend-api's Maven build in
+          # the same `docker compose up -d --build` — hit the default limit
+          # on a real deploy, mid Go build.
+          command_timeout: 30m
           # .env on the instance is populated from SSM by fetch-env.sh, not
           # by this workflow — see docs/superpowers/plans/2026-08-10-aws-migration.md
           # Task 4. This step only updates code and restarts containers.
