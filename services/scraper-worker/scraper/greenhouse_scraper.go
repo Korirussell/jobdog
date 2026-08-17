@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"regexp"
@@ -181,10 +182,17 @@ func (s *GreenhouseScraper) ScrapeCompany(ctx context.Context, company, boardTok
 	return nil
 }
 
-func stripHTML(html string) string {
-	// Remove HTML tags using regex
+// stripHTML strips markup from an ATS-provided content field down to plain
+// text. Decoding entities before stripping tags matters: some ATS content
+// (SpaceX's Greenhouse postings, at least) is doubly-escaped — the whole
+// field is a literal "&lt;div&gt;...&lt;/div&gt;" string rather than real
+// tags — which the tag-stripping regex can't see, since there's no literal
+// '<' to match. Left undecoded, that garbage leaks straight through to the
+// stored description and onto the job detail page verbatim.
+func stripHTML(rawHTML string) string {
+	decoded := html.UnescapeString(rawHTML)
 	re := regexp.MustCompile(`<[^>]*>`)
-	text := re.ReplaceAllString(html, " ")
+	text := re.ReplaceAllString(decoded, " ")
 	// Clean up multiple spaces
 	text = strings.Join(strings.Fields(text), " ")
 	return strings.TrimSpace(text)

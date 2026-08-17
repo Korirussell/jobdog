@@ -20,4 +20,9 @@ WORKDIR /app
 COPY --from=build /app/scraper-worker /app/scraper-worker
 COPY --from=build /app/classifier /app/classifier
 COPY --from=build /app/s3sink /app/s3sink
+# config/sources.json is read at runtime (config.loadSources), relative to the
+# working directory — it was never copied into this final stage, so every
+# deployment silently fell back to the small embedded default source list
+# instead of the real ~285-company config committed in this repo.
+COPY --from=build /app/config /app/config
 ENTRYPOINT ["/app/scraper-worker"]
