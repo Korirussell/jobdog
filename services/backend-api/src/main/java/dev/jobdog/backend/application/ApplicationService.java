@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalDouble;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -154,23 +155,30 @@ public class ApplicationService {
     private ScoreComputation computeScore(ResumeProfileEntity resumeProfile,
                                           JobRequirementProfileEntity jobProfile,
                                           JobEntity job) {
-        double requiredCoverage = ResumeScoringUtils.coverage(resumeProfile.getSkills(), jobProfile.getRequiredSkills());
-        double preferredCoverage = ResumeScoringUtils.coverage(resumeProfile.getSkills(), jobProfile.getPreferredSkills());
-        double experienceAlignment = ResumeScoringUtils.experienceAlignment(resumeProfile.getYearsExperience(), job.getMinimumYearsExperience());
-        double educationAlignment = ResumeScoringUtils.educationAlignment(resumeProfile.getEducationLevel(), job.getEducationLevel());
+        OptionalDouble requiredCoverage = ResumeScoringUtils.coverage(resumeProfile.getSkills(), jobProfile.getRequiredSkills());
+        OptionalDouble preferredCoverage = ResumeScoringUtils.coverage(resumeProfile.getSkills(), jobProfile.getPreferredSkills());
+        OptionalDouble experienceAlignment = ResumeScoringUtils.experienceAlignment(resumeProfile.getYearsExperience(), job.getMinimumYearsExperience());
+        OptionalDouble educationAlignment = ResumeScoringUtils.educationAlignment(resumeProfile.getEducationLevel(), job.getEducationLevel());
 
-        int matchScore = (int) Math.round(
-                (requiredCoverage * 60)
-                        + (preferredCoverage * 15)
-                        + (experienceAlignment * 15)
-                        + (educationAlignment * 10)
+        // Weighted average over only the dimensions this job actually stated a
+        // requirement for. A job with no extracted requirements at all (common
+        // for thin aggregator-only postings) previously scored every resume a
+        // hollow 100% — every dimension defaulted to "perfect," not "unmeasured."
+        // Renormalizing means the score reflects what was actually compared,
+        // and a job with zero real signal correctly reports no meaningful score
+        // rather than a fake one.
+        int matchScore = ResumeScoringUtils.weightedPercent(
+                ResumeScoringUtils.Weighted.of(requiredCoverage, 60),
+                ResumeScoringUtils.Weighted.of(preferredCoverage, 15),
+                ResumeScoringUtils.Weighted.of(experienceAlignment, 15),
+                ResumeScoringUtils.Weighted.of(educationAlignment, 10)
         );
 
         Map<String, Object> breakdown = new HashMap<>();
-        breakdown.put("requiredSkillCoverage", requiredCoverage);
-        breakdown.put("preferredSkillCoverage", preferredCoverage);
-        breakdown.put("experienceAlignment", experienceAlignment);
-        breakdown.put("educationAlignment", educationAlignment);
+        requiredCoverage.ifPresent(v -> breakdown.put("requiredSkillCoverage", v));
+        preferredCoverage.ifPresent(v -> breakdown.put("preferredSkillCoverage", v));
+        experienceAlignment.ifPresent(v -> breakdown.put("experienceAlignment", v));
+        educationAlignment.ifPresent(v -> breakdown.put("educationAlignment", v));
 
         return new ScoreComputation(matchScore, breakdown);
     }

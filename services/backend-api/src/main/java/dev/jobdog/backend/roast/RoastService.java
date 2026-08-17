@@ -27,6 +27,7 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalDouble;
 import java.util.UUID;
 
 @Service
@@ -151,10 +152,10 @@ public class RoastService {
             requiredEducation = job.getEducationLevel();
         }
 
-        double requiredCoverage = ResumeScoringUtils.coverage(profile.getSkills(), requiredSkills);
-        double preferredCoverage = ResumeScoringUtils.coverage(profile.getSkills(), preferredSkills);
-        double experienceAlignment = ResumeScoringUtils.experienceAlignment(profile.getYearsExperience(), requiredYears);
-        double educationAlignment = ResumeScoringUtils.educationAlignment(profile.getEducationLevel(), requiredEducation);
+        OptionalDouble requiredCoverage = ResumeScoringUtils.coverage(profile.getSkills(), requiredSkills);
+        OptionalDouble preferredCoverage = ResumeScoringUtils.coverage(profile.getSkills(), preferredSkills);
+        OptionalDouble experienceAlignment = ResumeScoringUtils.experienceAlignment(profile.getYearsExperience(), requiredYears);
+        OptionalDouble educationAlignment = ResumeScoringUtils.educationAlignment(profile.getEducationLevel(), requiredEducation);
 
         String prompt = job != null
                 ? buildJobRoastPrompt(resumeText, job.getDescriptionText(), job.getTitle(), job.getCompany())
@@ -196,12 +197,15 @@ public class RoastService {
             throw new RuntimeException("Failed to parse grading response", e);
         }
 
-        int topDogRank = (int) Math.round(
-                (requiredCoverage * 45)
-                        + (preferredCoverage * 15)
-                        + (experienceAlignment * 15)
-                        + (educationAlignment * 10)
-                        + (Math.max(0, Math.min(100, writingQuality)) / 100.0 * 15)
+        double normalizedWritingQuality = Math.max(0, Math.min(100, writingQuality)) / 100.0;
+        int topDogRank = ResumeScoringUtils.weightedPercent(
+                ResumeScoringUtils.Weighted.of(requiredCoverage, 45),
+                ResumeScoringUtils.Weighted.of(preferredCoverage, 15),
+                ResumeScoringUtils.Weighted.of(experienceAlignment, 15),
+                ResumeScoringUtils.Weighted.of(educationAlignment, 10),
+                // Always present — the LLM writing-quality pass runs for every
+                // roast regardless of whether the job stated any requirements.
+                ResumeScoringUtils.Weighted.of(OptionalDouble.of(normalizedWritingQuality), 15)
         );
         topDogRank = Math.max(0, Math.min(100, topDogRank));
         String tierName = rankToTier(topDogRank);
@@ -209,10 +213,10 @@ public class RoastService {
         // LinkedHashMap: insertion-ordered and a plain, Jackson-friendly concrete type
         // (Map.of returns ImmutableCollections$MapN, which does not round-trip cleanly).
         Map<String, Double> subScores = new LinkedHashMap<>();
-        subScores.put("requiredSkillCoverage", requiredCoverage * 100);
-        subScores.put("preferredSkillCoverage", preferredCoverage * 100);
-        subScores.put("experienceAlignment", experienceAlignment * 100);
-        subScores.put("educationAlignment", educationAlignment * 100);
+        requiredCoverage.ifPresent(v -> subScores.put("requiredSkillCoverage", v * 100));
+        preferredCoverage.ifPresent(v -> subScores.put("preferredSkillCoverage", v * 100));
+        experienceAlignment.ifPresent(v -> subScores.put("experienceAlignment", v * 100));
+        educationAlignment.ifPresent(v -> subScores.put("educationAlignment", v * 100));
         subScores.put("writingQuality", writingQuality);
 
         RoastGradeCacheEntry entry = new RoastGradeCacheEntry(
