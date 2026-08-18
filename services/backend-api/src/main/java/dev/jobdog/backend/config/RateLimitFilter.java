@@ -31,8 +31,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         // Apply rate limiting to auth endpoints
         if (path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v1/auth/register")) {
             String ip = getClientIP(request);
-            Bucket bucket = cache.computeIfAbsent(ip, k -> createAuthBucket());
-            
+            Bucket bucket = cache.computeIfAbsent("auth:" + ip, k -> createAuthBucket());
+
             if (!bucket.tryConsume(1)) {
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json");
@@ -40,13 +40,38 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 return;
             }
         }
-        
+
+        // Anonymous, no-login endpoint: each submission runs two LLM calls (profile
+        // extraction + grading) at our cost with zero identity behind the request.
+        // Tighter than auth's bucket on purpose — a battle link is something you
+        // send to one friend, not something that should tolerate a scripted hammer.
+        if (path.endsWith("/challenge") && path.startsWith("/api/v1/public/battles/")) {
+            String ip = getClientIP(request);
+            Bucket bucket = cache.computeIfAbsent("battle:" + ip, k -> createBattleChallengeBucket());
+
+            if (!bucket.tryConsume(1)) {
+                response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Too many requests. Please try again later.\"}");
+                return;
+            }
+        }
+
         filterChain.doFilter(request, response);
     }
 
     private Bucket createAuthBucket() {
         // Allow 5 login attempts per minute per IP
         Bandwidth limit = Bandwidth.classic(5, Refill.intervally(5, Duration.ofMinutes(1)));
+        return Bucket.builder()
+                .addLimit(limit)
+                .build();
+    }
+
+    private Bucket createBattleChallengeBucket() {
+        // 5 per hour per IP — enough for someone retrying a failed upload, not
+        // enough to be worth scripting.
+        Bandwidth limit = Bandwidth.classic(5, Refill.intervally(5, Duration.ofHours(1)));
         return Bucket.builder()
                 .addLimit(limit)
                 .build();

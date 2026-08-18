@@ -6,13 +6,27 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
-const NAV_LINKS = [
-  { href: '/', label: 'Jobs' },
-  { href: '/saved', label: 'Saved', authOnly: true },
-  { href: '/applications', label: 'Applied', authOnly: true },
-  { href: '/vault', label: 'Vault', authOnly: true },
-  { href: '/battle', label: 'Battle', authOnly: true },
+// Grouped into the two paths the app actually offers: finding jobs, and
+// getting your resume reviewed. The flat five-link nav this replaced gave no
+// signal that Vault/Battle are a different kind of task than Jobs/Saved/Applied.
+const NAV_GROUPS: Array<{ group: string; links: Array<{ href: string; label: string; authOnly?: boolean }> }> = [
+  {
+    group: 'Jobs',
+    links: [
+      { href: '/', label: 'Jobs' },
+      { href: '/saved', label: 'Saved', authOnly: true },
+      { href: '/applications', label: 'Applied', authOnly: true },
+    ],
+  },
+  {
+    group: 'Resume',
+    links: [
+      { href: '/vault', label: 'Vault', authOnly: true },
+      { href: '/battle', label: 'Battle', authOnly: true },
+    ],
+  },
 ];
+const NAV_LINKS = NAV_GROUPS.flatMap((g) => g.links);
 
 interface TopBarProps {
   onSearchFocus?: () => void;
@@ -129,24 +143,33 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
             </div>
           </Link>
 
-          {/* ── Center: Nav links (desktop) ── */}
-          <nav className="hidden items-center gap-0.5 md:flex">
-            {visibleLinks.map(({ href, label }) => {
-              const active = pathname === href;
+          {/* ── Center: Nav links (desktop), grouped by Jobs vs Resume ── */}
+          <nav className="hidden items-center gap-1 md:flex">
+            {NAV_GROUPS.map(({ group, links }, i) => {
+              const groupLinks = links.filter((l) => !l.authOnly || isAuthenticated);
+              if (groupLinks.length === 0) return null;
               return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`
-                    relative px-3 py-2 font-mono text-sm font-bold transition-colors
-                    ${active ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}
-                  `}
-                >
-                  {label}
-                  {active && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
-                  )}
-                </Link>
+                <div key={group} className="flex items-center gap-0.5">
+                  {i > 0 && <span className="mx-1.5 h-4 w-px bg-black/10" aria-hidden />}
+                  {groupLinks.map(({ href, label }) => {
+                    const active = pathname === href;
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        className={`
+                          relative px-3 py-2 font-mono text-sm font-bold transition-colors
+                          ${active ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}
+                        `}
+                      >
+                        {label}
+                        {active && (
+                          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
               );
             })}
           </nav>
@@ -232,23 +255,32 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
         {mobileOpen && (
           <div className="border-t-2 border-black/10 bg-white px-4 pb-4 md:hidden">
             <nav className="flex flex-col gap-1 pt-3">
-              {visibleLinks.map(({ href, label }) => {
-                const active = pathname === href;
+              {NAV_GROUPS.map(({ group, links }) => {
+                const groupLinks = links.filter((l) => !l.authOnly || isAuthenticated);
+                if (groupLinks.length === 0) return null;
                 return (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={`
-                      flex items-center justify-between border-l-4 px-4 py-3 font-mono text-sm font-bold transition-colors
-                      ${active
-                        ? 'border-l-primary bg-primary/10 text-text-primary'
-                        : 'border-l-transparent text-text-secondary hover:border-l-black/20 hover:bg-background-secondary hover:text-text-primary'
-                      }
-                    `}
-                  >
-                    {label}
-                    {active && <span className="h-2 w-2 rounded-full bg-primary" />}
-                  </Link>
+                  <div key={group} className="mb-1">
+                    <p className="px-4 pb-1 pt-2 font-mono text-[10px] font-bold uppercase tracking-wide text-text-tertiary">{group}</p>
+                    {groupLinks.map(({ href, label }) => {
+                      const active = pathname === href;
+                      return (
+                        <Link
+                          key={href}
+                          href={href}
+                          className={`
+                            flex items-center justify-between border-l-4 px-4 py-3 font-mono text-sm font-bold transition-colors
+                            ${active
+                              ? 'border-l-primary bg-primary/10 text-text-primary'
+                              : 'border-l-transparent text-text-secondary hover:border-l-black/20 hover:bg-background-secondary hover:text-text-primary'
+                            }
+                          `}
+                        >
+                          {label}
+                          {active && <span className="h-2 w-2 rounded-full bg-primary" />}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 );
               })}
               {isAuthenticated && (
@@ -296,36 +328,64 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
             </div>
           </div>
 
-          {/* Nav items */}
+          {/* Nav items, grouped the same as the top nav */}
           <div className="py-1">
             {[
-              { href: '/', label: 'Jobs', icon: '💼' },
-              { href: '/vault', label: 'Resume Vault', icon: '📁' },
-              { href: '/battle', label: 'Resume Battle', icon: '⚔' },
-              { href: '/saved', label: 'Saved Jobs', icon: '★' },
-              { href: '/applications', label: 'Applications', icon: '📋' },
-              { href: '/settings', label: 'Settings', icon: '⚙' },
-            ].map(({ href, label, icon }) => (
+              { group: 'Jobs', items: [
+                { href: '/', label: 'Jobs', icon: '💼' },
+                { href: '/saved', label: 'Saved Jobs', icon: '★' },
+                { href: '/applications', label: 'Applications', icon: '📋' },
+              ] },
+              { group: 'Resume', items: [
+                { href: '/vault', label: 'Resume Vault', icon: '📁' },
+                { href: '/battle', label: 'Resume Battle', icon: '⚔' },
+              ] },
+            ].map(({ group, items }) => (
+              <div key={group}>
+                <p className="px-4 pb-1 pt-2 font-mono text-[9px] font-bold uppercase tracking-wide text-text-tertiary">{group}</p>
+                {items.map(({ href, label, icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMenuOpen(false)}
+                    className={`
+                      flex items-center gap-2.5 px-4 py-2.5 font-mono text-xs font-bold
+                      transition-colors hover:bg-background-secondary
+                      ${pathname === href
+                        ? 'bg-primary/10 text-text-primary'
+                        : 'text-text-secondary hover:text-text-primary'
+                      }
+                    `}
+                  >
+                    <span className="w-4 text-center">{icon}</span>
+                    {label}
+                    {pathname === href && (
+                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                    )}
+                  </Link>
+                ))}
+              </div>
+            ))}
+            <div className="border-t border-black/8">
               <Link
-                key={href}
-                href={href}
+                href="/settings"
                 onClick={() => setMenuOpen(false)}
                 className={`
                   flex items-center gap-2.5 px-4 py-2.5 font-mono text-xs font-bold
                   transition-colors hover:bg-background-secondary
-                  ${pathname === href
+                  ${pathname === '/settings'
                     ? 'bg-primary/10 text-text-primary'
                     : 'text-text-secondary hover:text-text-primary'
                   }
                 `}
               >
-                <span className="w-4 text-center">{icon}</span>
-                {label}
-                {pathname === href && (
+                <span className="w-4 text-center">⚙</span>
+                Settings
+                {pathname === '/settings' && (
                   <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
                 )}
               </Link>
-            ))}
+            </div>
           </div>
 
           {/* Logout */}

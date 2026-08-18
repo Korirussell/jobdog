@@ -21,3 +21,14 @@ export const TIERS: Tier[] = [
 export function getTier(score: number): Tier {
   return TIERS.find((t) => score >= t.min) ?? TIERS[TIERS.length - 1];
 }
+
+// Roast subScore keys are camelCase field names (see RoastService.computeGrade)
+// — display labels for anywhere those get shown to a user, e.g. Battle's
+// category-by-category comparison.
+export const SUB_SCORE_LABELS: Record<string, string> = {
+  requiredSkillCoverage: 'Required Skills',
+  preferredSkillCoverage: 'Bonus Skills',
+  experienceAlignment: 'Experience',
+  educationAlignment: 'Education',
+  writingQuality: 'Writing Quality',
+};

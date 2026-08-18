@@ -135,6 +135,32 @@ public class RoastService {
         return roastHistoryRepository.save(roast);
     }
 
+    /**
+     * Grades raw resume text with no job target and no persisted Resume/User —
+     * the general roast pipeline, minus everything that assumes a logged-in
+     * owner. Used by Battle, where a challenger's resume is scored without an
+     * account or a saved {@link ResumeEntity}.
+     */
+    public RoastGradeCacheEntry gradeGeneralResumeText(String resumeText, List<String> skills,
+                                                        Integer yearsExperience, String educationLevel) {
+        ResumeProfileEntity profile = new ResumeProfileEntity();
+        profile.setSkills(skills == null ? List.of() : skills);
+        profile.setYearsExperience(yearsExperience);
+        profile.setEducationLevel(educationLevel);
+
+        String normalizedText = resumeText.trim().replaceAll("\\s+", " ").toLowerCase();
+        String contentHash = sha256(GRADING_VERSION + "|" + normalizedText + "|general");
+
+        RoastGradeCacheEntry cached = null;
+        try {
+            cached = roastGradeRedisTemplate.opsForValue().get(contentHash);
+        } catch (Exception e) {
+            log.warn("Redis read failed for grade cache key {} - recomputing grade", contentHash, e);
+        }
+
+        return cached != null ? cached : computeGrade(contentHash, profile, null, resumeText);
+    }
+
     private RoastGradeCacheEntry computeGrade(String contentHash, ResumeProfileEntity profile, JobEntity job, String resumeText) {
         List<String> requiredSkills = GENERAL_REQUIRED_SKILLS;
         List<String> preferredSkills = GENERAL_PREFERRED_SKILLS;

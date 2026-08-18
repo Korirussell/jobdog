@@ -54,60 +54,10 @@ public class ResumeParsingService {
             String extractedText = pdfTextExtractor.extractText(pdfBytes);
             log.info("Extracted {} chars from resume {}", extractedText.length(), resumeId);
 
-            // If we got no text at all, still try to parse with a note to the AI
-            if (extractedText.isBlank()) {
-                log.warn("Resume {} yielded no extractable text — attempting parse with empty content", resumeId);
-                extractedText = "[No text could be extracted from this PDF. It may be image-based or encrypted.]";
-            }
-
-            String prompt = buildParsingPrompt(extractedText);
-
-            ChatCompletionRequest request = ChatCompletionRequest.builder()
-                    .model("gpt-4o-mini")
-                    .messages(List.of(
-                            new ChatMessage("system", "You are a resume parsing assistant. Extract structured data from resumes and return valid JSON only. If the resume text is unreadable, return empty arrays and null values."),
-                            new ChatMessage("user", prompt)
-                    ))
-                    .temperature(0.1)
-                    .maxTokens(1000)
-                    .build();
-
-            log.info("Calling OpenAI for resume {} ...", resumeId);
-            String response = openAiService.createChatCompletion(request)
-                    .getChoices()
-                    .get(0)
-                    .getMessage()
-                    .getContent();
-
-            log.info("OpenAI responded for resume {} ({} chars)", resumeId, response == null ? 0 : response.length());
-            log.debug("OpenAI raw response for resume {}: {}", resumeId, response);
-
-            String cleaned = stripMarkdown(response);
-            JsonNode jsonResponse;
-            try {
-                jsonResponse = objectMapper.readTree(cleaned);
-            } catch (Exception parseEx) {
-                log.error("Failed to parse OpenAI JSON response for resume {}: {} | raw='{}'", resumeId, parseEx.getMessage(), cleaned);
-                // Still mark as parsed with empty profile rather than FAILED
-                transactionHelper.saveParsedProfile(resumeId, new ArrayList<>(), null, null);
-                return;
-            }
-
-            List<String> skills = new ArrayList<>();
-            if (jsonResponse.has("skills") && jsonResponse.get("skills").isArray()) {
-                jsonResponse.get("skills").forEach(skill -> skills.add(skill.asText()));
-            }
-
-            Integer yearsExperience = jsonResponse.has("yearsExperience") && !jsonResponse.get("yearsExperience").isNull()
-                    ? jsonResponse.get("yearsExperience").asInt()
-                    : null;
-
-            String educationLevel = jsonResponse.has("educationLevel") && !jsonResponse.get("educationLevel").isNull()
-                    ? jsonResponse.get("educationLevel").asText()
-                    : null;
-
-            transactionHelper.saveParsedProfile(resumeId, skills, yearsExperience, educationLevel);
-            log.info("Resume {} parsed successfully — {} skills, education={}", resumeId, skills.size(), educationLevel);
+            ExtractedProfile extracted = extractProfile(extractedText);
+            transactionHelper.saveParsedProfile(resumeId, extracted.skills(), extracted.yearsExperience(), extracted.educationLevel());
+            log.info("Resume {} parsed successfully — {} skills, education={}",
+                    resumeId, extracted.skills().size(), extracted.educationLevel());
 
         } catch (Exception e) {
             log.error("Resume parsing failed for resumeId={}: {} ({})", resumeId, e.getMessage(), e.getClass().getSimpleName(), e);
@@ -117,6 +67,68 @@ public class ResumeParsingService {
                 log.error("Failed to mark resume {} as FAILED: {}", resumeId, markEx.getMessage(), markEx);
             }
         }
+    }
+
+    public record ExtractedProfile(List<String> skills, Integer yearsExperience, String educationLevel) {}
+
+    /**
+     * The OpenAI call that turns raw resume text into structured profile data
+     * (skills/years/education), with no DB access at all — callable for a
+     * resume that was never persisted, e.g. an anonymous Battle challenger's
+     * upload. {@link #parseResumeAsync} is this plus the persistence side
+     * effects for the normal, logged-in-user Vault flow.
+     */
+    public ExtractedProfile extractProfile(String resumeText) {
+        String text = resumeText;
+        // If we got no text at all, still try to parse with a note to the AI
+        if (text.isBlank()) {
+            log.warn("Resume text was empty — attempting parse with empty content");
+            text = "[No text could be extracted from this PDF. It may be image-based or encrypted.]";
+        }
+
+        String prompt = buildParsingPrompt(text);
+
+        ChatCompletionRequest request = ChatCompletionRequest.builder()
+                .model("gpt-4o-mini")
+                .messages(List.of(
+                        new ChatMessage("system", "You are a resume parsing assistant. Extract structured data from resumes and return valid JSON only. If the resume text is unreadable, return empty arrays and null values."),
+                        new ChatMessage("user", prompt)
+                ))
+                .temperature(0.1)
+                .maxTokens(1000)
+                .build();
+
+        String response = openAiService.createChatCompletion(request)
+                .getChoices()
+                .get(0)
+                .getMessage()
+                .getContent();
+
+        log.debug("OpenAI raw parsing response: {}", response);
+
+        String cleaned = stripMarkdown(response);
+        JsonNode jsonResponse;
+        try {
+            jsonResponse = objectMapper.readTree(cleaned);
+        } catch (Exception parseEx) {
+            log.error("Failed to parse OpenAI JSON response: {} | raw='{}'", parseEx.getMessage(), cleaned);
+            return new ExtractedProfile(new ArrayList<>(), null, null);
+        }
+
+        List<String> skills = new ArrayList<>();
+        if (jsonResponse.has("skills") && jsonResponse.get("skills").isArray()) {
+            jsonResponse.get("skills").forEach(skill -> skills.add(skill.asText()));
+        }
+
+        Integer yearsExperience = jsonResponse.has("yearsExperience") && !jsonResponse.get("yearsExperience").isNull()
+                ? jsonResponse.get("yearsExperience").asInt()
+                : null;
+
+        String educationLevel = jsonResponse.has("educationLevel") && !jsonResponse.get("educationLevel").isNull()
+                ? jsonResponse.get("educationLevel").asText()
+                : null;
+
+        return new ExtractedProfile(skills, yearsExperience, educationLevel);
     }
 
     private String stripMarkdown(String text) {
