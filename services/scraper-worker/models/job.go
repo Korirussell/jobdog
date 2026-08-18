@@ -19,9 +19,16 @@ type Job struct {
 	MinimumYearsExperience *int
 	EducationLevel         *string
 	ExperienceLevel        string
+	RoleCategory           string
+	LocationScope          string
 	SalaryRaw              *string
 	PostedAt               *time.Time
 	ScrapedAt              time.Time
+	// SourceRepo is the aggregator "owner/repo" this job was parsed from
+	// ("vanshb03/New-Grad-2027"), when it came from an aggregator README.
+	// Never persisted — it exists only to give the grad-cohort classifier a
+	// hint when the posting text itself doesn't state a graduation year.
+	SourceRepo string
 }
 
 type JobRequirementProfile struct {

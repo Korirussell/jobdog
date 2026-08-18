@@ -90,6 +90,11 @@ var (
 	entryTitlePattern = regexp.MustCompile(`(?i)\bjunior\b|\bjr\.?\b|\bentry[- ]level\b|\bearly career\b|\bassociate\b|\bgraduate (engineer|developer|analyst)\b|\b(engineer|developer|programmer)\s*(i|1)\b|\bl(evel)?\s*1\b`)
 
 	sentenceSplitter = regexp.MustCompile(`[.;!?\n\r]|(?:\s[•\x{2022}\x{2023}\x{25AA}\-]\s)`)
+
+	// Aggregator repo names glue a year straight onto a word ("Summer2027"),
+	// which has no \b boundary for yearPattern to latch onto. Split it before
+	// treating the repo name like any other short, deliberate source of years.
+	letterDigitBoundary = regexp.MustCompile(`([A-Za-z])(\d)`)
 )
 
 // ExtractGradWindow pulls a graduation-eligibility window out of a posting.
@@ -102,7 +107,14 @@ var (
 //
 // The source URL is scanned too: ATS slugs frequently carry the cohort even when the
 // posting body does not (e.g. ".../XMLNAME-2027-Software-Engineer--New-College-Grad").
-func ExtractGradWindow(title, description, sourceURL string) (yearMin, yearMax int, relative bool, evidence string) {
+//
+// aggregatorRepo is the "owner/repo" a posting was parsed from when it came from a
+// curated new-grad/intern aggregator README ("vanshb03/New-Grad-2027",
+// "SimplifyJobs/Summer2027-Internships"). Those repos are hand-curated for a single
+// cohort year, so a year baked into the repo name is as trustworthy as one in the
+// title even when the posting's own thin, synthesized description says nothing about
+// graduation at all. Pass "" for postings that did not come from an aggregator.
+func ExtractGradWindow(title, description, sourceURL, aggregatorRepo string) (yearMin, yearMax int, relative bool, evidence string) {
 	years := map[int]struct{}{}
 
 	consider := func(text string, requireContext bool) {
@@ -142,6 +154,7 @@ func ExtractGradWindow(title, description, sourceURL string) (yearMin, yearMax i
 	consider(title, false)
 	consider(description, true)
 	consider(urlToWords(sourceURL), false)
+	consider(repoToWords(aggregatorRepo), false)
 
 	for year := range years {
 		if yearMin == 0 || year < yearMin {
@@ -182,7 +195,7 @@ func MinYearsExperience(description string) int {
 // ClassifyGradCohort is the deterministic pass. It returns a verdict with
 // Source == GradSourceRegex when it is confident, and Source == GradSourceNone when
 // the posting is ambiguous enough to be worth escalating to the LLM pass.
-func ClassifyGradCohort(title, description, sourceURL string) GradClassification {
+func ClassifyGradCohort(title, description, sourceURL, aggregatorRepo string) GradClassification {
 	result := GradClassification{
 		EntryType:          EntryTypeUnknown,
 		MinYearsExperience: MinYearsExperience(description),
@@ -203,7 +216,7 @@ func ClassifyGradCohort(title, description, sourceURL string) GradClassification
 		return result
 	}
 
-	yearMin, yearMax, relative, evidence := ExtractGradWindow(title, description, sourceURL)
+	yearMin, yearMax, relative, evidence := ExtractGradWindow(title, description, sourceURL, aggregatorRepo)
 	result.YearMin = yearMin
 	result.YearMax = yearMax
 	result.RelativeWindow = relative
@@ -218,7 +231,9 @@ func ClassifyGradCohort(title, description, sourceURL string) GradClassification
 		return result
 	}
 
-	hasCohortLanguage := cohortLanguagePattern.MatchString(title) || cohortLanguagePattern.MatchString(description)
+	hasCohortLanguage := cohortLanguagePattern.MatchString(title) ||
+		cohortLanguagePattern.MatchString(description) ||
+		cohortLanguagePattern.MatchString(repoToWords(aggregatorRepo))
 
 	// Cohort program language with no year: still a new-grad req, we just don't know
 	// which class. Undated, but not open to everyone.
@@ -228,6 +243,9 @@ func ClassifyGradCohort(title, description, sourceURL string) GradClassification
 		result.Confidence = 0.6
 		if result.Evidence == "" {
 			result.Evidence = firstMatchingSentence(description, cohortLanguagePattern)
+		}
+		if result.Evidence == "" && aggregatorRepo != "" {
+			result.Evidence = "listed in aggregator " + aggregatorRepo
 		}
 		return result
 	}
@@ -295,4 +313,15 @@ func urlToWords(sourceURL string) string {
 		return ""
 	}
 	return urlSeparators.ReplaceAllString(sourceURL, " ")
+}
+
+// repoToWords does the same as urlToWords for an aggregator "owner/repo" string,
+// plus splitting a year glued straight onto a word ("Summer2027" -> "Summer 2027")
+// so yearPattern's \b boundaries can find it.
+func repoToWords(repo string) string {
+	if repo == "" {
+		return ""
+	}
+	spaced := letterDigitBoundary.ReplaceAllString(repo, "$1 $2")
+	return urlToWords(spaced)
 }

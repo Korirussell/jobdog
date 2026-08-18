@@ -59,6 +59,9 @@ func (s *GitHubScraper) ScrapeRepo(ctx context.Context, repo, employmentType str
 	}
 
 	jobs := s.parseMarkdownTable(content, employmentType, sourceTagForRepo(repo))
+	for i := range jobs {
+		jobs[i].SourceRepo = repo
+	}
 
 	log.Info().Str("repo", repo).Int("count", len(jobs)).Msg("Parsed jobs from aggregator repo")
 
@@ -71,6 +74,8 @@ func (s *GitHubScraper) ScrapeRepo(ctx context.Context, repo, employmentType str
 		}
 
 		job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
+		job.RoleCategory = string(ClassifyRoleCategory(job.Title))
+		job.LocationScope = string(ClassifyLocationScope(job.Location))
 		jobID, descriptionAccepted, err := s.repo.UpsertJob(&job)
 		if err != nil {
 			log.Error().Err(err).Str("company", job.Company).Msg("Failed to upsert job")

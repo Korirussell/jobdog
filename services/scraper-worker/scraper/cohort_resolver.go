@@ -53,7 +53,7 @@ func (r *CohortResolver) Resolve(ctx context.Context, jobID string, job *models.
 		return GradClassification{}
 	}
 
-	result := ClassifyGradCohort(job.Title, job.DescriptionText, job.SourceURL)
+	result := ClassifyGradCohort(job.Title, job.DescriptionText, job.SourceURL, job.SourceRepo)
 
 	if NeedsLLMReview(result, job.DescriptionText) {
 		if resolved, ok := r.resolveWithModel(ctx, job); ok {

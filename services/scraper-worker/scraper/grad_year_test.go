@@ -4,13 +4,14 @@ import "testing"
 
 func TestExtractGradWindow(t *testing.T) {
 	cases := []struct {
-		name        string
-		title       string
-		description string
-		sourceURL   string
-		wantMin     int
-		wantMax     int
-		wantRel     bool
+		name           string
+		title          string
+		description    string
+		sourceURL      string
+		aggregatorRepo string
+		wantMin        int
+		wantMax        int
+		wantRel        bool
 	}{
 		{
 			name:        "explicit range across two years",
@@ -67,11 +68,35 @@ func TestExtractGradWindow(t *testing.T) {
 			wantMin:     0,
 			wantMax:     0,
 		},
+		{
+			name:           "year lives in the aggregator repo name only",
+			title:          "Software Engineer I",
+			description:    "Software Engineer I at Acme - Remote",
+			aggregatorRepo: "vanshb03/New-Grad-2027",
+			wantMin:        2027,
+			wantMax:        2027,
+		},
+		{
+			name:           "year glued onto a word in the repo name",
+			title:          "Software Engineer, New Grad",
+			description:    "Software Engineer, New Grad at Acme - Remote",
+			aggregatorRepo: "SimplifyJobs/Summer2027-Internships",
+			wantMin:        2027,
+			wantMax:        2027,
+		},
+		{
+			name:           "undated aggregator repo carries no year",
+			title:          "Software Engineer I",
+			description:    "Software Engineer I at Acme - Remote",
+			aggregatorRepo: "SimplifyJobs/New-Grad-Positions",
+			wantMin:        0,
+			wantMax:        0,
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			gotMin, gotMax, gotRel, _ := ExtractGradWindow(tc.title, tc.description, tc.sourceURL)
+			gotMin, gotMax, gotRel, _ := ExtractGradWindow(tc.title, tc.description, tc.sourceURL, tc.aggregatorRepo)
 			if gotMin != tc.wantMin || gotMax != tc.wantMax || gotRel != tc.wantRel {
 				t.Errorf("ExtractGradWindow() = (%d, %d, rel=%v), want (%d, %d, rel=%v)",
 					gotMin, gotMax, gotRel, tc.wantMin, tc.wantMax, tc.wantRel)
@@ -111,12 +136,13 @@ func TestClassifyGradCohort(t *testing.T) {
 		"benefits, and a generous learning stipend for every engineer on the team. "
 
 	cases := []struct {
-		name        string
-		title       string
-		description string
-		sourceURL   string
-		wantType    EntryType
-		wantMin     int
+		name           string
+		title          string
+		description    string
+		sourceURL      string
+		aggregatorRepo string
+		wantType       EntryType
+		wantMin        int
 	}{
 		{
 			name:        "cohort-gated 2027 new grad",
@@ -162,11 +188,39 @@ func TestClassifyGradCohort(t *testing.T) {
 			description: filler,
 			wantType:    EntryTypeUnknown,
 		},
+		{
+			// This is the exact coverage gap the aggregator-repo signal fixes: a
+			// thin, synthesized aggregator row with a plain "Level 1" title used to
+			// fall through to EntryTypeEntryLevelOpen and get filtered out of the
+			// new-grad cohort entirely, even though vanshb03/New-Grad-2027 only
+			// lists roles it already verified are 2027-eligible.
+			name:           "thin aggregator row with no explicit year is rescued by the repo name",
+			title:          "Software Engineer I",
+			description:    "Software Engineer I at Acme - Remote",
+			aggregatorRepo: "vanshb03/New-Grad-2027",
+			wantType:       EntryTypeNewGradCohort,
+			wantMin:        2027,
+		},
+		{
+			name:           "undated aggregator repo still marks the cohort, just without a year",
+			title:          "Software Engineer I",
+			description:    "Software Engineer I at Acme - Remote",
+			aggregatorRepo: "SimplifyJobs/New-Grad-Positions",
+			wantType:       EntryTypeNewGradCohort,
+			wantMin:        0,
+		},
+		{
+			name:           "intern title still wins over an aggregator repo hint",
+			title:          "Software Engineer Intern",
+			description:    "Software Engineer Intern at Acme - Remote",
+			aggregatorRepo: "vanshb03/Summer2027-Internships",
+			wantType:       EntryTypeIntern,
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := ClassifyGradCohort(tc.title, tc.description, tc.sourceURL)
+			got := ClassifyGradCohort(tc.title, tc.description, tc.sourceURL, tc.aggregatorRepo)
 			if got.EntryType != tc.wantType {
 				t.Errorf("EntryType = %q, want %q (evidence: %q)", got.EntryType, tc.wantType, got.Evidence)
 			}
