@@ -6,7 +6,6 @@ import TopBar from '@/components/TopBar';
 import FilterBar, { FilterState } from '@/components/FolderTabs';
 import JobListRow from '@/components/JobListRow';
 import ConveyorBelt from '@/components/ConveyorBelt';
-import ApplyModal from '@/components/ApplyModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import type { JobSummary } from '@/lib/public-jobs';
@@ -51,6 +50,9 @@ function filtersFromSearchParams(params: URLSearchParams): FilterState {
     companyTier: companyTierRaw === 'FAANG' || companyTierRaw === 'UNICORN' ? companyTierRaw : '',
     gradYear: tab === 'newgrad' && (gradYearRaw === '2026' || gradYearRaw === '2027') ? gradYearRaw : '',
     hasSalary: params.get('hasSalary') === 'true',
+    // Absent means on — matches the backend default, so a shared/bookmarked
+    // URL from before this toggle existed still shows the SWE-only view.
+    sweOnly: params.get('sweOnly') !== 'false',
   };
 }
 
@@ -68,7 +70,7 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
   const lastSync = initialLastSync;
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
-  const [applyModal, setApplyModal] = useState<{ jobId: string; title: string; company: string; applyUrl: string; postedAt: string | null; scrapedAt: string } | null>(null);
+  const [resumes, setResumes] = useState<Array<{ resumeId: string; status: string }>>([]);
   const [conveyorJobs, setConveyorJobs] = useState<Array<{ jobId: string; company: string; title: string }>>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -111,6 +113,7 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
       companyTier: next.companyTier || null,
       gradYear: next.gradYear || null,
       hasSalary: next.hasSalary ? 'true' : null,
+      sweOnly: next.sweOnly ? null : 'false',
       // hideApplied is intentionally excluded — see the render-time filter below.
     });
   }, [navigateWithFilters]);
@@ -152,6 +155,12 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
     api.getSavedJobs()
       .then((res) => setSavedJobIds(new Set(res.items.map((j) => j.jobId))))
       .catch(() => {});
+    // Fetched so Apply can silently record an application in the background
+    // — see handleApply — without ever blocking the click-through to the
+    // real posting on a resume-picker step.
+    api.getResumes()
+      .then((res) => setResumes(res.items.map((r) => ({ resumeId: r.resumeId, status: r.status }))))
+      .catch(() => {});
   }, [isAuthenticated]);
 
   const handleSaveJob = useCallback(async (jobId: string, save: boolean) => {
@@ -181,15 +190,27 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
     }
   }, [isAuthenticated]);
 
+  // Apply means "take me to the real job" — full stop. It used to open a
+  // modal requiring a resume pick and a match-score computation before
+  // reaching the actual posting, which added friction most people didn't
+  // want for something as simple as clicking Apply. Now it opens the real
+  // applyUrl immediately, and — only when there's exactly one parsed resume,
+  // so there's no ambiguity about which one to use — silently records the
+  // application in the background so it still shows up on the Applications
+  // page. Anything less certain (zero or multiple resumes) just skips
+  // tracking rather than interrupting the click with a picker.
   const handleApply = useCallback((jobId: string) => {
-    if (!isAuthenticated) return;
     const job = allJobs.find((j) => j.jobId === jobId);
-    if (job) setApplyModal({ jobId, title: job.title, company: job.company, applyUrl: job.applyUrl, postedAt: job.postedAt, scrapedAt: job.scrapedAt });
-  }, [isAuthenticated, allJobs]);
+    if (!job) return;
+    window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
 
-  const handleApplySuccess = useCallback((jobId: string) => {
-    setAppliedJobIds((prev) => new Set(prev).add(jobId));
-  }, []);
+    if (!isAuthenticated) return;
+    const parsedResumes = resumes.filter((r) => r.status === 'PARSED');
+    if (parsedResumes.length !== 1) return;
+    api.createApplication(jobId, parsedResumes[0].resumeId)
+      .then(() => setAppliedJobIds((prev) => new Set(prev).add(jobId)))
+      .catch(() => {});
+  }, [allJobs, isAuthenticated, resumes]);
 
   // The only filtering left on the client: hideApplied, which can't be done
   // server-side (see above). Everything else — tab, remote, location, search,
@@ -309,7 +330,7 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
                 salaryRaw={job.salaryRaw}
                 alreadyApplied={appliedJobIds.has(job.jobId)}
                 isSaved={savedJobIds.has(job.jobId)}
-                onApply={isAuthenticated ? handleApply : undefined}
+                onApply={handleApply}
                 onSave={isAuthenticated ? handleSaveJob : undefined}
                 detailHref={`/jobs/${job.jobId}`}
               />
@@ -339,19 +360,6 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
           </div>
         )}
       </main>
-
-      {applyModal && (
-        <ApplyModal
-          jobId={applyModal.jobId}
-          jobTitle={applyModal.title}
-          company={applyModal.company}
-          applyUrl={applyModal.applyUrl}
-          postedAt={applyModal.postedAt}
-          scrapedAt={applyModal.scrapedAt}
-          onClose={() => setApplyModal(null)}
-          onSuccess={handleApplySuccess}
-        />
-      )}
 
       <ConveyorBelt
         jobs={conveyorJobs}

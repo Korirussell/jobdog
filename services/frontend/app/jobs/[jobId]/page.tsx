@@ -127,14 +127,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
               )}
             </div>
             <div className="mt-6">
-              <JobDetailApplyButton
-                jobId={job.jobId}
-                jobTitle={job.title}
-                company={job.company}
-                applyUrl={job.applyUrl}
-                postedAt={job.postedAt}
-                scrapedAt={job.scrapedAt}
-              />
+              <JobDetailApplyButton jobId={job.jobId} applyUrl={job.applyUrl} />
             </div>
           </header>
 
