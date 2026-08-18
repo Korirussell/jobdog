@@ -29,6 +29,11 @@ export interface FilterState {
   companyTier: '' | 'FAANG' | 'UNICORN';
   gradYear: GradYearFilter;
   hasSalary: boolean;
+  // Defaults to true: hide quant/trading, hardware, PM, and sales roles, plus
+  // postings that are neither US-based nor remote. This is the board's default
+  // view, not an "extra filter" someone opted into — it's not counted in
+  // hasExtraFilters and "Clear filters" leaves it on.
+  sweOnly: boolean;
 }
 
 export default function FilterBar({ filters, onFilterChange, initialSearch, onSearchChange, searchInputRef }: FilterBarProps) {
@@ -73,6 +78,23 @@ export default function FilterBar({ filters, onFilterChange, initialSearch, onSe
               </button>
             ))}
           </div>
+
+          {/* SWE-only toggle — always visible, on by default */}
+          <button
+            onClick={() => update('sweOnly', !filters.sweOnly)}
+            title={filters.sweOnly
+              ? 'Hiding quant/trading, hardware, PM, sales, and non-US/non-remote roles'
+              : 'Showing every scraped role regardless of function or location'}
+            className={`
+              flex items-center gap-1.5 border px-3 py-2 font-mono text-xs font-bold transition-colors
+              ${filters.sweOnly
+                ? 'border-black bg-primary text-text-primary'
+                : 'border-black/20 bg-white text-text-secondary hover:border-black/40'
+              }
+            `}
+          >
+            {filters.sweOnly ? '✓ SWE roles' : 'All roles'}
+          </button>
 
           {/* More filters toggle */}
           <button
@@ -348,7 +370,7 @@ export default function FilterBar({ filters, onFilterChange, initialSearch, onSe
             {hasExtraFilters && (
               <button
                 onClick={() => {
-                  const reset: FilterState = { tab: filters.tab, remote: false, location: '', hideApplied: false, companyTier: '', gradYear: '', hasSalary: false };
+                  const reset: FilterState = { tab: filters.tab, remote: false, location: '', hideApplied: false, companyTier: '', gradYear: '', hasSalary: false, sweOnly: filters.sweOnly };
                   onFilterChange?.(reset);
                 }}
                 className="mb-0 border border-black/15 px-3 py-1.5 font-mono text-xs text-text-tertiary transition-colors hover:border-black/30 hover:text-text-primary"

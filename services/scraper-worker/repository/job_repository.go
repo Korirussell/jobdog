@@ -52,13 +52,25 @@ func (r *JobRepository) UpsertJob(job *models.Job) (id string, descriptionAccept
 	job.DescriptionHash = hashDescription(job.DescriptionText)
 	job.ScrapedAt = time.Now()
 
+	// Every scraper sets these before calling UpsertJob, but default to the
+	// inclusive value here too so a call site that forgets doesn't silently
+	// insert an empty string a query-time filter would then treat as "exclude"
+	// rather than "unclassified".
+	if job.RoleCategory == "" {
+		job.RoleCategory = "SOFTWARE"
+	}
+	if job.LocationScope == "" {
+		job.LocationScope = "US_OR_REMOTE"
+	}
+
 	query := `
 		INSERT INTO jobs (
 			id, source, source_job_id, source_url, title, company, location,
 			employment_type, description_text, description_hash, status,
-			minimum_years_experience, education_level, experience_level, salary_raw, posted_at, scraped_at,
+			minimum_years_experience, education_level, experience_level, role_category, location_scope,
+			salary_raw, posted_at, scraped_at,
 			created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $18)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $20)
 		ON CONFLICT (source_url)
 		DO UPDATE SET
 			title = EXCLUDED.title,
@@ -82,6 +94,10 @@ func (r *JobRepository) UpsertJob(job *models.Job) (id string, descriptionAccept
 				WHEN length(EXCLUDED.description_text) >= length(jobs.description_text) THEN EXCLUDED.experience_level
 				ELSE jobs.experience_level
 			END,
+			-- Title-derived, so always safe to refresh regardless of which
+			-- description won this round.
+			role_category = EXCLUDED.role_category,
+			location_scope = EXCLUDED.location_scope,
 			-- Keep a previously captured salary if the board stops publishing it,
 			-- rather than nulling out data we already have.
 			salary_raw = COALESCE(EXCLUDED.salary_raw, jobs.salary_raw),
@@ -95,8 +111,9 @@ func (r *JobRepository) UpsertJob(job *models.Job) (id string, descriptionAccept
 		query,
 		job.ID, job.Source, job.SourceJobID, job.SourceURL, job.Title, job.Company,
 		job.Location, job.EmploymentType, job.DescriptionText, job.DescriptionHash,
-		job.Status, job.MinimumYearsExperience, job.EducationLevel, job.ExperienceLevel, job.SalaryRaw,
-		job.PostedAt, job.ScrapedAt, time.Now(),
+		job.Status, job.MinimumYearsExperience, job.EducationLevel, job.ExperienceLevel,
+		job.RoleCategory, job.LocationScope,
+		job.SalaryRaw, job.PostedAt, job.ScrapedAt, time.Now(),
 	).Scan(&id, &descriptionAccepted)
 
 	if err != nil {

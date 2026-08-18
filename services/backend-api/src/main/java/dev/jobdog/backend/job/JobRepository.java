@@ -46,6 +46,10 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
            "     AND j.gradYearMin <= :gradYear AND j.gradYearMax >= :gradYear)) " +
            "AND (:companyTierActive = false OR LOWER(j.company) IN :companyTierCompanies) " +
            "AND (:hasSalary IS NULL OR :hasSalary = false OR j.salaryRaw IS NOT NULL) " +
+           // Rows written before this classifier existed all default to
+           // SOFTWARE/US_OR_REMOTE (see V19 migration), so this only ever narrows
+           // out rows a title/location keyword pattern actively flagged.
+           "AND (:sweOnly = false OR (j.roleCategory = 'SOFTWARE' AND j.locationScope = 'US_OR_REMOTE')) " +
            "ORDER BY COALESCE(j.postedAt, j.scrapedAt) DESC")
     Page<JobEntity> findByFilters(
             @Param("status") JobStatus status,
@@ -59,6 +63,7 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
             @Param("companyTierActive") boolean companyTierActive,
             @Param("companyTierCompanies") Collection<String> companyTierCompanies,
             @Param("hasSalary") Boolean hasSalary,
+            @Param("sweOnly") boolean sweOnly,
             Pageable pageable
     );
 

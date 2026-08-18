@@ -53,6 +53,12 @@ public class JobEntity extends BaseEntity {
     @Column(length = 16)
     private String experienceLevel;
 
+    @Column(nullable = false, length = 24)
+    private String roleCategory;
+
+    @Column(nullable = false, length = 16)
+    private String locationScope;
+
     @Column(length = 24)
     private String entryType;
 
@@ -182,6 +188,22 @@ public class JobEntity extends BaseEntity {
 
     public void setExperienceLevel(String experienceLevel) {
         this.experienceLevel = experienceLevel;
+    }
+
+    public String getRoleCategory() {
+        return roleCategory;
+    }
+
+    public void setRoleCategory(String roleCategory) {
+        this.roleCategory = roleCategory;
+    }
+
+    public String getLocationScope() {
+        return locationScope;
+    }
+
+    public void setLocationScope(String locationScope) {
+        this.locationScope = locationScope;
     }
 
     public String getEntryType() {

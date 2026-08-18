@@ -58,7 +58,12 @@ public class JobService {
 
         Page<JobEntity> jobPage;
 
-        if (hasFilters(filter)) {
+        // Defaults to true (SWE-only board) unless the frontend's "show all roles"
+        // toggle explicitly sends false — so this is active on effectively every
+        // request, not just ones with an explicit filter set.
+        boolean sweOnly = !Boolean.FALSE.equals(filter.sweOnly());
+
+        if (sweOnly || hasFilters(filter)) {
             boolean companyTierActive = filter.companyTier() != null;
             Set<String> companyTierCompanies = companyTierActive
                     ? CompanyTier.companiesForTier(filter.companyTier())
@@ -81,6 +86,7 @@ public class JobService {
                     companyTierActive,
                     companyTierCompanies,
                     filter.hasSalary(),
+                    sweOnly,
                     pageable
             );
         } else {

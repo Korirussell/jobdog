@@ -21,7 +21,12 @@ public record JobFilterRequest(
         // "FAANG" | "UNICORN" — see CompanyTier.
         String companyTier,
         // True restricts to postings with a published compensation string.
-        Boolean hasSalary
+        Boolean hasSalary,
+        // True restricts to role_category = 'SOFTWARE' and location_scope =
+        // 'US_OR_REMOTE' — see scraper.RoleCategory / scraper.LocationScope. This is
+        // the board's default view; the frontend sends false explicitly for its
+        // "show all roles" toggle.
+        Boolean sweOnly
 ) {
     public JobFilterRequest {
         if (page < 0) page = 0;

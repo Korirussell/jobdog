@@ -21,6 +21,12 @@ export interface JobSummary {
   salaryRaw: string | null;
 }
 
+// The board defaults to software-only, US-or-remote-only. This is the value
+// buildJobsSearchParams uses when the caller doesn't say otherwise, so pages
+// that haven't been updated for the "show all roles" toggle keep the same
+// (SWE-only) behavior as before the toggle existed.
+export const DEFAULT_SWE_ONLY = true;
+
 export interface JobsResponse {
   items: JobSummary[];
   page: number;
@@ -145,6 +151,9 @@ export function buildJobsSearchParams(input: {
   gradYear?: string;
   companyTier?: string;
   hasSalary?: string;
+  // 'true' | 'false'. Backend already defaults to true when the param is
+  // absent, so only send it when the "show all roles" toggle turns it off.
+  sweOnly?: string;
 }) {
   const params = new URLSearchParams();
 
@@ -158,6 +167,7 @@ export function buildJobsSearchParams(input: {
   if (input.gradYear) params.set('gradYear', input.gradYear);
   if (input.companyTier) params.set('companyTier', input.companyTier);
   if (input.hasSalary === 'true') params.set('hasSalary', 'true');
+  if (input.sweOnly === 'false') params.set('sweOnly', 'false');
 
   return params;
 }

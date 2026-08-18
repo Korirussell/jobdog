@@ -395,6 +395,8 @@ func (w *WorkdayScraper) fetchDetailAndUpsert(ctx context.Context, company, base
 	}
 
 	job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
+	job.RoleCategory = string(ClassifyRoleCategory(job.Title))
+	job.LocationScope = string(ClassifyLocationScope(job.Location))
 
 	jobID, descriptionAccepted, err := w.repo.UpsertJob(job)
 	if err != nil {

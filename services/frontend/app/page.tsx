@@ -20,6 +20,7 @@ type HomeSearchParams = {
   companyTier?: string;
   gradYear?: string;
   hasSalary?: string;
+  sweOnly?: string;
 };
 
 // entry_type values a posting can carry — see scraper.EntryType. The "New Grad"
@@ -75,6 +76,7 @@ export default async function Home({
     gradYear: resolved.tab === 'newgrad' ? resolved.gradYear : undefined,
     companyTier: resolved.companyTier,
     hasSalary: resolved.hasSalary,
+    sweOnly: resolved.sweOnly,
   });
   const data = await fetchJobs(params, { next: { revalidate } });
 

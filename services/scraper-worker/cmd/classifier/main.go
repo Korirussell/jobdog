@@ -99,6 +99,8 @@ func main() {
 func classify(ctx context.Context, jobRepo *repository.JobRepository, cohorts *scraper.CohortResolver, producer *streaming.Producer, posting streaming.RawPosting) error {
 	job := posting.Job
 	job.ExperienceLevel = scraper.ClassifyExperienceLevel(job.Title, job.DescriptionText)
+	job.RoleCategory = string(scraper.ClassifyRoleCategory(job.Title))
+	job.LocationScope = string(scraper.ClassifyLocationScope(job.Location))
 
 	jobID, descriptionAccepted, err := jobRepo.UpsertJob(&job)
 	if err != nil {

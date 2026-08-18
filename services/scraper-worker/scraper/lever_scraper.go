@@ -154,6 +154,8 @@ func (s *LeverScraper) ScrapeCompany(ctx context.Context, company, slug string) 
 		}
 
 		job.ExperienceLevel = ClassifyExperienceLevel(job.Title, job.DescriptionText)
+		job.RoleCategory = string(ClassifyRoleCategory(job.Title))
+		job.LocationScope = string(ClassifyLocationScope(job.Location))
 
 		jobID, descriptionAccepted, err := s.repo.UpsertJob(&job)
 		if err != nil {
