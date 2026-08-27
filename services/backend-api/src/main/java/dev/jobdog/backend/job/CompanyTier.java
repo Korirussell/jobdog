@@ -14,10 +14,21 @@ public final class CompanyTier {
             "google", "meta", "facebook", "amazon", "apple", "netflix", "microsoft"
     );
 
+    // Broadened from the original 18-company seed list — it was missing enough
+    // recognizable names (Nvidia, Uber, Palantir, Salesforce...) that most job
+    // cards showed no tier flag at all, which read as the feature being broken
+    // rather than the company genuinely being untiered.
     private static final Set<String> UNICORN = Set.of(
             "stripe", "databricks", "cloudflare", "openai", "anthropic", "airbnb",
             "doordash", "instacart", "figma", "notion", "canva", "discord",
-            "coinbase", "robinhood", "plaid", "brex", "ramp", "scale ai"
+            "coinbase", "robinhood", "plaid", "brex", "ramp", "scale ai",
+            "nvidia", "uber", "lyft", "palantir", "snowflake", "salesforce",
+            "adobe", "oracle", "servicenow", "workday", "intuit", "atlassian",
+            "twilio", "block", "square", "mongodb", "elastic", "hashicorp",
+            "gitlab", "github", "reddit", "pinterest", "snap", "spotify",
+            "roblox", "epic games", "unity", "bloomberg", "two sigma",
+            "jane street", "citadel", "hudson river trading", "jump trading",
+            "d.e. shaw", "sig", "susquehanna international group"
     );
 
     private CompanyTier() {

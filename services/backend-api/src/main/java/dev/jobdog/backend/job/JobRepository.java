@@ -50,6 +50,14 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
            // SOFTWARE/US_OR_REMOTE (see V19 migration), so this only ever narrows
            // out rows a title/location keyword pattern actively flagged.
            "AND (:sweOnly = false OR (j.roleCategory = 'SOFTWARE' AND j.locationScope = 'US_OR_REMOTE')) " +
+           // A cohort-gated posting whose window has already fully passed (e.g.
+           // "New Grad 2025" sitting unfiltered in an August 2026 feed) is only
+           // still ACTIVE because the company never took it down — it's not a
+           // real option for anyone browsing today. Only applies when the caller
+           // didn't ask for a specific year; an explicit gradYear=2025 search
+           // should still be able to find it.
+           "AND (:gradYear IS NOT NULL OR j.entryType != 'NEW_GRAD_COHORT' " +
+           "     OR j.gradYearMax IS NULL OR j.gradYearMax >= :currentYear) " +
            "ORDER BY COALESCE(j.postedAt, j.scrapedAt) DESC")
     Page<JobEntity> findByFilters(
             @Param("status") JobStatus status,
@@ -64,6 +72,7 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
             @Param("companyTierCompanies") Collection<String> companyTierCompanies,
             @Param("hasSalary") Boolean hasSalary,
             @Param("sweOnly") boolean sweOnly,
+            @Param("currentYear") int currentYear,
             Pageable pageable
     );
 

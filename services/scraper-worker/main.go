@@ -135,6 +135,14 @@ func main() {
 		if err := urlChecker.CheckAndPruneURLs(context.Background()); err != nil {
 			log.Error().Err(err).Msg("URL liveness check failed")
 		}
+
+		log.Info().Msg("Closing duplicate active job listings")
+		closedCount, err := jobRepo.CloseDuplicateActiveJobs()
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to close duplicate active jobs")
+		} else {
+			log.Info().Int64("count", closedCount).Msg("Closed duplicate active jobs")
+		}
 	})
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to schedule cleanup job")

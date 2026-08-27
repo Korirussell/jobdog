@@ -210,6 +210,38 @@ func (r *JobRepository) MarkStaleJobsAsClosed(olderThan time.Duration) error {
 	return nil
 }
 
+// CloseDuplicateActiveJobs closes every ACTIVE posting that shares the same
+// company, title, and location with another ACTIVE posting, keeping only the
+// most recently scraped one. This is the "same role, new req ID" pattern —
+// companies re-post an identical listing under a fresh ATS ID periodically to
+// keep it near the top of their own board, and since that's a genuinely
+// different source_url each time, the upsert's ON CONFLICT (source_url) never
+// catches it. Never hard-deletes: the losing rows are closed exactly like
+// MarkStaleJobsAsClosed, so anyone who already applied/saved one keeps a
+// valid reference to it. Returns the number of rows closed.
+func (r *JobRepository) CloseDuplicateActiveJobs() (int64, error) {
+	query := `
+		WITH ranked AS (
+			SELECT id,
+				ROW_NUMBER() OVER (
+					PARTITION BY LOWER(TRIM(company)), LOWER(TRIM(title)), LOWER(TRIM(COALESCE(location, '')))
+					ORDER BY scraped_at DESC, id DESC
+				) AS rn
+			FROM jobs
+			WHERE status = 'ACTIVE'
+		)
+		UPDATE jobs
+		SET status = 'CLOSED', updated_at = $1
+		WHERE id IN (SELECT id FROM ranked WHERE rn > 1)
+	`
+
+	result, err := r.db.Exec(query, time.Now())
+	if err != nil {
+		return 0, fmt.Errorf("failed to close duplicate active jobs: %w", err)
+	}
+	return result.RowsAffected()
+}
+
 // PurgeOldClosedJobs hard-deletes CLOSED jobs whose scraped_at is older than the
 // cutoff, to keep the jobs table from growing forever. It never deletes a job that
 // a user has real history tied to (an application, or a saved-jobs bookmark) —
