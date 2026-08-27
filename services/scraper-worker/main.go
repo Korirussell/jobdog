@@ -112,7 +112,14 @@ func main() {
 
 	_, err = c.AddFunc("@every 12h", func() {
 		log.Info().Msg("Marking stale jobs as closed")
-		if err := jobRepo.MarkStaleJobsAsClosed(30 * 24 * time.Hour); err != nil {
+		// A job stops getting re-upserted (and its scraped_at stops advancing)
+		// the moment it disappears from its company's board listing — that
+		// listing is re-fetched every 2h (see the scrape cron above), so "still
+		// ACTIVE after 30 days of no re-sighting" was a month-long window for a
+		// posting that actually closed on day one to keep showing on the site
+		// and 404ing when clicked. A day's buffer tolerates a few missed/failed
+		// scrape cycles for one board without false-closing anything real.
+		if err := jobRepo.MarkStaleJobsAsClosed(24 * time.Hour); err != nil {
 			log.Error().Err(err).Msg("Failed to mark stale jobs")
 		}
 
