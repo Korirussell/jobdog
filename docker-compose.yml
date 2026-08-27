@@ -44,6 +44,12 @@ services:
       redis:
         condition: service_healthy
     environment:
+      # The box is a 1.8GB t4g.small shared with Postgres/Redis/scraper-worker.
+      # Without a cap the JVM sizes its default heap off total host RAM and
+      # grows until Linux's OOM killer picks it — which happened in production
+      # (see the 2026-08-23 incident, dmesg confirmed oom-killer on this
+      # process). MaxMetaspaceSize caps class-metadata growth the same way.
+      JAVA_TOOL_OPTIONS: "-Xmx512m -XX:MaxMetaspaceSize=192m"
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jobdog
       SPRING_DATASOURCE_USERNAME: jobdog
