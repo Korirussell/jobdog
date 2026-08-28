@@ -326,8 +326,21 @@ type ActiveJob struct {
 	SourceURL string
 }
 
+// GetActiveJobURLs returns every ACTIVE job's URL for liveness checking,
+// early-career-relevant postings first. At a shared, rate-limited 5 req/s
+// this check runs for hours across the full active set — ordering it means
+// the postings the site actually surfaces (new-grad cohort, open entry-level,
+// internships) get validated well before the long tail of experienced/
+// unclassified roles most users never see.
 func (r *JobRepository) GetActiveJobURLs() ([]ActiveJob, error) {
-	query := `SELECT id, source_url FROM jobs WHERE status = 'ACTIVE'`
+	query := `
+		SELECT id, source_url FROM jobs
+		WHERE status = 'ACTIVE'
+		ORDER BY CASE
+			WHEN entry_type IN ('NEW_GRAD_COHORT', 'ENTRY_LEVEL_OPEN', 'INTERN') THEN 0
+			ELSE 1
+		END
+	`
 
 	rows, err := r.db.Query(query)
 	if err != nil {
