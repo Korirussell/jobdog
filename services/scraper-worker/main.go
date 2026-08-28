@@ -110,7 +110,7 @@ func main() {
 
 	urlChecker := scraper.NewURLChecker(jobRepo)
 
-	_, err = c.AddFunc("@every 12h", func() {
+	runCleanupCycle := func() {
 		log.Info().Msg("Marking stale jobs as closed")
 		// A job stops getting re-upserted (and its scraped_at stops advancing)
 		// the moment it disappears from its company's board listing — that
@@ -143,13 +143,25 @@ func main() {
 		} else {
 			log.Info().Int64("count", closedCount).Msg("Closed duplicate active jobs")
 		}
-	})
+	}
+
+	_, err = c.AddFunc("@every 12h", runCleanupCycle)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to schedule cleanup job")
 	}
 
 	c.Start()
 	log.Info().Msg("Cron scheduler started")
+
+	// robfig/cron's "@every" schedules run relative to when the scheduler
+	// started, not wall-clock time — every redeploy resets that 12h timer, so
+	// a service that gets redeployed more often than the interval (true for
+	// this one, repeatedly, the night this was added) never actually reaches
+	// its first scheduled run. Firing once at boot, in addition to the
+	// schedule, means a restart can never starve cleanup entirely. Async
+	// since the URL liveness pass alone is a full pass over every active
+	// job's apply URL and shouldn't hold up the health check server below.
+	go runCleanupCycle()
 
 	// Start health check server
 	http.HandleFunc("/health", health.HealthHandler(db.DB))

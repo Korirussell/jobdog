@@ -58,7 +58,17 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
            // should still be able to find it.
            "AND (:gradYear IS NOT NULL OR j.entryType != 'NEW_GRAD_COHORT' " +
            "     OR j.gradYearMax IS NULL OR j.gradYearMax >= :currentYear) " +
-           "ORDER BY COALESCE(j.postedAt, j.scrapedAt) DESC")
+           // A flat 1,000+-row feed sorted purely by recency buries the roles
+           // that actually match what someone came here for underneath whatever
+           // happened to get scraped most recently. Cohort-gated new-grad roles
+           // (the precise match) surface before the broader open-entry-level
+           // bucket, before everything else; recency is only the tiebreaker
+           // within each group now, not the primary sort.
+           "ORDER BY (CASE WHEN j.entryType = 'NEW_GRAD_COHORT' THEN 0 " +
+           "               WHEN j.entryType = 'ENTRY_LEVEL_OPEN' THEN 1 " +
+           "               WHEN j.entryType = 'INTERN' THEN 0 " +
+           "               ELSE 2 END), " +
+           "         COALESCE(j.postedAt, j.scrapedAt) DESC")
     Page<JobEntity> findByFilters(
             @Param("status") JobStatus status,
             @Param("location") String location,
