@@ -296,6 +296,33 @@ func (w *WorkdayScraper) fetchDetailsAndUpsert(ctx context.Context, company, bas
 		return nil
 	}
 
+	// Greenhouse and Lever reject a senior/leadership title before fetching
+	// anything further; Workday never did, so every detail-fetch-and-upsert
+	// here ran unconditionally. At a megacorp board (Booz Allen: ~2,000
+	// listings, most of them senior/staff/VP) that meant fetching and storing
+	// full descriptions for roles this board never shows anyone — the
+	// dominant source of both the junk listings and the scraper's memory
+	// footprint. Filtering here, before the detail fetch, cuts the network/
+	// CPU/memory cost too, not just the row count.
+	relevant := listings[:0]
+	skipped := 0
+	for _, listing := range listings {
+		if IsEarlyCareerRelevant(listing.Title) {
+			relevant = append(relevant, listing)
+		} else {
+			skipped++
+		}
+	}
+	listings = relevant
+	if skipped > 0 {
+		log.Info().Str("company", company).Int("skipped", skipped).Int("remaining", len(listings)).
+			Msg("Filtered out senior/leadership Workday listings before detail fetch")
+	}
+	if len(listings) == 0 {
+		log.Info().Str("company", company).Msg("No early-career-relevant Workday postings found")
+		return nil
+	}
+
 	workers := w.workerPool
 	if len(listings) < workers {
 		workers = len(listings)
