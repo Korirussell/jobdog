@@ -11,11 +11,14 @@ public record JobSummaryResponse(
         String employmentType,
         Instant postedAt,
         Instant scrapedAt,
+        // When JobDog first saw the posting. For rows with no posted date (aggregator
+        // lists publish none), this is the honest "added" date; scrapedAt is bumped
+        // every cycle and would make every old listing look new.
+        Instant addedAt,
         String jobStatus,
         String applyUrl,
         Integer matchPercentage,
         String companyTier,
-        Double ghostScore,
         String experienceLevel,
         String entryType,
         Integer gradYearMin,

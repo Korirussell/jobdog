@@ -6,11 +6,13 @@ export interface JobSummary {
   employmentType: string;
   postedAt: string | null;
   scrapedAt: string;
+  // When JobDog first saw the posting — the honest "added" date for listings
+  // that carry no posted date of their own.
+  addedAt: string;
   jobStatus: string;
   applyUrl: string;
   matchPercentage?: number | null;
   companyTier: string | null;
-  ghostScore: number | null;
   experienceLevel: string | null;
   // "NEW_GRAD_COHORT" | "ENTRY_LEVEL_OPEN" | "INTERN" | "EXPERIENCED" | null.
   // NEW_GRAD_COHORT is a role gated on a graduation window (gradYearMin/Max);

@@ -5,7 +5,6 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 import FilterBar, { FilterState } from '@/components/FolderTabs';
 import JobListRow from '@/components/JobListRow';
-import ConveyorBelt from '@/components/ConveyorBelt';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import type { JobSummary } from '@/lib/public-jobs';
@@ -71,9 +70,7 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [resumes, setResumes] = useState<Array<{ resumeId: string; status: string }>>([]);
-  const [conveyorJobs, setConveyorJobs] = useState<Array<{ jobId: string; company: string; title: string }>>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filters = useMemo(() => filtersFromSearchParams(searchParams), [searchParams]);
@@ -129,26 +126,6 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
       navigateWithFilters({ search: value || null });
     }, 400);
   }, [navigateWithFilters]);
-
-  useEffect(() => {
-    if (process.env.NEXT_PUBLIC_ENABLE_REALTIME !== 'true') return;
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    try {
-      const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
-      wsRef.current = ws;
-      ws.onmessage = (event) => {
-        try {
-          const job = JSON.parse(event.data);
-          setConveyorJobs((prev) => [...prev.slice(-19), { jobId: job.jobId, company: job.company, title: job.title }]);
-        } catch {}
-      };
-      ws.onerror = () => {};
-      ws.onclose = () => {};
-      return () => ws.close();
-    } catch {
-      return;
-    }
-  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -317,12 +294,11 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
                 location={job.location}
                 employmentType={job.employmentType}
                 postedAt={job.postedAt}
-                scrapedAt={job.scrapedAt}
+                addedAt={job.addedAt}
                 jobStatus={job.jobStatus}
                 applyUrl={job.applyUrl}
                 matchPercentage={job.matchPercentage}
                 companyTier={job.companyTier}
-                ghostScore={job.ghostScore}
                 experienceLevel={job.experienceLevel}
                 entryType={job.entryType}
                 gradYearMin={job.gradYearMin}
@@ -361,11 +337,6 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
         )}
       </main>
 
-      <ConveyorBelt
-        jobs={conveyorJobs}
-        onSaveJob={(jobId) => handleSaveJob(jobId, true)}
-        visible={conveyorJobs.length > 0}
-      />
     </div>
   );
 }

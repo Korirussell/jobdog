@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 import AuthGuard from '@/components/AuthGuard';
-import TerminalDecryptor from '@/components/TerminalDecryptor';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -33,57 +32,6 @@ export default function SettingsPage() {
     } finally {
       setSavingVisibility(false);
     }
-  };
-
-  const handleTerminalCommand = async (command: string): Promise<string> => {
-    const parts = command.trim().split(/\s+/);
-    const cmd = parts[0];
-
-    if (cmd === 'decrypt_comp') {
-      const companyMatch = command.match(/--company\s+"([^"]+)"/);
-      if (!companyMatch) return 'ERROR: Usage: decrypt_comp --company "CompanyName"';
-      const company = companyMatch[1];
-      try {
-        const result = await api.getGhostScore(company);
-        return [
-          `COMPANY: ${result.company}`,
-          `TOTAL JOBS: ${result.totalJobs}`,
-          `AVG DAYS OPEN: ${result.avgDaysOpen}`,
-          `GHOST REPORTS: ${result.ghostReports}`,
-          '',
-          'Salary data requires Lever integration for this company.',
-          'Try: ghost_scan --company "' + company + '"',
-        ].join('\n');
-      } catch {
-        return `ERROR: Failed to fetch data for "${company}"`;
-      }
-    }
-
-    if (cmd === 'ghost_scan') {
-      const companyMatch = command.match(/--company\s+"([^"]+)"/);
-      if (!companyMatch) return 'ERROR: Usage: ghost_scan --company "CompanyName"';
-      const company = companyMatch[1];
-      try {
-        const result = await api.getGhostScore(company);
-        const bar = '█'.repeat(Math.floor(result.ghostScore / 5)) + '░'.repeat(20 - Math.floor(result.ghostScore / 5));
-        return [
-          `GHOST SCAN: ${result.company}`,
-          `────────────────────────────`,
-          `GHOST SCORE: ${result.ghostScore}/100 [${bar}]`,
-          `GHOST REPORTS: ${result.ghostReports}`,
-          `AVG DAYS OPEN: ${result.avgDaysOpen}`,
-          `TOTAL LISTINGS: ${result.totalJobs}`,
-          '',
-          result.ghostScore > 70 ? '⚠ WARNING: HIGH GHOST PROBABILITY' :
-          result.ghostScore > 40 ? '⚡ MODERATE: Proceed with caution' :
-          '✓ LOW RISK: Company appears responsive',
-        ].join('\n');
-      } catch {
-        return `ERROR: Scan failed for "${company}"`;
-      }
-    }
-
-    return `UNKNOWN COMMAND: ${cmd}\nType "help" for available commands.`;
   };
 
   return (
@@ -132,8 +80,6 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Terminal Decryptor */}
-          <TerminalDecryptor onCommand={handleTerminalCommand} />
         </div>
       </main>
       </AuthGuard>

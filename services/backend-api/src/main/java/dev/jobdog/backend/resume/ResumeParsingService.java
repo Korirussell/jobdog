@@ -73,10 +73,8 @@ public class ResumeParsingService {
 
     /**
      * The OpenAI call that turns raw resume text into structured profile data
-     * (skills/years/education), with no DB access at all — callable for a
-     * resume that was never persisted, e.g. an anonymous Battle challenger's
-     * upload. {@link #parseResumeAsync} is this plus the persistence side
-     * effects for the normal, logged-in-user Vault flow.
+     * (skills/years/education), with no DB access of its own.
+     * {@link #parseResumeAsync} is this plus the persistence side effects.
      */
     public ExtractedProfile extractProfile(String resumeText) {
         String text = resumeText;

@@ -89,7 +89,7 @@ export default function SavedPage() {
                   location={job.location}
                   employmentType={job.employmentType}
                   postedAt={job.postedAt}
-                  scrapedAt={job.scrapedAt}
+                  addedAt={job.savedAt}
                   jobStatus={job.jobStatus}
                   applyUrl={job.applyUrl}
                 />

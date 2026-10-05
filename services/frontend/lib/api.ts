@@ -47,23 +47,6 @@ export interface ResumeAnalysis {
   analyzedAt: string;
 }
 
-// Fields beyond token/status/creatorLabel are only ever present once the
-// backend decides to reveal them (creator viewing their own battle, or
-// status === 'COMPLETE') — see BattleController.toResponse.
-export interface BattleState {
-  token: string;
-  status: 'WAITING' | 'COMPLETE';
-  creatorLabel: string;
-  creatorTopDogRank?: number;
-  creatorTierName?: string;
-  creatorSubScores?: Record<string, number>;
-  challengerLabel?: string;
-  challengerTopDogRank?: number;
-  challengerTierName?: string;
-  challengerSubScores?: Record<string, number>;
-  completedAt?: string;
-}
-
 export interface JobFitResult {
   fitId: string;
   resumeId: string;
@@ -204,7 +187,6 @@ export class ApiClient {
         postedAt: string;
         applyUrl: string;
         companyTier: string | null;
-        ghostScore: number | null;
         experienceLevel: string | null;
       }>;
       page: number;
@@ -368,21 +350,6 @@ export class ApiClient {
     }>('/api/v1/saved-jobs');
   }
 
-  // Resume Roaster
-  async roastResume(resumeId: string, jobId?: string) {
-    return this.request<{
-      brutalRoastText: string;
-      missingDependencies: string[];
-      topDogRank: number;
-      tierName: string;
-      subScores: Record<string, number>;
-      topPros: string[];
-    }>('/api/v1/roast', {
-      method: 'POST',
-      body: JSON.stringify({ resumeId, jobId: jobId ?? null }),
-    });
-  }
-
   // Resume Analysis
   async getResumeAnalysis(resumeId: string) {
     const response = await fetch(`${API_BASE}/api/v1/resume-analysis/${resumeId}`, {
@@ -411,73 +378,6 @@ export class ApiClient {
     });
   }
 
-  // Ghost Score
-  async getGhostScore(company: string) {
-    return this.request<{
-      company: string;
-      ghostScore: number;
-      avgDaysOpen: number;
-      ghostReports: number;
-      totalJobs: number;
-    }>(`/api/v1/ghost-score?company=${encodeURIComponent(company)}`);
-  }
-
-  // Battle — a share-link comparison, not a same-account dropdown pick.
-  // See BattleController/BattleService on the backend for the full design.
-  async createBattle(resumeId: string) {
-    return this.request<BattleState>('/api/v1/battles', {
-      method: 'POST',
-      body: JSON.stringify({ resumeId }),
-    });
-  }
-
-  async getBattle(token: string) {
-    return this.request<BattleState>(`/api/v1/public/battles/${token}`);
-  }
-
-  // Public, unauthenticated — no Authorization header even if the visitor
-  // happens to be logged in on this browser, since a battle link is meant to
-  // work for a stranger with no account at all.
-  async submitBattleChallenge(token: string, file: File, name: string) {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (name) formData.append('name', name);
-
-    const response = await fetch(`${API_BASE}/api/v1/public/battles/${token}/challenge`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(body?.message || `Failed to submit (${response.status})`);
-    }
-    return response.json() as Promise<BattleState>;
-  }
-
-  // Roast endpoints
-  async roastJob(resumeId: string, jobId: string | null) {
-    return this.request<{
-      brutalRoastText: string;
-      missingDependencies: string[];
-      topDogRank: number;
-      tierName: string;
-      subScores: Record<string, number>;
-      topPros: string[];
-    }>('/api/v1/roast', {
-      method: 'POST',
-      body: JSON.stringify({ resumeId, jobId }),
-    });
-  }
-
-  async getRoastHistory() {
-    return this.request<{ items: any[] }>('/api/v1/roast/history');
-  }
-
-  // Benchmark endpoints
-  async getBenchmarks() {
-    return this.request<{ items: any[] }>('/api/v1/jobs/benchmarks');
-  }
 }
 
 export const api = new ApiClient();

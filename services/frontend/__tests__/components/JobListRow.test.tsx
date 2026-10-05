@@ -10,7 +10,7 @@ describe('JobListRow', () => {
     location: 'Mountain View, CA',
     employmentType: 'Full-time',
     postedAt: '2026-03-15T14:30:00Z',
-    scrapedAt: '2026-03-15T14:30:00Z',
+    addedAt: '2026-03-15T14:30:00Z',
     applyUrl: 'https://example.com/job',
   };
 

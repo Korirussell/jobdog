@@ -82,12 +82,11 @@ interface JobListRowProps {
   employmentType: string;
   techStack?: string[];
   postedAt: string | null;
-  scrapedAt: string;
+  addedAt: string;
   jobStatus?: string;
   matchPercentile?: number;
   matchPercentage?: number | null;
   companyTier?: string | null;
-  ghostScore?: number | null;
   experienceLevel?: string | null;
   entryType?: string | null;
   gradYearMin?: number | null;
@@ -124,12 +123,11 @@ const JobListRow = memo(function JobListRow({
   employmentType,
   techStack = [],
   postedAt,
-  scrapedAt,
+  addedAt,
   jobStatus,
   matchPercentile,
   matchPercentage,
   companyTier,
-  ghostScore,
   experienceLevel,
   entryType,
   gradYearMin,
@@ -146,7 +144,7 @@ const JobListRow = memo(function JobListRow({
   const [savePending, setSavePending] = useState(false);
 
   const dateLabel = postedAt ? 'Posted' : 'Added';
-  const displayDate = postedAt ?? scrapedAt;
+  const displayDate = postedAt ?? addedAt;
   const timeLabel = formatTimeAgo(displayDate);
   const isClosed = jobStatus === 'CLOSED';
   const canApply = !isClosed && !alreadyApplied;
@@ -167,7 +165,7 @@ const JobListRow = memo(function JobListRow({
   };
 
   const isNew = (() => {
-    const d = postedAt ? new Date(postedAt) : new Date(scrapedAt);
+    const d = postedAt ? new Date(postedAt) : new Date(addedAt);
     return !isNaN(d.getTime()) && Date.now() - d.getTime() < 24 * 60 * 60 * 1000;
   })();
 
@@ -275,12 +273,6 @@ const JobListRow = memo(function JobListRow({
                   <span className="font-bold text-emerald-700">{salaryRaw}</span>
                 </>
               )}
-              {ghostScore !== undefined && ghostScore !== null && ghostScore > 50 && (
-                <>
-                  <span className="text-black/20">·</span>
-                  <span className="font-bold text-red-500">⚠ Ghost {ghostScore}</span>
-                </>
-              )}
             </div>
 
             {/* Tech stack tags */}
@@ -376,7 +368,6 @@ const JobListRow = memo(function JobListRow({
   prev.jobStatus === next.jobStatus &&
   prev.isSaved === next.isSaved &&
   prev.companyTier === next.companyTier &&
-  prev.ghostScore === next.ghostScore &&
   prev.experienceLevel === next.experienceLevel &&
   prev.entryType === next.entryType &&
   prev.gradYearMin === next.gradYearMin &&

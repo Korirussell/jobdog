@@ -22,7 +22,6 @@ const NAV_GROUPS: Array<{ group: string; links: Array<{ href: string; label: str
     group: 'Resume',
     links: [
       { href: '/vault', label: 'Vault', authOnly: true },
-      { href: '/battle', label: 'Battle', authOnly: true },
     ],
   },
 ];
@@ -338,7 +337,6 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
               ] },
               { group: 'Resume', items: [
                 { href: '/vault', label: 'Resume Vault', icon: '📁' },
-                { href: '/battle', label: 'Resume Battle', icon: '⚔' },
               ] },
             ].map(({ group, items }) => (
               <div key={group}>

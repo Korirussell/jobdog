@@ -44,7 +44,8 @@ public class GlobalExceptionHandler {
     // Without this, ResponseStatusException fell through to the generic
     // Exception.class handler below, which unconditionally returns 500 —
     // every controller that throws e.g. new ResponseStatusException(NOT_FOUND, ...)
-    // (job detail, Battle) was silently returning 500 instead of its real status.
+    // (job detail not found, for one) was silently returning 500 instead of its
+    // real status.
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiErrorResponse> handleResponseStatus(ResponseStatusException exception,
                                                                   HttpServletRequest request) {
