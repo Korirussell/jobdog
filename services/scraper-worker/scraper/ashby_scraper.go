@@ -112,11 +112,9 @@ func (s *AshbyScraper) ScrapeCompany(ctx context.Context, company, token string)
 		if !posting.IsListed {
 			continue
 		}
-		// Greenhouse and Lever have filtered senior/leadership titles here
-		// since the beginning; Ashby never did, so every role at every Ashby
-		// company (including plenty of startups that use it for their whole
-		// org) was stored regardless of seniority.
-		if !IsEarlyCareerRelevant(posting.Title) {
+		// Cheap title-only rejection first; the full gate runs once the
+		// description is in hand, below.
+		if !IsEarlyCareerRelevant(posting.Title) || !IsTechTitle(posting.Title) {
 			continue
 		}
 
@@ -132,6 +130,10 @@ func (s *AshbyScraper) ScrapeCompany(ctx context.Context, company, token string)
 			Status:          "ACTIVE",
 			PostedAt:        parseAshbyPublishedAt(posting.PublishedAt, posting.ID),
 			SalaryRaw:       ashbySalary(posting),
+		}
+
+		if ok, _ := AcceptListing(job, TrustNone); !ok {
+			continue
 		}
 
 		if s.producer != nil {

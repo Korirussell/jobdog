@@ -109,9 +109,11 @@ func (s *GreenhouseScraper) ScrapeCompany(ctx context.Context, company, boardTok
 
 	log.Info().Int("count", len(ghResp.Jobs)).Str("company", company).Msg("Parsed Greenhouse jobs")
 
+	kept := 0
 	for _, ghJob := range ghResp.Jobs {
-		// Filter for internships
-		if !IsEarlyCareerRelevant(ghJob.Title) {
+		// Cheap title-only rejection first, so a rejected posting never pays for
+		// HTML stripping below.
+		if !IsEarlyCareerRelevant(ghJob.Title) || !IsTechTitle(ghJob.Title) {
 			continue
 		}
 
@@ -131,11 +133,16 @@ func (s *GreenhouseScraper) ScrapeCompany(ctx context.Context, company, boardTok
 			Title:           ghJob.Title,
 			Company:         company,
 			Location:        ghJob.Location.Name,
-			EmploymentType:  "INTERNSHIP",
+			EmploymentType:  employmentTypeFromTitle(ghJob.Title),
 			DescriptionText: stripHTML(ghJob.Content),
 			Status:          "ACTIVE",
 			PostedAt:        &postedAt,
 		}
+
+		if ok, _ := AcceptListing(&job, TrustNone); !ok {
+			continue
+		}
+		kept++
 
 		// Streaming path: hand the raw posting to Kafka and move on. The
 		// classifier consumer does experience-level/grad-cohort/skills and the
@@ -180,8 +187,21 @@ func (s *GreenhouseScraper) ScrapeCompany(ctx context.Context, company, boardTok
 		}
 	}
 
-	log.Info().Str("company", company).Msg("Completed Greenhouse scrape")
+	log.Info().Str("company", company).Int("listed", len(ghResp.Jobs)).Int("kept", kept).Msg("Completed Greenhouse scrape")
 	return nil
+}
+
+// htmlTagPattern is compiled once. It used to be compiled inside stripHTML,
+// i.e. once per posting per scrape cycle.
+var htmlTagPattern = regexp.MustCompile(`<[^>]*>`)
+
+// employmentTypeFromTitle labels a posting. Greenhouse and Lever hard-coded
+// "INTERNSHIP" for every posting they ever stored — full-time roles included.
+func employmentTypeFromTitle(title string) string {
+	if internPattern.MatchString(title) {
+		return "INTERNSHIP"
+	}
+	return "FULL_TIME"
 }
 
 // stripHTML strips markup from an ATS-provided content field down to plain
@@ -193,8 +213,7 @@ func (s *GreenhouseScraper) ScrapeCompany(ctx context.Context, company, boardTok
 // stored description and onto the job detail page verbatim.
 func stripHTML(rawHTML string) string {
 	decoded := html.UnescapeString(rawHTML)
-	re := regexp.MustCompile(`<[^>]*>`)
-	text := re.ReplaceAllString(decoded, " ")
+	text := htmlTagPattern.ReplaceAllString(decoded, " ")
 	// Clean up multiple spaces
 	text = strings.Join(strings.Fields(text), " ")
 	return strings.TrimSpace(text)

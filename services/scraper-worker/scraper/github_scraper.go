@@ -65,7 +65,16 @@ func (s *GitHubScraper) ScrapeRepo(ctx context.Context, repo, employmentType str
 
 	log.Info().Str("repo", repo).Int("count", len(jobs)).Msg("Parsed jobs from aggregator repo")
 
+	rejected := 0
 	for _, job := range jobs {
+		// An aggregator list is already curated for early-career roles, so this
+		// only rejects a row that contradicts that (a senior title, or a posting
+		// that asks for years of experience).
+		if ok, _ := AcceptListing(&job, TrustCurated); !ok {
+			rejected++
+			continue
+		}
+
 		if s.producer != nil {
 			if err := s.producer.PublishRawPosting(ctx, job); err != nil {
 				log.Error().Err(err).Str("company", job.Company).Msg("Failed to publish raw posting")
@@ -109,7 +118,7 @@ func (s *GitHubScraper) ScrapeRepo(ctx context.Context, repo, employmentType str
 		}
 	}
 
-	log.Info().Str("repo", repo).Msg("Completed aggregator repo scrape")
+	log.Info().Str("repo", repo).Int("rejected", rejected).Msg("Completed aggregator repo scrape")
 	return jobs, nil
 }
 

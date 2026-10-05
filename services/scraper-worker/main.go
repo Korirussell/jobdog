@@ -99,7 +99,10 @@ func main() {
 		s.ashby.SetProducer(producer)
 	}
 
-	c := cron.New()
+	// A cycle that outlasts its 2h interval must not be joined by a second one:
+	// robfig/cron runs overlapping ticks concurrently by default, and two cycles
+	// at once is double the memory on a box that has run out of it before.
+	c := cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DiscardLogger)))
 
 	_, err = c.AddFunc("@every 2h", func() {
 		runScrapeCycle(context.Background(), cfg, s, "scheduled")
@@ -111,37 +114,49 @@ func main() {
 	urlChecker := scraper.NewURLChecker(jobRepo)
 
 	runCleanupCycle := func() {
-		log.Info().Msg("Marking stale jobs as closed")
 		// A job stops getting re-upserted (and its scraped_at stops advancing)
 		// the moment it disappears from its company's board listing — that
-		// listing is re-fetched every 2h (see the scrape cron above), so "still
-		// ACTIVE after 30 days of no re-sighting" was a month-long window for a
-		// posting that actually closed on day one to keep showing on the site
-		// and 404ing when clicked. A day's buffer tolerates a few missed/failed
-		// scrape cycles for one board without false-closing anything real.
-		if err := jobRepo.MarkStaleJobsAsClosed(24 * time.Hour); err != nil {
+		// listing is re-fetched every 2h (see the scrape cron above). A day's
+		// buffer tolerates a few missed/failed cycles for one board without
+		// false-closing anything real; Workday, harvested by ranked search
+		// rather than a full listing, gets three.
+		if err := jobRepo.MarkStaleJobsAsClosed(24*time.Hour, 72*time.Hour); err != nil {
 			log.Error().Err(err).Msg("Failed to mark stale jobs")
 		}
 
-		log.Info().Msg("Purging old closed jobs")
-		purgedCount, err := jobRepo.PurgeOldClosedJobs(90 * 24 * time.Hour)
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to purge old closed jobs")
+		// Everything the site wouldn't show: not early-career, or a season that
+		// is over. Stored, deduplicated and checked every cycle for no reader.
+		if closed, err := jobRepo.CloseNonQualifyingActiveJobs(); err != nil {
+			log.Error().Err(err).Msg("Failed to close non-qualifying jobs")
 		} else {
-			log.Info().Int64("count", purgedCount).Msg("Purged old closed jobs")
+			log.Info().Int64("count", closed).Msg("Closed non-qualifying active jobs")
+		}
+		if closed, err := scraper.ClosePastSeasonJobs(jobRepo, time.Now()); err != nil {
+			log.Error().Err(err).Msg("Failed to close past-season jobs")
+		} else {
+			log.Info().Int64("count", closed).Msg("Closed past-season jobs")
 		}
 
-		log.Info().Msg("Running URL liveness check")
-		if err := urlChecker.CheckAndPruneURLs(context.Background()); err != nil {
-			log.Error().Err(err).Msg("URL liveness check failed")
-		}
-
-		log.Info().Msg("Closing duplicate active job listings")
-		closedCount, err := jobRepo.CloseDuplicateActiveJobs()
-		if err != nil {
+		if closed, err := jobRepo.CloseDuplicateActiveJobs(); err != nil {
 			log.Error().Err(err).Msg("Failed to close duplicate active jobs")
 		} else {
-			log.Info().Int64("count", closedCount).Msg("Closed duplicate active jobs")
+			log.Info().Int64("count", closed).Msg("Closed duplicate active jobs")
+		}
+
+		if purged, err := jobRepo.PurgeOldClosedJobs(90 * 24 * time.Hour); err != nil {
+			log.Error().Err(err).Msg("Failed to purge old closed jobs")
+		} else {
+			log.Info().Int64("count", purged).Msg("Purged old closed jobs")
+		}
+		if purged, err := jobRepo.PurgeOldRejections(30 * 24 * time.Hour); err != nil {
+			log.Error().Err(err).Msg("Failed to purge old rejections")
+		} else {
+			log.Info().Int64("count", purged).Msg("Purged old rejections")
+		}
+
+		// Last, because it is the slow one: a request per aggregator-list row.
+		if err := urlChecker.CheckAndPruneURLs(context.Background()); err != nil {
+			log.Error().Err(err).Msg("URL liveness check failed")
 		}
 	}
 
@@ -192,7 +207,7 @@ func main() {
 // directly, then every statically configured Workday/Greenhouse/Lever/Ashby
 // source. label is just for logging ("scheduled" vs "initial").
 func runScrapeCycle(ctx context.Context, cfg *config.Config, s scrapers, label string) {
-	pool := workerpool.NewWorkerPool(10)
+	pool := workerpool.NewWorkerPool(4)
 	pool.Start()
 
 	var (

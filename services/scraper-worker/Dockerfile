@@ -14,12 +14,14 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o scraper-worker .
 RUN CGO_ENABLED=0 GOOS=linux go build -o classifier ./cmd/classifier
 RUN CGO_ENABLED=0 GOOS=linux go build -o s3sink ./cmd/s3sink
+RUN CGO_ENABLED=0 GOOS=linux go build -o sourcestats ./cmd/sourcestats
 
 FROM alpine:3.20
 WORKDIR /app
 COPY --from=build /app/scraper-worker /app/scraper-worker
 COPY --from=build /app/classifier /app/classifier
 COPY --from=build /app/s3sink /app/s3sink
+COPY --from=build /app/sourcestats /app/sourcestats
 # config/sources.json is read at runtime (config.loadSources), relative to the
 # working directory — it was never copied into this final stage, so every
 # deployment silently fell back to the small embedded default source list

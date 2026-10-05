@@ -52,6 +52,14 @@ func (r *JobRepository) UpsertJob(job *models.Job) (id string, descriptionAccept
 	job.DescriptionHash = hashDescription(job.DescriptionText)
 	job.ScrapedAt = time.Now()
 
+	// These columns are varchar(255). A posting with more than that in one of
+	// them (Google and Boeing list dozens of locations in one field) used to
+	// fail the whole upsert and silently vanish from the board.
+	job.Title = truncateRunes(job.Title, 255)
+	job.Company = truncateRunes(job.Company, 255)
+	job.Location = truncateRunes(job.Location, 255)
+	job.SourceJobID = truncateRunes(job.SourceJobID, 255)
+
 	// Every scraper sets these before calling UpsertJob, but default to the
 	// inclusive value here too so a call site that forgets doesn't silently
 	// insert an empty string a query-time filter would then treat as "exclude"
@@ -193,16 +201,21 @@ func (r *JobRepository) UpsertJobRequirementProfile(profile *models.JobRequireme
 	return nil
 }
 
-func (r *JobRepository) MarkStaleJobsAsClosed(olderThan time.Duration) error {
+// MarkStaleJobsAsClosed closes postings no scrape has re-confirmed recently.
+// Workday gets its own, longer window: its scraper harvests by relevance-ranked
+// search and only ever sees the top results, so a live posting can drop out of
+// view for a cycle or two without having closed. Every other source returns
+// its whole board (or whole list) each cycle, where "not seen" means gone.
+func (r *JobRepository) MarkStaleJobsAsClosed(olderThan, workdayOlderThan time.Duration) error {
 	query := `
 		UPDATE jobs
 		SET status = 'CLOSED', updated_at = $1
 		WHERE status = 'ACTIVE'
-		AND scraped_at < $2
+		AND scraped_at < CASE WHEN source = 'workday' THEN $3::timestamptz ELSE $2::timestamptz END
 	`
 
-	cutoff := time.Now().Add(-olderThan)
-	_, err := r.db.Exec(query, time.Now(), cutoff)
+	now := time.Now()
+	_, err := r.db.Exec(query, now, now.Add(-olderThan), now.Add(-workdayOlderThan))
 	if err != nil {
 		return fmt.Errorf("failed to mark stale jobs as closed: %w", err)
 	}
@@ -326,20 +339,15 @@ type ActiveJob struct {
 	SourceURL string
 }
 
-// GetActiveJobURLs returns every ACTIVE job's URL for liveness checking,
-// early-career-relevant postings first. At a shared, rate-limited 5 req/s
-// this check runs for hours across the full active set — ordering it means
-// the postings the site actually surfaces (new-grad cohort, open entry-level,
-// internships) get validated well before the long tail of experienced/
-// unclassified roles most users never see.
+// GetActiveJobURLs returns the ACTIVE jobs whose apply link needs probing:
+// the aggregator-list rows. Postings from a company's own ATS are re-confirmed
+// every cycle by that ATS's listing API (a removed one stops being refreshed
+// and the stale sweep closes it), so probing them would be 40,000 requests to
+// learn what the scrape already knows.
 func (r *JobRepository) GetActiveJobURLs() ([]ActiveJob, error) {
 	query := `
 		SELECT id, source_url FROM jobs
-		WHERE status = 'ACTIVE'
-		ORDER BY CASE
-			WHEN entry_type IN ('NEW_GRAD_COHORT', 'ENTRY_LEVEL_OPEN', 'INTERN') THEN 0
-			ELSE 1
-		END
+		WHERE status = 'ACTIVE' AND source LIKE 'github-%'
 	`
 
 	rows, err := r.db.Query(query)
@@ -470,4 +478,23 @@ func nullableYear(year int) any {
 		return nil
 	}
 	return year
+}
+
+// truncateRunes cuts s to at most max characters without splitting a
+// multi-byte one.
+func truncateRunes(s string, max int) string {
+	if len([]rune(s)) <= max {
+		return s
+	}
+	return string([]rune(s)[:max])
+}
+
+// PurgeOldRejections forgets rejected postings older than the window, so the
+// table doesn't grow with every posting the gate has ever turned down.
+func (r *JobRepository) PurgeOldRejections(olderThan time.Duration) (int64, error) {
+	result, err := r.db.Exec(`DELETE FROM scrape_rejections WHERE rejected_at < $1`, time.Now().Add(-olderThan))
+	if err != nil {
+		return 0, fmt.Errorf("failed to purge old rejections: %w", err)
+	}
+	return result.RowsAffected()
 }

@@ -87,7 +87,7 @@ var (
 	seniorTitlePattern = regexp.MustCompile(`(?i)\bsenior\b|\bsr\.?\b|\bstaff\b|\bprincipal\b|\blead engineer\b|\bdirector\b|\bmanager\b|\barchitect\b`)
 
 	// Junior/level-1 titles: real entry-level work, but not proof of a cohort gate.
-	entryTitlePattern = regexp.MustCompile(`(?i)\bjunior\b|\bjr\.?\b|\bentry[- ]level\b|\bearly career\b|\bassociate\b|\bgraduate (engineer|developer|analyst)\b|\b(engineer|developer|programmer)\s*(i|1)\b|\bl(evel)?\s*1\b`)
+	entryTitlePattern = regexp.MustCompile(`(?i)\bjunior\b|\bjr\.?\b|\bentry[- ]level\b|\bearly career\b|\bassociate\b|\bgraduate\b|\bgrad\b|\b(engineer|developer|programmer)\s*(i|1)\b|\b(sde|swe)\s*(i|1)\b|\bl(evel)?\s*1\b`)
 
 	sentenceSplitter = regexp.MustCompile(`[.;!?\n\r]|(?:\s[•\x{2022}\x{2023}\x{25AA}\-]\s)`)
 
@@ -178,9 +178,24 @@ func ExtractGradWindow(title, description, sourceURL, aggregatorRepo string) (ye
 // in the description, or -1 if none is stated. A posting asking for 2+ years is not
 // gated on a graduation cohort no matter how junior the title sounds.
 func MinYearsExperience(description string) int {
-	matches := yearsExperiencePattern.FindAllStringSubmatch(description, -1)
-	minYears := -1
-	for _, m := range matches {
+	minYears, _ := yearsExperienceBounds(description)
+	return minYears
+}
+
+// MaxYearsExperience returns the largest "N years of experience" figure stated in
+// the description, or -1 if none is stated. The smallest figure is the right test
+// for ruling a posting out (any mention of 2+ years means it is not entry level);
+// the largest is the right test for ruling one in, since a senior posting often
+// lists "1+ years with Python" right next to "8+ years of backend experience" and
+// the former alone says nothing.
+func MaxYearsExperience(description string) int {
+	_, maxYears := yearsExperienceBounds(description)
+	return maxYears
+}
+
+func yearsExperienceBounds(description string) (minYears, maxYears int) {
+	minYears, maxYears = -1, -1
+	for _, m := range yearsExperiencePattern.FindAllStringSubmatch(description, -1) {
 		years, err := strconv.Atoi(m[1])
 		if err != nil || years < 0 || years > 30 {
 			continue
@@ -188,8 +203,11 @@ func MinYearsExperience(description string) int {
 		if minYears == -1 || years < minYears {
 			minYears = years
 		}
+		if years > maxYears {
+			maxYears = years
+		}
 	}
-	return minYears
+	return minYears, maxYears
 }
 
 // ClassifyGradCohort is the deterministic pass. It returns a verdict with
@@ -256,6 +274,17 @@ func ClassifyGradCohort(title, description, sourceURL, aggregatorRepo string) Gr
 		result.EntryType = EntryTypeExperienced
 		result.Source = GradSourceRegex
 		result.Confidence = 0.8
+		return result
+	}
+
+	// A posting that states how much experience it wants, and every figure it
+	// states is 0 or 1, is an open entry-level role whatever its title says
+	// ("Software Engineer" with "0-2 years of experience"). Judged on the
+	// largest figure, not the smallest — see MaxYearsExperience.
+	if maxYears := MaxYearsExperience(description); maxYears >= 0 && maxYears <= 1 {
+		result.EntryType = EntryTypeEntryLevelOpen
+		result.Source = GradSourceRegex
+		result.Confidence = 0.6
 		return result
 	}
 

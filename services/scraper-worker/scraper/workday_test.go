@@ -42,59 +42,44 @@ func TestParseWorkdayPostedAt(t *testing.T) {
 	})
 }
 
-func TestWorkdaySourceJobID(t *testing.T) {
-	cases := []struct {
-		name    string
-		detail  workdayJobDetail
-		listing workdayJobListing
-		want    string
-	}{
-		{
-			name:   "prefers the requisition id",
-			detail: workdayJobDetail{JobReqID: "R2623639"},
-			listing: workdayJobListing{
-				BulletFields: []string{"R9999999"},
-				ExternalPath: "/job/Hsinchu/Some-Role_R2623639",
-			},
-			want: "R2623639",
-		},
-		{
-			name:   "falls back to bulletFields when detail is thin",
-			detail: workdayJobDetail{},
-			listing: workdayJobListing{
-				BulletFields: []string{"R2623639"},
-				ExternalPath: "/job/Hsinchu/Some-Role_R2623639",
-			},
-			want: "R2623639",
-		},
-		{
-			name:    "falls back to the external path as a last resort",
-			detail:  workdayJobDetail{},
-			listing: workdayJobListing{ExternalPath: "/job/Hsinchu/Some-Role_R2623639"},
-			want:    "/job/Hsinchu/Some-Role_R2623639",
-		},
+func TestWorkdayBoardIdentity(t *testing.T) {
+	board := workdayBoard{tenant: "nvidia", datacenter: "wd5", site: "NVIDIAExternalCareerSite"}
+	path := "/job/US-CA-Santa-Clara/DFT-Engineer---New-College-Grad_JR2016865"
+
+	// The apply link is built from the host the posting was fetched from, so
+	// it can never be the bare relative path the old fallback produced, nor a
+	// retired custom domain.
+	wantURL := "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite" + path
+	if got := board.publicURL(path); got != wantURL {
+		t.Errorf("publicURL() = %q, want %q", got, wantURL)
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := workdaySourceJobID(tc.detail, tc.listing); got != tc.want {
-				t.Errorf("workdaySourceJobID() = %q, want %q", got, tc.want)
-			}
-		})
+	// The id is known from the list response alone, and unique per posting —
+	// including each location variant of one requisition, which used to collide
+	// on the requisition id and fail the upsert.
+	a := board.sourceJobID("/job/London/Role_R1")
+	b := board.sourceJobID("/job/Berlin/Role_R1")
+	if a == b {
+		t.Errorf("location variants of one requisition share an id: %q", a)
+	}
+	other := workdayBoard{tenant: "amat"}.sourceJobID("/job/London/Role_R1")
+	if a == other {
+		t.Errorf("two tenants share an id for the same path: %q", a)
 	}
 }
 
-func TestWorkdayApplyURL(t *testing.T) {
-	// The URL we fetched is a JSON API endpoint — sending a candidate there would
-	// show them a raw payload, so externalUrl must win.
-	detail := workdayJobDetail{ExternalURL: "https://amat.wd1.myworkdayjobs.com/External/job/Hsinchu/Role_R1"}
-	listing := workdayJobListing{ExternalPath: "/job/Hsinchu/Role_R1"}
-
-	if got := workdayApplyURL(detail, listing); got != detail.ExternalURL {
-		t.Errorf("workdayApplyURL() = %q, want the human-facing URL %q", got, detail.ExternalURL)
+func TestWorkdayCampusSitePattern(t *testing.T) {
+	campus := []string{"Campus_Careers", "University_Talent", "University_Talent_NCG", "Futureforce_NewGradRoles", "INTERN", "ExternalPrivatePostingStudents"}
+	whole := []string{"External", "NVIDIAExternalCareerSite", "Careers_GM", "external_experienced", "Medline"}
+	for _, site := range campus {
+		if !workdayCampusSitePattern.MatchString(site) {
+			t.Errorf("%q should be treated as a campus site", site)
+		}
 	}
-	if got := workdayApplyURL(workdayJobDetail{}, listing); got != listing.ExternalPath {
-		t.Errorf("fallback = %q, want %q", got, listing.ExternalPath)
+	for _, site := range whole {
+		if workdayCampusSitePattern.MatchString(site) {
+			t.Errorf("%q should be treated as a whole-company site", site)
+		}
 	}
 }
 

@@ -109,9 +109,12 @@ func (s *LeverScraper) ScrapeCompany(ctx context.Context, company, slug string) 
 
 	log.Info().Int("count", len(postings)).Str("company", company).Msg("Parsed Lever postings")
 
+	kept := 0
 	for _, posting := range postings {
 		commitmentIsIntern := strings.Contains(strings.ToLower(posting.Categories.Commitment), "intern")
-		if !IsEarlyCareerRelevant(posting.Text) && !commitmentIsIntern {
+		// A Lever posting can be an internship by commitment alone, with a title
+		// that says nothing about it.
+		if !commitmentIsIntern && (!IsEarlyCareerRelevant(posting.Text) || !IsTechTitle(posting.Text)) {
 			continue
 		}
 
@@ -140,11 +143,21 @@ func (s *LeverScraper) ScrapeCompany(ctx context.Context, company, slug string) 
 			Title:           posting.Text,
 			Company:         company,
 			Location:        posting.Categories.Location,
-			EmploymentType:  "INTERNSHIP",
+			EmploymentType:  employmentTypeFromTitle(posting.Text),
 			DescriptionText: description,
 			Status:          "ACTIVE",
 			PostedAt:        &postedAt,
 		}
+		if commitmentIsIntern {
+			job.EmploymentType = "INTERNSHIP"
+		}
+
+		if !commitmentIsIntern {
+			if ok, _ := AcceptListing(&job, TrustNone); !ok {
+				continue
+			}
+		}
+		kept++
 
 		if s.producer != nil {
 			if err := s.producer.PublishRawPosting(ctx, job); err != nil {
@@ -184,7 +197,7 @@ func (s *LeverScraper) ScrapeCompany(ctx context.Context, company, slug string) 
 		}
 	}
 
-	log.Info().Str("company", company).Msg("Completed Lever scrape")
+	log.Info().Str("company", company).Int("listed", len(postings)).Int("kept", kept).Msg("Completed Lever scrape")
 	return nil
 }
 
