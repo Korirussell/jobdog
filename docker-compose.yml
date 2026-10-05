@@ -1,8 +1,24 @@
+# Docker's default json-file logging is unbounded. The backend alone logs a
+# warning every few minutes whenever it is under pressure, forever.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:15-alpine
     container_name: jobdog-postgres
     restart: unless-stopped
+    logging: *default-logging
+    # Memory caps (here and on every service below) are what keep this stack
+    # alive on a 1.8GB box. Uncapped, the first process to balloon (twice the
+    # scraper, once the JVM) made the *kernel* pick a victim and the whole host
+    # wedge, with nothing left running to restart it. With a cap, only the
+    # offending container is killed — a normal exit Docker's restart policy
+    # handles — and the rest of the stack never notices.
+    mem_limit: 400m
     environment:
       POSTGRES_DB: jobdog
       POSTGRES_USER: jobdog
@@ -21,6 +37,9 @@ services:
     image: redis:7-alpine
     container_name: jobdog-redis
     restart: unless-stopped
+    logging: *default-logging
+    mem_limit: 96m
+    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
     volumes:
       - redis_data:/data
     networks:
@@ -38,6 +57,8 @@ services:
       dockerfile: Dockerfile
     container_name: jobdog-backend-api
     restart: unless-stopped
+    logging: *default-logging
+    mem_limit: 600m
     depends_on:
       postgres:
         condition: service_healthy
@@ -49,7 +70,11 @@ services:
       # grows until Linux's OOM killer picks it — which happened in production
       # (see the 2026-08-23 incident, dmesg confirmed oom-killer on this
       # process). MaxMetaspaceSize caps class-metadata growth the same way.
-      JAVA_TOOL_OPTIONS: "-Xmx512m -XX:MaxMetaspaceSize=192m"
+      # Heap is only part of a JVM's footprint: -Xmx512m still reached ~800MB RSS
+      # (metaspace, thread stacks, JIT code cache, GC structures) and was
+      # OOM-killed. Serial GC, small stacks and a bounded code cache keep the whole
+      # process well inside the container cap below.
+      JAVA_TOOL_OPTIONS: "-Xmx320m -Xss512k -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -XX:+ExitOnOutOfMemoryError"
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jobdog
       SPRING_DATASOURCE_USERNAME: jobdog
@@ -84,6 +109,8 @@ services:
       dockerfile: Dockerfile
     container_name: jobdog-scraper-worker
     restart: unless-stopped
+    logging: *default-logging
+    mem_limit: 512m
     depends_on:
       postgres:
         condition: service_healthy
@@ -97,6 +124,10 @@ services:
       # docs/kafka.md. Local/dev opt-in only; nothing here touches production
       # until this var is actually set wherever this compose file is deployed.
       KAFKA_BROKERS: ${KAFKA_BROKERS:-}
+      # A soft ceiling under the container cap: the Go runtime collects harder as
+      # it approaches this instead of growing until the cap kills it (it reached
+      # 1.1GB RSS holding whole company boards in memory).
+      GOMEMLIMIT: 400MiB
     networks:
       - jobdog-network
 
