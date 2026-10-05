@@ -57,7 +57,12 @@ func TestAcceptListing(t *testing.T) {
 		// Curated sources have already done the scoping; they only have to not
 		// contradict it.
 		{"curated: no signal needed", models.Job{Title: "Software Engineer", SourceRepo: "SimplifyJobs/Summer2027-Internships"}, TrustCurated, true},
-		{"curated: non-technical title is still kept", models.Job{Title: "Technical Recruiter, University"}, TrustCurated, true},
+		{"aggregator list: a non-technical title is still kept", models.Job{Title: "Technical Recruiter, University", SourceRepo: "SimplifyJobs/New-Grad-Positions"}, TrustCurated, true},
+		// A company's own campus board is curated for early-career hiring, not
+		// for software: Loblaw, HNTB and Applied Materials' campus sites filled
+		// the board with logistics, civil and manufacturing roles.
+		{"campus board: a non-technical title is rejected", models.Job{Title: "Logistics Operations New College Grad"}, TrustCurated, false},
+		{"campus board: a technical title is kept", models.Job{Title: "Software Engineer, New College Grad"}, TrustCurated, true},
 		{"curated: senior title is still rejected", models.Job{Title: "Staff Software Engineer"}, TrustCurated, false},
 		{
 			name:  "curated: but not if the posting itself asks for experience",

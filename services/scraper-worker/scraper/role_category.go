@@ -32,13 +32,24 @@ var (
 	salesTitlePattern = regexp.MustCompile(`(?i)\baccount\s*(executive|manager)\b|\bsales\s*(development|engineer|representative|manager)\b|\bbusiness\s*development\b|\bcustomer\s*success\b|\bsolutions?\s*consultant\b`)
 )
 
+// softwareTitlePattern is what a software role's title has to say. Deliberately
+// narrower than techTitlePattern: "Engineer" alone, "Systems Engineer",
+// "Analytics Intern" and "Manufacturing Engineer I" are technical titles that
+// are not software.
+var softwareTitlePattern = regexp.MustCompile(`(?i)\b(software|swe|sde|sdet|developer|programmer|devops|sre|site reliability|full[- ]?stack|front[- ]?end|back[- ]?end|mobile|ios|android|web|firmware|embedded|machine learning|ml|ai|data (engineer|scientist|platform)|cloud|platform|infrastructure|cybersecurity|(application|product|network|information) security|security (engineer|software)|research (scientist|engineer)|applied scientist|qa|test automation|computer (science|vision|graphics)|application development|information technology|technology development)\b`)
+
 // ClassifyRoleCategory buckets a posting by job function using the title only.
 // Descriptions are noisy ("collaborate with Product and Sales") in exactly the
 // way titles are not, so — like ClassifyExperienceLevel — this stays
-// title-only and defaults to Software whenever nothing else matches. An
-// unrecognized or foreign-language title is far more likely to be a software
-// role we don't have a pattern for yet than a true false negative, so the
-// default has to be inclusive.
+// title-only.
+//
+// It used to default to Software when nothing else matched, on the reasoning
+// that an unrecognised title was more likely a software role we lacked a
+// pattern for than anything else. Measured on the live board that reasoning
+// was wrong: 61% of what the "SWE only" default showed was logistics, asset
+// protection, manufacturing, financial analysis and communications. Software
+// now has to say so; anything else is Other, still one toggle away under "All
+// roles".
 func ClassifyRoleCategory(title string) RoleCategory {
 	switch {
 	case quantTradingTitlePattern.MatchString(title):
@@ -49,7 +60,9 @@ func ClassifyRoleCategory(title string) RoleCategory {
 		return RoleCategoryProduct
 	case salesTitlePattern.MatchString(title):
 		return RoleCategorySales
-	default:
+	case softwareTitlePattern.MatchString(title):
 		return RoleCategorySoftware
+	default:
+		return RoleCategoryOther
 	}
 }

@@ -188,3 +188,47 @@ func (r *JobRepository) SourceStats() ([]SourceStat, error) {
 	}
 	return out, rows.Err()
 }
+
+// ActiveJobRow is the slice of an ACTIVE posting needed to re-derive its
+// classification.
+type ActiveJobRow struct {
+	ID           string
+	Title        string
+	Source       string
+	RoleCategory string
+}
+
+// ActiveJobRows returns every ACTIVE posting's id, title, source and role
+// category.
+func (r *JobRepository) ActiveJobRows() ([]ActiveJobRow, error) {
+	rows, err := r.db.Query(`SELECT id, title, source, role_category FROM jobs WHERE status = 'ACTIVE'`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query active jobs: %w", err)
+	}
+	defer rows.Close()
+
+	var out []ActiveJobRow
+	for rows.Next() {
+		var j ActiveJobRow
+		if err := rows.Scan(&j.ID, &j.Title, &j.Source, &j.RoleCategory); err != nil {
+			return nil, err
+		}
+		out = append(out, j)
+	}
+	return out, rows.Err()
+}
+
+// SetRoleCategory sets the role category of the given jobs.
+func (r *JobRepository) SetRoleCategory(category string, ids []string) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	result, err := r.db.Exec(`
+		UPDATE jobs SET role_category = $1, updated_at = $2
+		WHERE id = ANY($3::uuid[])
+	`, category, time.Now(), pq.Array(ids))
+	if err != nil {
+		return 0, fmt.Errorf("failed to set role category: %w", err)
+	}
+	return result.RowsAffected()
+}

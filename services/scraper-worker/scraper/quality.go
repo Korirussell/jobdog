@@ -60,7 +60,11 @@ func AcceptListing(job *models.Job, trust SourceTrust) (bool, string) {
 	if IsPastSeason(job.Title, time.Now()) {
 		return false, "past season"
 	}
-	if trust == TrustNone && !IsTechTitle(job.Title) {
+	// Only an aggregator list is exempt from needing a technical title: it is
+	// curated for early-career roles across functions, and the SWE-only view
+	// filters on role category. A company's own campus board (Loblaw, HNTB, Applied
+	// Materials) is curated for early-career hiring, not for software.
+	if job.SourceRepo == "" && !IsTechTitle(job.Title) {
 		return false, "not a technical role"
 	}
 

@@ -137,6 +137,12 @@ func main() {
 			log.Info().Int64("count", closed).Msg("Closed past-season jobs")
 		}
 
+		if reclassified, closed, err := scraper.RefreshRoleCategories(jobRepo); err != nil {
+			log.Error().Err(err).Msg("Failed to refresh role categories")
+		} else {
+			log.Info().Int64("reclassified", reclassified).Int64("closed", closed).Msg("Refreshed role categories")
+		}
+
 		if closed, err := jobRepo.CloseDuplicateActiveJobs(); err != nil {
 			log.Error().Err(err).Msg("Failed to close duplicate active jobs")
 		} else {

@@ -423,7 +423,7 @@ func (w *WorkdayScraper) fetchDetailsAndUpsert(ctx context.Context, board workda
 		if !IsEarlyCareerRelevant(listing.Title) {
 			continue
 		}
-		if board.trust == TrustNone && !IsTechTitle(listing.Title) {
+		if !IsTechTitle(listing.Title) {
 			continue
 		}
 		candidates = append(candidates, listing)

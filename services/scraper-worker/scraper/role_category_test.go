@@ -19,6 +19,28 @@ func TestClassifyRoleCategory(t *testing.T) {
 		{"Technical Program Manager", RoleCategoryProduct},
 		{"Account Executive", RoleCategorySales},
 		{"Sales Development Representative", RoleCategorySales},
+
+		// Real titles from the live "SWE only" view that are not software —
+		// Software has to say so; everything else is Other.
+		{"Logistics Operations New College Grad- Bachelor's/Master's (Tracy, CA)", RoleCategoryOther},
+		{"Asset Protection Representative", RoleCategoryOther},
+		{"Manufacturing Engineer I, New College Grad- Bachelor's (Austin, TX)", RoleCategoryOther},
+		{"Intern Engineer - Summer 2027", RoleCategoryOther},
+		{"Analytics Intern", RoleCategoryOther},
+		{"2026 Financial Analyst I, AD&S", RoleCategoryOther},
+		{"Test Engineering Intern, MS - Summer 2027", RoleCategoryOther},
+		{"Communications Intern - Summer 2027", RoleCategoryOther},
+		{"New Grad 2027 - Advisor Licensing Program", RoleCategoryOther},
+
+		// ...and the ones that are.
+		{"Machine Learning Software Engineer 1", RoleCategorySoftware},
+		{"Junior Software Engineer", RoleCategorySoftware},
+		{"Research Scientist, ML Systems - PhD New College Grad 2026", RoleCategorySoftware},
+		{"Software Engineering Intern, NCCL - 2026", RoleCategorySoftware},
+		{"IT Intern Application Development", RoleCategorySoftware},
+		{"Security Engineer, New Grad", RoleCategorySoftware},
+		{"Data Engineer I", RoleCategorySoftware},
+		{"Platform Engineer I", RoleCategorySoftware},
 	}
 
 	for _, tc := range cases {
