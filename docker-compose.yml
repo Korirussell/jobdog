@@ -58,7 +58,7 @@ services:
     container_name: jobdog-backend-api
     restart: unless-stopped
     logging: *default-logging
-    mem_limit: 600m
+    mem_limit: 750m
     depends_on:
       postgres:
         condition: service_healthy
@@ -74,7 +74,13 @@ services:
       # (metaspace, thread stacks, JIT code cache, GC structures) and was
       # OOM-killed. Serial GC, small stacks and a bounded code cache keep the whole
       # process well inside the container cap below.
-      JAVA_TOOL_OPTIONS: "-Xmx320m -Xss512k -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -XX:+ExitOnOutOfMemoryError"
+      #
+      # MaxMetaspaceSize must leave room for classes that load lazily on first use
+      # (Spring's OAuth2 client + JWT libraries on the first social login, PDFBox on
+      # the first resume upload). At 128m the first Google login hit
+      # "OutOfMemoryError: Metaspace" and ExitOnOutOfMemoryError took the JVM down
+      # mid-login. 256m is a ceiling, not a reservation - normal use stays far below.
+      JAVA_TOOL_OPTIONS: "-Xmx288m -Xss512k -XX:+UseSerialGC -XX:MaxMetaspaceSize=256m -XX:ReservedCodeCacheSize=64m -XX:+ExitOnOutOfMemoryError"
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jobdog
       SPRING_DATASOURCE_USERNAME: jobdog
