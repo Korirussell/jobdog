@@ -29,7 +29,6 @@ public class ResumeService {
     private final ApplicationContext applicationContext;
     private final ApplicationRepository applicationRepository;
     private final ResumeAnalysisRepository resumeAnalysisRepository;
-    private final ResumeJobFitRepository resumeJobFitRepository;
     private final RoastHistoryRepository roastHistoryRepository;
     private final ResumeProfileRepository resumeProfileRepository;
 
@@ -40,7 +39,6 @@ public class ResumeService {
                          ApplicationContext applicationContext,
                          ApplicationRepository applicationRepository,
                          ResumeAnalysisRepository resumeAnalysisRepository,
-                         ResumeJobFitRepository resumeJobFitRepository,
                          RoastHistoryRepository roastHistoryRepository,
                          ResumeProfileRepository resumeProfileRepository) {
         this.resumeRepository = resumeRepository;
@@ -50,7 +48,6 @@ public class ResumeService {
         this.applicationContext = applicationContext;
         this.applicationRepository = applicationRepository;
         this.resumeAnalysisRepository = resumeAnalysisRepository;
-        this.resumeJobFitRepository = resumeJobFitRepository;
         this.roastHistoryRepository = roastHistoryRepository;
         this.resumeProfileRepository = resumeProfileRepository;
     }
@@ -159,7 +156,6 @@ public class ResumeService {
                     "Resume is attached to " + applicationCount + " application(s); remove those first");
         }
 
-        resumeJobFitRepository.deleteByResume_Id(resumeId);
         resumeAnalysisRepository.deleteByResume_Id(resumeId);
         roastHistoryRepository.deleteByResume_Id(resumeId);
         resumeProfileRepository.deleteByResume_Id(resumeId);

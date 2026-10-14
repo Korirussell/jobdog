@@ -5,8 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.theokanning.openai.completion.chat.ChatCompletionRequest;
 import com.theokanning.openai.completion.chat.ChatMessage;
 import com.theokanning.openai.service.OpenAiService;
-import dev.jobdog.backend.job.JobEntity;
-import dev.jobdog.backend.job.JobRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -28,8 +26,6 @@ public class ResumeAnalysisService {
 
     private final ResumeRepository resumeRepository;
     private final ResumeAnalysisRepository analysisRepository;
-    private final ResumeJobFitRepository jobFitRepository;
-    private final JobRepository jobRepository;
     private final OpenAiService openAiService;
     private final StorageService storageService;
     private final PdfTextExtractor pdfTextExtractor;
@@ -37,16 +33,12 @@ public class ResumeAnalysisService {
 
     public ResumeAnalysisService(ResumeRepository resumeRepository,
                                  ResumeAnalysisRepository analysisRepository,
-                                 ResumeJobFitRepository jobFitRepository,
-                                 JobRepository jobRepository,
                                  OpenAiService openAiService,
                                  StorageService storageService,
                                  PdfTextExtractor pdfTextExtractor,
                                  ObjectMapper objectMapper) {
         this.resumeRepository = resumeRepository;
         this.analysisRepository = analysisRepository;
-        this.jobFitRepository = jobFitRepository;
-        this.jobRepository = jobRepository;
         this.openAiService = openAiService;
         this.storageService = storageService;
         this.pdfTextExtractor = pdfTextExtractor;
@@ -90,35 +82,6 @@ public class ResumeAnalysisService {
 
         String aiResponse = callOpenAi(buildAnalysisPrompt(truncated, resolvedLevel, resolvedRole), 4000);
         return parseAndSaveAnalysis(resume, resolvedLevel, resolvedRole, aiResponse);
-    }
-
-    /**
-     * Scores a resume against a specific job. Returns cached result if already computed.
-     */
-    @Transactional
-    public ResumeJobFitEntity getJobFit(UUID userId, UUID resumeId, UUID jobId) {
-        ResumeEntity resume = resumeRepository.findById(resumeId)
-                .orElseThrow(() -> new IllegalArgumentException("Resume not found"));
-        if (!resume.getUser().getId().equals(userId)) {
-            throw new IllegalArgumentException("Resume does not belong to user");
-        }
-        JobEntity job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new IllegalArgumentException("Job not found"));
-
-        // Return cached result if it exists
-        return jobFitRepository.findByResume_IdAndJob_Id(resumeId, jobId)
-                .orElseGet(() -> computeJobFit(resume, job));
-    }
-
-    private ResumeJobFitEntity computeJobFit(ResumeEntity resume, JobEntity job) {
-        byte[] pdfBytes = fetchResumeBytes(resume);
-        String resumeText = pdfTextExtractor.extractText(pdfBytes);
-        String truncatedResume = resumeText.substring(0, Math.min(resumeText.length(), 3500));
-        String truncatedJob = job.getDescriptionText() == null ? ""
-                : job.getDescriptionText().substring(0, Math.min(job.getDescriptionText().length(), 2000));
-
-        String aiResponse = callOpenAi(buildJobFitPrompt(truncatedResume, truncatedJob, job.getTitle(), job.getCompany()), 1200);
-        return parseAndSaveJobFit(resume, job, aiResponse);
     }
 
     private byte[] fetchResumeBytes(ResumeEntity resume) {
@@ -228,27 +191,6 @@ public class ResumeAnalysisService {
         }
     }
 
-    private ResumeJobFitEntity parseAndSaveJobFit(ResumeEntity resume, JobEntity job, String aiResponse) {
-        try {
-            String json = stripCodeFences(aiResponse);
-            JsonNode root = objectMapper.readTree(json);
-
-            ResumeJobFitEntity entity = new ResumeJobFitEntity();
-            entity.setResume(resume);
-            entity.setJob(job);
-            entity.setFitScore(clamp(root.path("fit_score").asInt(50)));
-            entity.setMatchedSkills(readStringList(root, "matched_skills"));
-            entity.setMissingSkills(readStringList(root, "missing_skills"));
-            entity.setFitSummary(root.path("fit_summary").asText("Analysis complete."));
-            entity.setAnalyzedAt(Instant.now());
-
-            return jobFitRepository.save(entity);
-        } catch (Exception e) {
-            log.error("Failed to parse job fit response: {}", aiResponse, e);
-            throw new RuntimeException("Failed to parse AI job fit response. Please try again.", e);
-        }
-    }
-
     private List<String> readStringList(JsonNode root, String field) {
         return readStringListFromNode(root, field);
     }
@@ -346,33 +288,6 @@ public class ResumeAnalysisService {
                 A typical intern resume scores 40-60. Include up to 10 bullets in bullet_feedback.
                 For recruiter_take, cover every major section present in the resume.
                 """, userLevel, levelLabel, targetRole, resumeText, levelLabel, targetRole);
-    }
-
-    private static String buildJobFitPrompt(String resumeText, String jobDescription,
-                                             String jobTitle, String company) {
-        return String.format("""
-                TARGET JOB: %s at %s
-                
-                JOB DESCRIPTION:
-                %s
-                
-                CANDIDATE RESUME:
-                %s
-                
-                Score how well this resume matches this specific job. Return ONLY valid JSON:
-                {
-                  "fit_score": <0-100, how well the resume matches this specific job>,
-                  "matched_skills": [
-                    "<skill or requirement from the job that the resume demonstrates>"
-                  ],
-                  "missing_skills": [
-                    "<skill or requirement from the job that is absent from the resume>"
-                  ],
-                  "fit_summary": "<2-3 sentences: would this resume get an interview for this role, what are the biggest gaps, and what would make it competitive>"
-                }
-                
-                Be specific. Reference actual requirements from the job description.
-                """, jobTitle, company, jobDescription, resumeText);
     }
 
     private static final String ANALYSIS_SYSTEM_PROMPT = """

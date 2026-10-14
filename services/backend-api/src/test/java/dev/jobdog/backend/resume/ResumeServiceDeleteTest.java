@@ -32,7 +32,6 @@ class ResumeServiceDeleteTest {
     @Mock private ApplicationContext applicationContext;
     @Mock private ApplicationRepository applicationRepository;
     @Mock private ResumeAnalysisRepository resumeAnalysisRepository;
-    @Mock private ResumeJobFitRepository resumeJobFitRepository;
     @Mock private RoastHistoryRepository roastHistoryRepository;
     @Mock private ResumeProfileRepository resumeProfileRepository;
 
@@ -71,7 +70,6 @@ class ResumeServiceDeleteTest {
 
         resumeService.deleteResume(resumeId, userId);
 
-        verify(resumeJobFitRepository).deleteByResume_Id(resumeId);
         verify(resumeAnalysisRepository).deleteByResume_Id(resumeId);
         verify(roastHistoryRepository).deleteByResume_Id(resumeId);
         verify(resumeProfileRepository).deleteByResume_Id(resumeId);

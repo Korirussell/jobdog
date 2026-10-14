@@ -48,17 +48,6 @@ public class ResumeAnalysisController {
         return ResponseEntity.ok(toAnalysisMap(entity));
     }
 
-    /** Returns job fit score for a resume against a specific job. */
-    @PostMapping("/job-fit")
-    public ResponseEntity<Map<String, Object>> jobFit(@RequestBody JobFitRequest req) {
-        ResumeJobFitEntity entity = analysisService.getJobFit(
-                currentUser.require().userId(),
-                req.resumeId(),
-                req.jobId()
-        );
-        return ResponseEntity.ok(toJobFitMap(entity));
-    }
-
     private Map<String, Object> toAnalysisMap(ResumeAnalysisEntity e) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("analysisId", e.getId());
@@ -79,21 +68,5 @@ public class ResumeAnalysisController {
         return m;
     }
 
-    private Map<String, Object> toJobFitMap(ResumeJobFitEntity e) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("fitId", e.getId());
-        m.put("resumeId", e.getResume().getId());
-        m.put("jobId", e.getJob().getId());
-        m.put("jobTitle", e.getJob().getTitle());
-        m.put("company", e.getJob().getCompany());
-        m.put("fitScore", e.getFitScore());
-        m.put("matchedSkills", e.getMatchedSkills());
-        m.put("missingSkills", e.getMissingSkills());
-        m.put("fitSummary", e.getFitSummary());
-        m.put("analyzedAt", e.getAnalyzedAt());
-        return m;
-    }
-
     record AnalyzeRequest(UUID resumeId, String userLevel, String targetRole) {}
-    record JobFitRequest(UUID resumeId, UUID jobId) {}
 }

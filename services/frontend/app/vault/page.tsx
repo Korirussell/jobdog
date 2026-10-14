@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import TopBar from '@/components/TopBar';
 import AuthGuard from '@/components/AuthGuard';
-import { api, ResumeAnalysis, BulletFeedback, JobFitResult, RecruiterTakeItem, AtsParsedSections } from '@/lib/api';
+import { api, ResumeAnalysis, BulletFeedback, RecruiterTakeItem, AtsParsedSections } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTier } from '@/lib/tiers';
 
@@ -13,12 +13,6 @@ interface Resume {
   originalFilename: string;
   status: string;
   uploadedAt: string;
-}
-
-interface Job {
-  jobId: string;
-  title: string;
-  company: string;
 }
 
 function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
@@ -126,7 +120,7 @@ function BulletCard({ bullet, index }: { bullet: BulletFeedback; index: number }
   );
 }
 
-type AnalysisTab = 'overview' | 'atsview' | 'recruiter' | 'bullets' | 'jobfit';
+type AnalysisTab = 'overview' | 'atsview' | 'recruiter' | 'bullets';
 
 export default function VaultPage() {
   const { user, refreshUser } = useAuth();
@@ -158,17 +152,8 @@ export default function VaultPage() {
   const [userLevel, setUserLevel] = useState<'INTERN' | 'NEW_GRAD'>('INTERN');
   const [targetRole, setTargetRole] = useState('Software Engineer');
 
-  // Job fit
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [jobFitCache, setJobFitCache] = useState<Record<string, JobFitResult>>({});
-  const [selectedJobId, setSelectedJobId] = useState<string>('');
-  const [jobFitLoading, setJobFitLoading] = useState(false);
-  const [jobFitError, setJobFitError] = useState('');
-
   const selectedResume = resumes.find((r) => r.resumeId === selectedResumeId) ?? null;
   const currentAnalysis = selectedResumeId ? analysisCache[selectedResumeId] ?? null : null;
-  const currentJobFitKey = selectedResumeId && selectedJobId ? `${selectedResumeId}:${selectedJobId}` : '';
-  const currentJobFit = currentJobFitKey ? jobFitCache[currentJobFitKey] ?? null : null;
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
@@ -181,7 +166,6 @@ export default function VaultPage() {
   // Load resumes on mount
   useEffect(() => {
     fetchResumes();
-    fetchJobs();
     return () => stopPolling();
   }, [stopPolling]);
 
@@ -211,13 +195,6 @@ export default function VaultPage() {
     } finally {
       setResumesLoading(false);
     }
-  }
-
-  async function fetchJobs() {
-    try {
-      const data = await api.getJobs(new URLSearchParams({ page: '0', size: '50' }));
-      setJobs(data.items.map((j) => ({ jobId: j.jobId, title: j.title, company: j.company })));
-    } catch {}
   }
 
   const startPolling = useCallback((resumeId: string) => {
@@ -310,20 +287,6 @@ export default function VaultPage() {
     }
   }
 
-  async function runJobFit() {
-    if (!selectedResumeId || !selectedJobId) return;
-    setJobFitLoading(true);
-    setJobFitError('');
-    try {
-      const result = await api.getJobFitAnalysis(selectedResumeId, selectedJobId);
-      setJobFitCache((prev) => ({ ...prev, [`${selectedResumeId}:${selectedJobId}`]: result }));
-    } catch (err: any) {
-      setJobFitError(err?.message || 'Job fit analysis failed. Please try again.');
-    } finally {
-      setJobFitLoading(false);
-    }
-  }
-
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
@@ -352,7 +315,7 @@ export default function VaultPage() {
             <div>
               <h1 className="font-mono text-2xl font-bold text-text-primary">Resume Vault</h1>
               <p className="mt-1 font-mono text-sm text-text-secondary">
-                FAANG-grade analysis · Section scoring · ATS check · Job fit
+                FAANG-grade analysis · Section scoring · ATS check
               </p>
             </div>
             {user && (
@@ -610,7 +573,6 @@ export default function VaultPage() {
                           { id: 'atsview', label: 'ATS View' },
                           { id: 'recruiter', label: 'Recruiter Take' },
                           { id: 'bullets', label: `Bullets (${currentAnalysis.bulletFeedback.length})` },
-                          { id: 'jobfit', label: 'Job Fit' },
                         ] as { id: AnalysisTab; label: string }[]).map(({ id, label }) => (
                           <button
                             key={id}
@@ -893,95 +855,6 @@ export default function VaultPage() {
                         </div>
                       )}
 
-                      {/* Job Fit tab */}
-                      {activeTab === 'jobfit' && (
-                        <div className="space-y-4">
-                          <div className="border border-black/8 bg-white p-5">
-                            <h3 className="font-mono text-xs font-bold uppercase text-text-secondary mb-3">
-                              Match Against a Real Job
-                            </h3>
-                            <p className="font-mono text-xs text-text-tertiary mb-4">
-                              Select a job from our listings to get a fit score and gap analysis specific to that role.
-                            </p>
-                            <div className="flex flex-wrap gap-3">
-                              <select
-                                value={selectedJobId}
-                                onChange={(e) => setSelectedJobId(e.target.value)}
-                                className="flex-1 min-w-0 border-2 border-black/20 bg-white px-2 py-1.5 font-mono text-xs text-text-primary focus:border-black focus:outline-none"
-                              >
-                                <option value="">— Select a job —</option>
-                                {jobs.map((j) => (
-                                  <option key={j.jobId} value={j.jobId}>
-                                    {j.title} @ {j.company}
-                                  </option>
-                                ))}
-                              </select>
-                              <button
-                                onClick={runJobFit}
-                                disabled={!selectedJobId || jobFitLoading}
-                                className="border-2 border-black bg-primary px-4 py-1.5 font-mono text-xs font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
-                              >
-                                {jobFitLoading ? '⏳ Scoring...' : currentJobFit ? '↻ Re-score' : '▶ Score Fit'}
-                              </button>
-                            </div>
-                            {jobFitError && (
-                              <p className="mt-3 font-mono text-xs font-bold text-red-600">⚠ {jobFitError}</p>
-                            )}
-                          </div>
-
-                          {jobFitLoading && (
-                            <div className="border border-black/8 bg-white p-8 text-center">
-                              <div className="text-3xl mb-3 animate-pulse">🎯</div>
-                              <p className="font-mono text-sm font-bold text-text-primary">Scoring job fit...</p>
-                            </div>
-                          )}
-
-                          {currentJobFit && !jobFitLoading && (
-                            <div className="space-y-4">
-                              <div className="border border-black/8 bg-white p-5">
-                                <div className="flex items-center gap-5 mb-4">
-                                  <ScoreRing score={currentJobFit.fitScore} size={80} />
-                                  <div>
-                                    <p className="font-mono text-xs font-bold uppercase text-text-tertiary">Fit Score</p>
-                                    <p className="font-mono text-sm font-bold text-text-primary mt-0.5">
-                                      {currentJobFit.jobTitle} @ {currentJobFit.company}
-                                    </p>
-                                    <p className="font-mono text-xs text-text-secondary mt-2 leading-relaxed max-w-lg">
-                                      {currentJobFit.fitSummary}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {currentJobFit.matchedSkills.length > 0 && (
-                                  <div className="border border-emerald-200 bg-emerald-50 p-4">
-                                    <h4 className="font-mono text-[10px] font-bold uppercase text-emerald-700 mb-3">Matched Skills</h4>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {currentJobFit.matchedSkills.map((s, i) => (
-                                        <span key={i} className="border border-emerald-300 bg-white px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-700">
-                                          ✓ {s}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                {currentJobFit.missingSkills.length > 0 && (
-                                  <div className="border border-red-200 bg-red-50 p-4">
-                                    <h4 className="font-mono text-[10px] font-bold uppercase text-red-700 mb-3">Missing Skills</h4>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {currentJobFit.missingSkills.map((s, i) => (
-                                        <span key={i} className="border border-red-300 bg-white px-2 py-0.5 font-mono text-[10px] font-bold text-red-700">
-                                          ✗ {s}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </>
                   ) : (
                     /* No analysis yet */

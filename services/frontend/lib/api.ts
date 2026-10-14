@@ -94,19 +94,6 @@ export interface AdminOverview {
   }>;
 }
 
-export interface JobFitResult {
-  fitId: string;
-  resumeId: string;
-  jobId: string;
-  jobTitle: string;
-  company: string;
-  fitScore: number;
-  matchedSkills: string[];
-  missingSkills: string[];
-  fitSummary: string;
-  analyzedAt: string;
-}
-
 export class ApiClient {
   private token: string | null = null;
 
@@ -423,13 +410,6 @@ export class ApiClient {
     return this.request<ResumeAnalysis>('/api/v1/resume-analysis', {
       method: 'POST',
       body: JSON.stringify({ resumeId, userLevel, targetRole }),
-    });
-  }
-
-  async getJobFitAnalysis(resumeId: string, jobId: string) {
-    return this.request<JobFitResult>('/api/v1/resume-analysis/job-fit', {
-      method: 'POST',
-      body: JSON.stringify({ resumeId, jobId }),
     });
   }
 
