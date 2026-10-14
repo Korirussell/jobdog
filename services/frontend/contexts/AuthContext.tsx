@@ -8,6 +8,10 @@ interface User {
   email: string;
   displayName: string;
   profileVisibility?: string;
+  role?: string;
+  // Resume uploads left, and how many more job-link confirmations earn the next one.
+  resumeCredits?: number;
+  reportsToNextCredit?: number;
 }
 
 interface AuthContextType {
@@ -18,27 +22,52 @@ interface AuthContextType {
   logout: () => void;
   setUserFromOAuth: (user: User) => void;
   updateProfileVisibility: (visibility: string) => Promise<void>;
+  // Re-reads the signed-in user, e.g. after spending or earning an upload.
+  refreshUser: () => Promise<void>;
+  // Applies credit state returned by an action without another round trip.
+  applyCredits: (resumeCredits: number, reportsToNextCredit: number) => void;
   isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function toUser(data: {
+  userId: string;
+  email: string;
+  displayName: string;
+  profileVisibility?: string;
+  role?: string;
+  resumeCredits?: number;
+  reportsToNextCredit?: number;
+}): User {
+  return {
+    userId: data.userId,
+    email: data.email,
+    displayName: data.displayName,
+    profileVisibility: data.profileVisibility,
+    role: data.role,
+    resumeCredits: data.resumeCredits,
+    reportsToNextCredit: data.reportsToNextCredit,
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const refreshUser = useCallback(async () => {
+    try {
+      setUser(toUser(await api.me()));
+    } catch {
+      // Leave whatever we had; a failed refresh shouldn't sign anyone out.
+    }
+  }, []);
 
   useEffect(() => {
     const token = api.getToken();
     if (token) {
       api.me()
-        .then((data) => {
-          setUser({
-            userId: data.userId,
-            email: data.email,
-            displayName: data.displayName,
-            profileVisibility: data.profileVisibility,
-          });
-        })
+        .then((data) => setUser(toUser(data)))
         .catch(() => {
           api.clearToken();
         })
@@ -55,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: data.email,
       displayName: data.displayName,
     });
+    refreshUser();
   };
 
   const register = async (email: string, password: string, displayName: string) => {
@@ -64,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: data.email,
       displayName: data.displayName,
     });
+    refreshUser();
   };
 
   const logout = () => {
@@ -73,12 +104,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const setUserFromOAuth = useCallback((oauthUser: User) => {
     setUser(oauthUser);
-  }, []);
+    refreshUser();
+  }, [refreshUser]);
 
   const updateProfileVisibility = async (visibility: string) => {
     const data = await api.updateProfile(visibility);
     setUser((current) => current ? { ...current, profileVisibility: data.profileVisibility } : current);
   };
+
+  const applyCredits = useCallback((resumeCredits: number, reportsToNextCredit: number) => {
+    setUser((current) => current ? { ...current, resumeCredits, reportsToNextCredit } : current);
+  }, []);
 
   const value: AuthContextType = {
     user,
@@ -88,6 +124,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     setUserFromOAuth,
     updateProfileVisibility,
+    refreshUser,
+    applyCredits,
     isAuthenticated: !!user,
   };
 

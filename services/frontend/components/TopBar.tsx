@@ -365,6 +365,16 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
               </div>
             ))}
             <div className="border-t border-black/8">
+              {user?.role === 'ADMIN' && (
+                <Link
+                  href="/admin"
+                  onClick={() => setMenuOpen(false)}
+                  className={`flex items-center gap-2.5 px-4 py-2.5 font-mono text-xs font-bold transition-colors hover:bg-background-secondary ${pathname === '/admin' ? 'bg-primary/10 text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                >
+                  <span className="w-4 text-center">👥</span>
+                  Users
+                </Link>
+              )}
               <Link
                 href="/settings"
                 onClick={() => setMenuOpen(false)}

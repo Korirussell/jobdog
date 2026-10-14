@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import HomePageClient from '@/components/HomePageClient';
 import { buildJobsSearchParams, fetchJobs } from '@/lib/public-jobs';
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 25;
 export const revalidate = 300;
 
 export const metadata: Metadata = {

@@ -3,6 +3,8 @@
 import { memo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import ReportControls from '@/components/ReportControls';
+import type { ReportVerdict } from '@/lib/api';
 
 // Map company names to known domains for logo lookup
 const COMPANY_DOMAINS: Record<string, string> = {
@@ -98,6 +100,10 @@ interface JobListRowProps {
   isSaved?: boolean;
   onApply?: (jobId: string) => void;
   onSave?: (jobId: string, saved: boolean) => void;
+  // Listing feedback. Only passed for signed-in users.
+  userVerdict?: ReportVerdict | null;
+  askFeedback?: boolean;
+  onReport?: (jobId: string, verdict: ReportVerdict) => void;
 }
 
 function formatTimeAgo(dateString: string | null | undefined): string {
@@ -139,6 +145,9 @@ const JobListRow = memo(function JobListRow({
   isSaved = false,
   onApply,
   onSave,
+  userVerdict,
+  askFeedback,
+  onReport,
 }: JobListRowProps) {
   const [saved, setSaved] = useState(isSaved);
   const [savePending, setSavePending] = useState(false);
@@ -357,6 +366,13 @@ const JobListRow = memo(function JobListRow({
               </a>
             )}
           </div>
+          {onReport && (
+            <ReportControls
+              verdict={userVerdict}
+              prompt={askFeedback}
+              onReport={(verdict) => onReport(jobId, verdict)}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -375,7 +391,9 @@ const JobListRow = memo(function JobListRow({
   prev.salaryRaw === next.salaryRaw &&
   prev.matchPercentage === next.matchPercentage &&
   prev.matchPercentile === next.matchPercentile &&
-  prev.techStack === next.techStack
+  prev.techStack === next.techStack &&
+  prev.userVerdict === next.userVerdict &&
+  prev.askFeedback === next.askFeedback
 );
 
 export default JobListRow;

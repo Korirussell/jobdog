@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -69,6 +70,9 @@ export default function RootLayout({
             {children}
           </AuthProvider>
         </ErrorBoundary>
+        {/* Cookie-less visitor analytics (page views, referrers, countries). Shows up once
+            Analytics is enabled for the project in the Vercel dashboard. */}
+        <Analytics />
       </body>
     </html>
   );

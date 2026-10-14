@@ -129,7 +129,9 @@ function BulletCard({ bullet, index }: { bullet: BulletFeedback; index: number }
 type AnalysisTab = 'overview' | 'atsview' | 'recruiter' | 'bullets' | 'jobfit';
 
 export default function VaultPage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  // undefined until the profile has loaded; never block an upload on a guess.
+  const outOfUploads = user?.resumeCredits !== undefined && user.resumeCredits <= 0;
 
   // Resume list
   const [resumes, setResumes] = useState<Resume[]>([]);
@@ -262,6 +264,7 @@ export default function VaultPage() {
       const uploaded = await api.uploadResume(file);
       const newId = (uploaded as any)?.resumeId ?? null;
       await fetchResumes();
+      refreshUser();
       if (newId) {
         setSelectedResumeId(newId);
         startPolling(newId);
@@ -372,9 +375,9 @@ export default function VaultPage() {
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => { if (!outOfUploads) fileInputRef.current?.click(); }}
                 className={`
-                  cursor-pointer border-2 border-dashed px-4 py-6 text-center transition-colors
+                  ${outOfUploads ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} border-2 border-dashed px-4 py-6 text-center transition-colors
                   ${dragOver ? 'border-primary bg-primary/10' : 'border-black/20 hover:border-black/40 hover:bg-black/[0.02]'}
                   ${uploading ? 'pointer-events-none opacity-60' : ''}
                 `}
@@ -383,10 +386,24 @@ export default function VaultPage() {
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAndAnalyze(f); e.target.value = ''; }} />
                 <div className="text-2xl mb-2">{uploading ? '⏳' : '📄'}</div>
                 <p className="font-mono text-xs font-bold text-text-primary">
-                  {uploading ? 'Uploading...' : 'Drop PDF or click to upload'}
+                  {uploading ? 'Uploading...' : outOfUploads ? 'Out of uploads' : 'Drop PDF or click to upload'}
                 </p>
                 <p className="font-mono text-[10px] text-text-tertiary mt-1">PDF only · 10 MB max</p>
               </div>
+              {user?.resumeCredits !== undefined && (
+                <div className="border border-black/15 bg-white px-3 py-2">
+                  <p className="font-mono text-xs text-text-secondary">
+                    <span className="font-bold text-text-primary">{user.resumeCredits}</span>{' '}
+                    {user.resumeCredits === 1 ? 'upload' : 'uploads'} left
+                  </p>
+                  <p className="mt-1 font-mono text-[10px] text-text-tertiary">
+                    {user.reportsToNextCredit !== undefined
+                      ? `Earn more: tell us if ${user.reportsToNextCredit} job ${user.reportsToNextCredit === 1 ? 'link works' : 'links work'} (or are dead).`
+                      : 'Earn more by telling us whether job links work.'}
+                    {' '}<a href="/" className="font-bold underline hover:text-text-primary">Browse jobs →</a>
+                  </p>
+                </div>
+              )}
               {uploadError && (
                 <p className="font-mono text-xs font-bold text-red-600">⚠ {uploadError}</p>
               )}

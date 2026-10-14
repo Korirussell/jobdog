@@ -47,6 +47,53 @@ export interface ResumeAnalysis {
   analyzedAt: string;
 }
 
+export type ReportVerdict = 'WORKS' | 'DEAD';
+
+export interface ReportResult {
+  verdict: ReportVerdict;
+  // True when this report completed a set of confirmations and earned a resume upload.
+  earnedCredit: boolean;
+  resumeCredits: number;
+  reportsToNextCredit: number;
+  // True when the listing is now closed (enough people reported it dead).
+  jobClosed: boolean;
+}
+
+export interface AdminOverview {
+  users: {
+    total: number;
+    new7d: number;
+    new30d: number;
+    active24h: number;
+    active7d: number;
+    active30d: number;
+    viaSocialLogin: number;
+  };
+  signupsByDay: Array<{ day: string; signups: number }>;
+  engagement: {
+    resumes: number;
+    applications: number;
+    savedJobs: number;
+    jobReports: number;
+    deadReports: number;
+    usersWhoReported: number;
+  };
+  jobs: { active: number; closedAsDead: number };
+  recentUsers: Array<{
+    name: string;
+    email: string;
+    joined: string;
+    lastSeen: string | null;
+    role: string;
+    uploadsLeft: number;
+    socialLogin: boolean;
+    resumes: number;
+    applications: number;
+    saved: number;
+    reports: number;
+  }>;
+}
+
 export interface JobFitResult {
   fitId: string;
   resumeId: string;
@@ -160,7 +207,15 @@ export class ApiClient {
   }
 
   async me() {
-    return this.request<{ userId: string; email: string; displayName: string; profileVisibility: string }>('/api/v1/auth/me');
+    return this.request<{
+      userId: string;
+      email: string;
+      displayName: string;
+      profileVisibility: string;
+      role: string;
+      resumeCredits: number;
+      reportsToNextCredit: number;
+    }>('/api/v1/auth/me');
   }
 
   async updateProfile(profileVisibility: string) {
@@ -376,6 +431,24 @@ export class ApiClient {
       method: 'POST',
       body: JSON.stringify({ resumeId, jobId }),
     });
+  }
+
+  // Listing feedback: does this job's apply link actually work?
+  async reportJob(jobId: string, verdict: ReportVerdict) {
+    return this.request<ReportResult>('/api/v1/job-reports', {
+      method: 'POST',
+      body: JSON.stringify({ jobId, verdict }),
+    });
+  }
+
+  // The signed-in user's own verdicts, keyed by job id.
+  async getMyJobReports() {
+    return this.request<Record<string, ReportVerdict>>('/api/v1/job-reports/mine');
+  }
+
+  // Admin only: who is using the site.
+  async getAdminOverview() {
+    return this.request<AdminOverview>('/api/v1/admin/overview');
   }
 
 }

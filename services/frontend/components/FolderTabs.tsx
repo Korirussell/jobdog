@@ -20,13 +20,28 @@ interface FilterBarProps {
 // has no graduation-cohort gate to filter by.
 export type GradYearFilter = '' | '2026' | '2027';
 
+// "" = any company. ANY is every named company, whatever the tier.
+export type CompanyTierFilter = '' | 'ANY' | 'FAANG' | 'UNICORN' | 'NOTABLE';
+
+const TIER_CHIPS: Array<{ value: CompanyTierFilter; label: string; hint: string }> = [
+  { value: '', label: 'All companies', hint: 'Every company' },
+  { value: 'ANY', label: '★ Well-known', hint: 'Any recognisable name below' },
+  { value: 'FAANG', label: 'Big Tech', hint: 'Google, Meta, Amazon, Apple, Microsoft, Netflix' },
+  { value: 'UNICORN', label: 'Top tech', hint: 'Nvidia, Stripe, Databricks, Palantir, Tesla and similar' },
+  { value: 'NOTABLE', label: 'Big names', hint: 'Chips, defense and aerospace, finance, industrial' },
+];
+
+export function tierLabel(tier: CompanyTierFilter): string {
+  return TIER_CHIPS.find((chip) => chip.value === tier)?.label ?? tier;
+}
+
 export interface FilterState {
   tab: JobTab;
   remote: boolean;
   location: string;
   hideApplied: boolean;
   // "" = any company. "FAANG" / "UNICORN" match CompanyTier.lookup on the backend.
-  companyTier: '' | 'FAANG' | 'UNICORN';
+  companyTier: CompanyTierFilter;
   gradYear: GradYearFilter;
   hasSalary: boolean;
   // Defaults to true: hide quant/trading, hardware, PM, and sales roles, plus
@@ -140,7 +155,7 @@ export default function FilterBar({ filters, onFilterChange, initialSearch, onSe
             )}
             {filters.companyTier && (
               <span className="flex items-center gap-1 border border-black/20 bg-black/5 px-2 py-1 font-mono text-[10px] font-bold">
-                {filters.companyTier}
+                {tierLabel(filters.companyTier)}
                 <button onClick={() => update('companyTier', '')} className="ml-0.5 text-text-tertiary hover:text-text-primary">✕</button>
               </span>
             )}
@@ -230,7 +245,7 @@ export default function FilterBar({ filters, onFilterChange, initialSearch, onSe
               )}
               {filters.companyTier && (
                 <span className="flex items-center gap-1 border border-black/20 bg-black/5 px-2 py-1 font-mono text-[10px] font-bold">
-                  {filters.companyTier}
+                  {tierLabel(filters.companyTier)}
                   <button onClick={() => update('companyTier', '')} className="ml-0.5 text-text-tertiary hover:text-text-primary">✕</button>
                 </span>
               )}
@@ -248,6 +263,25 @@ export default function FilterBar({ filters, onFilterChange, initialSearch, onSe
               )}
             </div>
           )}
+        </div>
+
+        {/* Company tier — always visible: "show me the names I've heard of" is the
+            most common way to narrow a thousand listings, so it isn't tucked in a panel. */}
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 font-mono text-[10px] font-bold uppercase text-text-tertiary">Companies</span>
+          {TIER_CHIPS.map((chip) => (
+            <button
+              key={chip.value || 'all'}
+              onClick={() => update('companyTier', chip.value)}
+              title={chip.hint}
+              aria-pressed={filters.companyTier === chip.value}
+              className={`border px-2.5 py-1 font-mono text-[11px] font-bold transition-colors ${filters.companyTier === chip.value
+                ? 'border-black bg-primary text-text-primary'
+                : 'border-black/15 bg-white text-text-secondary hover:border-black/40 hover:text-text-primary'}`}
+            >
+              {chip.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -300,28 +334,6 @@ export default function FilterBar({ filters, onFilterChange, initialSearch, onSe
               >
                 {filters.hideApplied ? '✓ Hidden' : 'Show all'}
               </button>
-            </div>
-
-            {/* Company tier */}
-            <div>
-              <p className="mb-1.5 font-mono text-[10px] font-bold uppercase text-text-tertiary">Company tier</p>
-              <div className="flex border border-black/15">
-                {(['', 'FAANG', 'UNICORN'] as const).map((tier) => (
-                  <button
-                    key={tier || 'all'}
-                    onClick={() => update('companyTier', tier)}
-                    className={`
-                      px-3 py-1.5 font-mono text-xs font-bold transition-colors
-                      ${filters.companyTier === tier
-                        ? 'bg-primary text-text-primary'
-                        : 'bg-white text-text-secondary hover:bg-black/5 hover:text-text-primary'
-                      }
-                    `}
-                  >
-                    {tier || 'All'}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Graduation cohort — only meaningful once cohort-gated roles can be

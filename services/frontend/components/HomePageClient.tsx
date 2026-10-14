@@ -5,8 +5,9 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 import FilterBar, { FilterState } from '@/components/FolderTabs';
 import JobListRow from '@/components/JobListRow';
+import Pagination from '@/components/Pagination';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api';
+import { api, type ReportVerdict } from '@/lib/api';
 import type { JobSummary } from '@/lib/public-jobs';
 
 interface HomePageClientProps {
@@ -46,7 +47,7 @@ function filtersFromSearchParams(params: URLSearchParams): FilterState {
     remote: params.get('remote') === 'true',
     location: params.get('location') ?? '',
     hideApplied: params.get('hideApplied') === 'true',
-    companyTier: companyTierRaw === 'FAANG' || companyTierRaw === 'UNICORN' ? companyTierRaw : '',
+    companyTier: companyTierRaw === 'ANY' || companyTierRaw === 'FAANG' || companyTierRaw === 'UNICORN' || companyTierRaw === 'NOTABLE' ? companyTierRaw : '',
     gradYear: tab === 'newgrad' && (gradYearRaw === '2026' || gradYearRaw === '2027') ? gradYearRaw : '',
     hasSalary: params.get('hasSalary') === 'true',
     // Absent means on — matches the backend default, so a shared/bookmarked
@@ -58,7 +59,7 @@ function filtersFromSearchParams(params: URLSearchParams): FilterState {
 export default function HomePageClient({ initialJobs, initialTotal, initialLastSync, initialPage, pageSize }: HomePageClientProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, applyCredits } = useAuth();
   // Server-filtered by app/page.tsx according to the current URL — this is
   // already the correct result set, not a superset that needs re-filtering.
   const allJobs = initialJobs;
@@ -70,6 +71,13 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [resumes, setResumes] = useState<Array<{ resumeId: string; status: string }>>([]);
+  // Listing feedback: this user's verdicts, the listing they just opened (when they
+  // can actually answer "did the link work?"), listings that got closed by reports
+  // this session, and a short confirmation message.
+  const [myReports, setMyReports] = useState<Record<string, ReportVerdict>>({});
+  const [lastOpenedJobId, setLastOpenedJobId] = useState<string | null>(null);
+  const [closedJobIds, setClosedJobIds] = useState<Set<string>>(new Set());
+  const [notice, setNotice] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -138,6 +146,9 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
     api.getResumes()
       .then((res) => setResumes(res.items.map((r) => ({ resumeId: r.resumeId, status: r.status }))))
       .catch(() => {});
+    api.getMyJobReports()
+      .then(setMyReports)
+      .catch(() => {});
   }, [isAuthenticated]);
 
   const handleSaveJob = useCallback(async (jobId: string, save: boolean) => {
@@ -180,6 +191,7 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
     const job = allJobs.find((j) => j.jobId === jobId);
     if (!job) return;
     window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
+    setLastOpenedJobId(jobId);
 
     if (!isAuthenticated) return;
     const parsedResumes = resumes.filter((r) => r.status === 'PARSED');
@@ -189,16 +201,58 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
       .catch(() => {});
   }, [allJobs, isAuthenticated, resumes]);
 
+  const handleReport = useCallback(async (jobId: string, verdict: ReportVerdict) => {
+    const previous = myReports[jobId];
+    setMyReports((prev) => ({ ...prev, [jobId]: verdict }));
+    if (lastOpenedJobId === jobId) setLastOpenedJobId(null);
+    try {
+      const result = await api.reportJob(jobId, verdict);
+      applyCredits(result.resumeCredits, result.reportsToNextCredit);
+      if (result.jobClosed) {
+        setClosedJobIds((prev) => new Set(prev).add(jobId));
+        setNotice('Thanks. Enough people reported that one, so it has been removed.');
+      } else if (result.earnedCredit) {
+        setNotice('Thanks. You earned a resume upload.');
+      } else {
+        setNotice('Thanks. ' + result.reportsToNextCredit + ' more to earn a resume upload.');
+      }
+    } catch {
+      // Put it back: the report didn't land.
+      setMyReports((prev) => {
+        const next = { ...prev };
+        if (previous) next[jobId] = previous; else delete next[jobId];
+        return next;
+      });
+      setNotice('Could not send that. Try again.');
+    }
+  }, [myReports, lastOpenedJobId, applyCredits]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 4000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
   // The only filtering left on the client: hideApplied, which can't be done
   // server-side (see above). Everything else — tab, remote, location, search,
   // companyTier, gradYear, hasSalary — was already applied server-side by
   // app/page.tsx against the full dataset, so allJobs is already correct.
-  const visibleJobs = hideApplied ? allJobs.filter((job) => !appliedJobIds.has(job.jobId)) : allJobs;
+  const visibleJobs = allJobs.filter((job) =>
+    !closedJobIds.has(job.jobId) && !(hideApplied && appliedJobIds.has(job.jobId)));
 
   const hasActiveFilters = filters.remote || !!filters.location || hideApplied ||
     !!filters.companyTier || !!filters.gradYear || filters.hasSalary || !!searchQuery;
 
   const totalPages = Math.ceil(totalFromApi / pageSize);
+  const rangeFrom = totalFromApi === 0 ? 0 : page * pageSize + 1;
+  const rangeTo = Math.min(totalFromApi, page * pageSize + allJobs.length);
+
+  const hrefForPage = useCallback((targetPage: number) => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (targetPage <= 0) next.delete('page'); else next.set('page', String(targetPage));
+    const query = next.toString();
+    return query ? pathname + '?' + query : pathname;
+  }, [pathname, searchParams]);
 
   const goToPage = useCallback((targetPage: number) => {
     const next = new URLSearchParams(searchParams.toString());
@@ -211,6 +265,12 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
   return (
     <div className="min-h-screen bg-white">
       <TopBar onSearchFocus={focusSearch} />
+
+      {notice && (
+        <div role="status" className="fixed bottom-6 left-1/2 z-[300] -translate-x-1/2 border-2 border-black bg-primary px-4 py-2 font-mono text-xs font-bold shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+          {notice}
+        </div>
+      )}
 
       <div className="border-b border-black/8 bg-background px-6 py-6 text-center">
         <h1 className="font-mono text-2xl font-bold text-text-primary sm:text-3xl">
@@ -250,7 +310,7 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
               {searchQuery ? (
                 <><span className="font-bold text-text-primary">{totalFromApi.toLocaleString()}</span> results for "<span className="text-primary">{searchQuery}</span>"</>
               ) : (
-                <><span className="font-bold text-text-primary">{totalFromApi.toLocaleString()}</span> {filters.tab === 'intern' ? 'internships' : 'new grad roles'}{hasActiveFilters && !searchQuery ? ' matching filters' : ''}</>
+                <><span className="font-bold text-text-primary">{totalFromApi.toLocaleString()}</span> {filters.tab === 'intern' ? 'internships' : 'new grad roles'}{hasActiveFilters && !searchQuery ? ' matching filters' : ''}{totalPages > 1 && <span className="text-text-tertiary"> · showing {rangeFrom.toLocaleString()}–{rangeTo.toLocaleString()}</span>}</>
               )}
             </p>
           )}
@@ -308,33 +368,16 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
                 isSaved={savedJobIds.has(job.jobId)}
                 onApply={handleApply}
                 onSave={isAuthenticated ? handleSaveJob : undefined}
+                onReport={isAuthenticated ? handleReport : undefined}
+                userVerdict={myReports[job.jobId] ?? null}
+                askFeedback={lastOpenedJobId === job.jobId}
                 detailHref={`/jobs/${job.jobId}`}
               />
             ))}
           </div>
         )}
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-black/8 py-6 pb-20">
-            <button
-              onClick={() => goToPage(Math.max(0, page - 1))}
-              disabled={page === 0}
-              className="border border-black/20 bg-white px-4 py-2 font-mono text-xs font-bold transition-all hover:border-black/40 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              ← Prev
-            </button>
-            <span className="font-mono text-xs text-text-secondary">
-              Page <span className="font-bold text-text-primary">{page + 1}</span> of {totalPages}
-            </span>
-            <button
-              onClick={() => goToPage(Math.min(totalPages - 1, page + 1))}
-              disabled={page >= totalPages - 1}
-              className="border border-black/20 bg-white px-4 py-2 font-mono text-xs font-bold transition-all hover:border-black/40 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Next →
-            </button>
-          </div>
-        )}
+        <Pagination page={page} totalPages={totalPages} hrefFor={hrefForPage} />
       </main>
 
     </div>
