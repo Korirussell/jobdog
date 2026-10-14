@@ -29,6 +29,10 @@ public class UserEntity extends BaseEntity {
     @Column(nullable = false, length = 16)
     private String profileVisibility = "PRIVATE";
 
+    /** Name shown on the public share link; falls back to displayName when blank. */
+    @Column(length = 40)
+    private String shareName;
+
     /** Resume uploads left. Metered because parsing and analysis call an LLM; earned back by confirming job links. */
     @Column(nullable = false)
     private int resumeCredits = 3;
@@ -70,6 +74,14 @@ public class UserEntity extends BaseEntity {
 
     public void setRole(UserRole role) {
         this.role = role;
+    }
+
+    public String getShareName() {
+        return shareName;
+    }
+
+    public void setShareName(String shareName) {
+        this.shareName = shareName;
     }
 
     public String getProfileVisibility() {

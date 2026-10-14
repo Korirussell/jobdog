@@ -8,6 +8,7 @@ interface User {
   email: string;
   displayName: string;
   profileVisibility?: string;
+  shareName?: string | null;
   role?: string;
   // Resume uploads left, and how many more job-link confirmations earn the next one.
   resumeCredits?: number;
@@ -21,7 +22,7 @@ interface AuthContextType {
   register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => void;
   setUserFromOAuth: (user: User) => void;
-  updateProfileVisibility: (visibility: string) => Promise<void>;
+  updateShareName: (name: string) => Promise<void>;
   // Re-reads the signed-in user, e.g. after spending or earning an upload.
   refreshUser: () => Promise<void>;
   // Applies credit state returned by an action without another round trip.
@@ -36,6 +37,7 @@ function toUser(data: {
   email: string;
   displayName: string;
   profileVisibility?: string;
+  shareName?: string | null;
   role?: string;
   resumeCredits?: number;
   reportsToNextCredit?: number;
@@ -45,6 +47,7 @@ function toUser(data: {
     email: data.email,
     displayName: data.displayName,
     profileVisibility: data.profileVisibility,
+    shareName: data.shareName,
     role: data.role,
     resumeCredits: data.resumeCredits,
     reportsToNextCredit: data.reportsToNextCredit,
@@ -107,9 +110,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshUser();
   }, [refreshUser]);
 
-  const updateProfileVisibility = async (visibility: string) => {
-    const data = await api.updateProfile(visibility);
-    setUser((current) => current ? { ...current, profileVisibility: data.profileVisibility } : current);
+  const updateShareName = async (name: string) => {
+    const data = await api.updateProfile({ shareName: name });
+    setUser((current) => current ? { ...current, shareName: data.shareName } : current);
   };
 
   const applyCredits = useCallback((resumeCredits: number, reportsToNextCredit: number) => {
@@ -123,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     register,
     logout,
     setUserFromOAuth,
-    updateProfileVisibility,
+    updateShareName,
     refreshUser,
     applyCredits,
     isAuthenticated: !!user,

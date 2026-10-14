@@ -199,16 +199,18 @@ export class ApiClient {
       email: string;
       displayName: string;
       profileVisibility: string;
+      shareName?: string | null;
       role: string;
       resumeCredits: number;
       reportsToNextCredit: number;
     }>('/api/v1/auth/me');
   }
 
-  async updateProfile(profileVisibility: string) {
-    return this.request<{ userId: string; email: string; displayName: string; profileVisibility: string }>('/api/v1/auth/me', {
+  // Omitted fields are left unchanged; an empty shareName clears it.
+  async updateProfile(patch: { profileVisibility?: string; shareName?: string }) {
+    return this.request<{ userId: string; email: string; displayName: string; profileVisibility: string; shareName?: string | null }>('/api/v1/auth/me', {
       method: 'PATCH',
-      body: JSON.stringify({ profileVisibility }),
+      body: JSON.stringify(patch),
     });
   }
 
@@ -287,22 +289,6 @@ export class ApiClient {
     return this.request<void>(`/api/v1/resumes/${resumeId}`, { method: 'DELETE' });
   }
 
-  async getPublicProfile(userId: string) {
-    return this.request<{
-      userId: string;
-      displayName: string;
-      topScore?: {
-        overallScore: number;
-        atsScore: number;
-        sectionScores: Record<string, number>;
-        strengths: string[];
-        summaryVerdict: string;
-        userLevel: string;
-        targetRole: string;
-        analyzedAt: string;
-      };
-    }>(`/api/v1/public/profile/${userId}`);
-  }
 
   // Applications
   async createApplication(jobId: string, resumeId: string) {

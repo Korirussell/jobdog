@@ -65,13 +65,22 @@ public class AuthService {
     }
 
     @Transactional
-    public Map<String, Object> updateProfileVisibility(UUID userId, String profileVisibility) {
+    public Map<String, Object> updateProfile(UUID userId, String profileVisibility, String shareName) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         if (profileVisibility != null) {
             user.setProfileVisibility(profileVisibility);
         }
+        if (shareName != null) {
+            user.setShareName(cleanShareName(shareName));
+        }
         return toProfileMap(userRepository.save(user));
+    }
+
+    /** Collapses whitespace and drops control characters; blank clears the name. */
+    private static String cleanShareName(String raw) {
+        String cleaned = raw.replaceAll("[\\p{Cntrl}\\s]+", " ").trim();
+        return cleaned.isEmpty() ? null : cleaned;
     }
 
     private Map<String, Object> toProfileMap(UserEntity user) {
@@ -80,6 +89,7 @@ public class AuthService {
         profile.put("email", user.getEmail());
         profile.put("displayName", user.getDisplayName());
         profile.put("profileVisibility", user.getProfileVisibility());
+        profile.put("shareName", user.getShareName());
         profile.put("role", user.getRole().name());
         profile.put("resumeCredits", user.getResumeCredits());
         profile.put("reportsToNextCredit", JobReportService.REPORTS_PER_CREDIT - user.getReportCreditProgress());

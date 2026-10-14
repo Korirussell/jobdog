@@ -1,7 +1,5 @@
 package dev.jobdog.backend.user;
 
-import dev.jobdog.backend.auth.AuthenticatedUser;
-import dev.jobdog.backend.auth.CurrentUser;
 import dev.jobdog.backend.resume.ResumeAnalysisRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,20 +11,22 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * The page behind a shared link. No login is needed to view it: handing someone the link
+ * (the Share button) is the opt-in. The id in the URL is an unguessable UUID, and only a
+ * name, the best resume score and its summary are exposed, never the email or the resume.
+ */
 @RestController
 @RequestMapping("/api/v1/public/profile")
 public class PublicProfileController {
 
     private final UserRepository userRepository;
     private final ResumeAnalysisRepository analysisRepository;
-    private final CurrentUser currentUser;
 
     public PublicProfileController(UserRepository userRepository,
-                                   ResumeAnalysisRepository analysisRepository,
-                                   CurrentUser currentUser) {
+                                   ResumeAnalysisRepository analysisRepository) {
         this.userRepository = userRepository;
         this.analysisRepository = analysisRepository;
-        this.currentUser = currentUser;
     }
 
     @GetMapping("/{userId}")
@@ -36,28 +36,21 @@ public class PublicProfileController {
 
         Map<String, Object> profile = new LinkedHashMap<>();
         profile.put("userId", user.getId());
-        profile.put("displayName", user.getDisplayName());
+        String shareName = user.getShareName();
+        profile.put("displayName", shareName != null && !shareName.isBlank() ? shareName : user.getDisplayName());
 
-        // "PRIVATE"/"FRIENDS" both hide the score from everyone but the owner — there's
-        // no connections graph backing "FRIENDS" yet, so treat it the same as private
-        // rather than silently exposing scores to the whole internet.
-        boolean isOwner = currentUser.get().map(AuthenticatedUser::userId).map(userId::equals).orElse(false);
-        boolean scoreVisible = isOwner || "PUBLIC".equals(user.getProfileVisibility());
-
-        if (scoreVisible) {
-            analysisRepository.findTopByResume_User_IdOrderByOverallScoreDescAnalyzedAtDesc(userId).ifPresent(analysis -> {
-                Map<String, Object> score = new LinkedHashMap<>();
-                score.put("overallScore", analysis.getOverallScore());
-                score.put("atsScore", analysis.getAtsScore());
-                score.put("sectionScores", analysis.getSectionScores());
-                score.put("strengths", analysis.getStrengths());
-                score.put("summaryVerdict", analysis.getSummaryVerdict());
-                score.put("userLevel", analysis.getUserLevel());
-                score.put("targetRole", analysis.getTargetRole());
-                score.put("analyzedAt", analysis.getAnalyzedAt());
-                profile.put("topScore", score);
-            });
-        }
+        analysisRepository.findTopByResume_User_IdOrderByOverallScoreDescAnalyzedAtDesc(userId).ifPresent(analysis -> {
+            Map<String, Object> score = new LinkedHashMap<>();
+            score.put("overallScore", analysis.getOverallScore());
+            score.put("atsScore", analysis.getAtsScore());
+            score.put("sectionScores", analysis.getSectionScores());
+            score.put("strengths", analysis.getStrengths());
+            score.put("summaryVerdict", analysis.getSummaryVerdict());
+            score.put("userLevel", analysis.getUserLevel());
+            score.put("targetRole", analysis.getTargetRole());
+            score.put("analyzedAt", analysis.getAnalyzedAt());
+            profile.put("topScore", score);
+        });
 
         return ResponseEntity.ok(profile);
     }
