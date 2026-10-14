@@ -65,7 +65,7 @@ public class AuthService {
     }
 
     @Transactional
-    public Map<String, Object> updateProfile(UUID userId, String profileVisibility, String shareName) {
+    public Map<String, Object> updateProfile(UUID userId, String profileVisibility, String shareName, Boolean shareResume) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         if (profileVisibility != null) {
@@ -73,6 +73,9 @@ public class AuthService {
         }
         if (shareName != null) {
             user.setShareName(cleanShareName(shareName));
+        }
+        if (shareResume != null) {
+            user.setShareResume(shareResume);
         }
         return toProfileMap(userRepository.save(user));
     }
@@ -90,6 +93,7 @@ public class AuthService {
         profile.put("displayName", user.getDisplayName());
         profile.put("profileVisibility", user.getProfileVisibility());
         profile.put("shareName", user.getShareName());
+        profile.put("shareResume", user.isShareResume());
         profile.put("role", user.getRole().name());
         profile.put("resumeCredits", user.getResumeCredits());
         profile.put("reportsToNextCredit", JobReportService.REPORTS_PER_CREDIT - user.getReportCreditProgress());

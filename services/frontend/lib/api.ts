@@ -200,6 +200,7 @@ export class ApiClient {
       displayName: string;
       profileVisibility: string;
       shareName?: string | null;
+      shareResume?: boolean;
       role: string;
       resumeCredits: number;
       reportsToNextCredit: number;
@@ -207,8 +208,8 @@ export class ApiClient {
   }
 
   // Omitted fields are left unchanged; an empty shareName clears it.
-  async updateProfile(patch: { profileVisibility?: string; shareName?: string }) {
-    return this.request<{ userId: string; email: string; displayName: string; profileVisibility: string; shareName?: string | null }>('/api/v1/auth/me', {
+  async updateProfile(patch: { profileVisibility?: string; shareName?: string; shareResume?: boolean }) {
+    return this.request<{ userId: string; email: string; displayName: string; profileVisibility: string; shareName?: string | null; shareResume?: boolean }>('/api/v1/auth/me', {
       method: 'PATCH',
       body: JSON.stringify(patch),
     });

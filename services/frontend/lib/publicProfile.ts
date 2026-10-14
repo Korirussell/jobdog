@@ -3,9 +3,13 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+import type { AtsParsedSections } from './api';
+
 export interface PublicProfile {
   userId: string;
   displayName: string;
+  // True when the owner opted in to sharing the resume PDF and ATS view.
+  resumeShared?: boolean;
   topScore?: {
     overallScore: number;
     atsScore: number;
@@ -15,7 +19,13 @@ export interface PublicProfile {
     userLevel: string;
     targetRole: string;
     analyzedAt: string;
+    atsParsedSections?: AtsParsedSections;
+    atsIssues?: string[];
   };
+}
+
+export function sharedResumeUrl(userId: string): string {
+  return `${API_BASE}/api/v1/public/profile/${userId}/resume`;
 }
 
 export async function fetchPublicProfile(userId: string): Promise<PublicProfile | null> {

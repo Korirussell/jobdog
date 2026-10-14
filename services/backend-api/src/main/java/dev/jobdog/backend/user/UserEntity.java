@@ -33,6 +33,10 @@ public class UserEntity extends BaseEntity {
     @Column(length = 40)
     private String shareName;
 
+    /** Opt-in: expose the resume PDF and ATS view on the public share link. */
+    @Column(nullable = false)
+    private boolean shareResume = false;
+
     /** Resume uploads left. Metered because parsing and analysis call an LLM; earned back by confirming job links. */
     @Column(nullable = false)
     private int resumeCredits = 3;
@@ -74,6 +78,14 @@ public class UserEntity extends BaseEntity {
 
     public void setRole(UserRole role) {
         this.role = role;
+    }
+
+    public boolean isShareResume() {
+        return shareResume;
+    }
+
+    public void setShareResume(boolean shareResume) {
+        this.shareResume = shareResume;
     }
 
     public String getShareName() {

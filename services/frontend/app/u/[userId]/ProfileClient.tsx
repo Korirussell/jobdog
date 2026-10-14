@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import TopBar from '@/components/TopBar';
-import type { PublicProfile } from '@/lib/publicProfile';
+import { sharedResumeUrl, type PublicProfile } from '@/lib/publicProfile';
 import { getTier } from '@/lib/tiers';
 
 function ScoreRing({ score, size = 96 }: { score: number; size?: number }) {
@@ -44,8 +44,66 @@ function ScoreRing({ score, size = 96 }: { score: number; size?: number }) {
   );
 }
 
+function AtsView({ score }: { score: NonNullable<PublicProfile['topScore']> }) {
+  const sections = score.atsParsedSections;
+  const fields: { key: keyof NonNullable<typeof sections>; label: string }[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'contact', label: 'Contact Info' },
+    { key: 'education', label: 'Education' },
+    { key: 'experience', label: 'Experience' },
+    { key: 'projects', label: 'Projects' },
+    { key: 'skills', label: 'Skills' },
+    { key: 'certifications', label: 'Certifications' },
+  ];
+  return (
+    <div className="space-y-4">
+      <div className="border-2 border-black/10 p-5">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-text-tertiary">What an ATS extracts</p>
+        <p className="mt-1 font-mono text-xs text-text-tertiary">ATS readability: <strong>{score.atsScore}/100</strong></p>
+        <div className="mt-4 space-y-3">
+          {sections ? fields.map(({ key, label }) => {
+            const val = sections[key];
+            if (!val || (Array.isArray(val) && val.length === 0)) return null;
+            return (
+              <div key={key} className="border border-black/8 p-3">
+                <p className="mb-1.5 font-mono text-[10px] font-bold uppercase text-text-tertiary">{label}</p>
+                {Array.isArray(val) ? (
+                  <ul className="space-y-1">
+                    {val.map((item, i) => (
+                      <li key={i} className="flex items-start gap-1.5 font-mono text-xs text-text-secondary">
+                        <span className="mt-0.5 text-text-tertiary">·</span>{item}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="font-mono text-xs text-text-secondary">{val}</p>
+                )}
+              </div>
+            );
+          }) : (
+            <p className="font-mono text-xs text-text-tertiary">No ATS parse is available for this resume.</p>
+          )}
+        </div>
+      </div>
+      {score.atsIssues && score.atsIssues.length > 0 && (
+        <div className="border border-orange-200 bg-orange-50 p-4">
+          <p className="mb-2 font-mono text-[10px] font-bold uppercase text-orange-700">ATS issues</p>
+          <ul className="space-y-1.5">
+            {score.atsIssues.map((issue, i) => (
+              <li key={i} className="flex items-start gap-2 font-mono text-xs text-orange-800">
+                <span className="mt-0.5 shrink-0">→</span>{issue}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProfileClient({ profile }: { profile: PublicProfile | null }) {
   const [linkCopied, setLinkCopied] = useState(false);
+  const [tab, setTab] = useState<'score' | 'ats'>('score');
 
   const handleCopyLink = async () => {
     try {
@@ -87,7 +145,33 @@ export default function ProfileClient({ profile }: { profile: PublicProfile | nu
               </button>
             </div>
 
-            {profile.topScore ? (
+            {profile.resumeShared && (
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={sharedResumeUrl(profile.userId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="border-2 border-black bg-primary px-4 py-1.5 font-mono text-xs font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
+                >
+                  View resume ↗
+                </a>
+                <div className="ml-auto flex border-2 border-black/15">
+                  {([['score', 'Score'], ['ats', 'ATS view']] as const).map(([id, label]) => (
+                    <button
+                      key={id}
+                      onClick={() => setTab(id)}
+                      className={`px-3 py-1.5 font-mono text-xs font-bold ${tab === id ? 'bg-black text-white' : 'bg-white text-text-secondary'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {profile.topScore && tab === 'ats' && profile.resumeShared ? (
+              <AtsView score={profile.topScore} />
+            ) : profile.topScore ? (
               <>
                 {/* Score card */}
                 {(() => {

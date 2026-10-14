@@ -8,7 +8,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SettingsPage() {
-  const { user, logout, updateShareName } = useAuth();
+  const { user, logout, updateShareName, updateShareResume } = useAuth();
   const router = useRouter();
   const [shareName, setShareName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -17,6 +17,20 @@ export default function SettingsPage() {
   useEffect(() => {
     setShareName(user?.shareName ?? '');
   }, [user?.shareName]);
+
+  const [sharingResume, setSharingResume] = useState(false);
+
+  const handleShareResume = async (next: boolean) => {
+    setSharingResume(true);
+    setSaveMessage('');
+    try {
+      await updateShareResume(next);
+    } catch {
+      setSaveMessage('Failed to save. Please try again.');
+    } finally {
+      setSharingResume(false);
+    }
+  };
 
   const dirty = shareName.trim() !== (user?.shareName ?? '');
 
@@ -77,6 +91,18 @@ export default function SettingsPage() {
                   </p>
                   {saveMessage && <p className="mt-1 font-mono text-xs text-text-secondary">{saveMessage}</p>}
                 </div>
+                <label className="flex cursor-pointer items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={user?.shareResume ?? false}
+                    disabled={sharingResume}
+                    onChange={(e) => handleShareResume(e.target.checked)}
+                    className="mt-1"
+                  />
+                  <span className="font-mono text-xs text-text-secondary">
+                    <strong>SHARE_RESUME</strong> Let people with your link open your resume PDF and see its ATS view. Your resume includes whatever contact details you put on it. Off by default.
+                  </span>
+                </label>
                 <button
                   onClick={() => { logout(); router.replace('/'); }}
                   className="border-2 border-red-500 bg-white px-6 py-2 font-mono text-sm font-bold text-red-600 transition-all hover:bg-red-500 hover:text-white"

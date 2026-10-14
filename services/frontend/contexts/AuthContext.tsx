@@ -9,6 +9,7 @@ interface User {
   displayName: string;
   profileVisibility?: string;
   shareName?: string | null;
+  shareResume?: boolean;
   role?: string;
   // Resume uploads left, and how many more job-link confirmations earn the next one.
   resumeCredits?: number;
@@ -23,6 +24,7 @@ interface AuthContextType {
   logout: () => void;
   setUserFromOAuth: (user: User) => void;
   updateShareName: (name: string) => Promise<void>;
+  updateShareResume: (share: boolean) => Promise<void>;
   // Re-reads the signed-in user, e.g. after spending or earning an upload.
   refreshUser: () => Promise<void>;
   // Applies credit state returned by an action without another round trip.
@@ -38,6 +40,7 @@ function toUser(data: {
   displayName: string;
   profileVisibility?: string;
   shareName?: string | null;
+  shareResume?: boolean;
   role?: string;
   resumeCredits?: number;
   reportsToNextCredit?: number;
@@ -48,6 +51,7 @@ function toUser(data: {
     displayName: data.displayName,
     profileVisibility: data.profileVisibility,
     shareName: data.shareName,
+    shareResume: data.shareResume,
     role: data.role,
     resumeCredits: data.resumeCredits,
     reportsToNextCredit: data.reportsToNextCredit,
@@ -115,6 +119,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser((current) => current ? { ...current, shareName: data.shareName } : current);
   };
 
+  const updateShareResume = async (share: boolean) => {
+    const data = await api.updateProfile({ shareResume: share });
+    setUser((current) => current ? { ...current, shareResume: data.shareResume } : current);
+  };
+
   const applyCredits = useCallback((resumeCredits: number, reportsToNextCredit: number) => {
     setUser((current) => current ? { ...current, resumeCredits, reportsToNextCredit } : current);
   }, []);
@@ -127,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     setUserFromOAuth,
     updateShareName,
+    updateShareResume,
     refreshUser,
     applyCredits,
     isAuthenticated: !!user,

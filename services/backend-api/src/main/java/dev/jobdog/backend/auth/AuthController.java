@@ -42,6 +42,6 @@ public class AuthController {
     @PatchMapping("/me")
     public ResponseEntity<Map<String, Object>> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
         AuthenticatedUser user = currentUser.require();
-        return ResponseEntity.ok(authService.updateProfile(user.userId(), request.profileVisibility(), request.shareName()));
+        return ResponseEntity.ok(authService.updateProfile(user.userId(), request.profileVisibility(), request.shareName(), request.shareResume()));
     }
 }
