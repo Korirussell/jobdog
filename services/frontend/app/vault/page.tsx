@@ -123,7 +123,7 @@ function BulletCard({ bullet, index }: { bullet: BulletFeedback; index: number }
 type AnalysisTab = 'overview' | 'atsview' | 'recruiter' | 'bullets';
 
 export default function VaultPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, updateShareResume } = useAuth();
   // undefined until the profile has loaded; never block an upload on a guess.
   const outOfUploads = user?.resumeCredits !== undefined && user.resumeCredits <= 0;
 
@@ -319,6 +319,7 @@ export default function VaultPage() {
               </p>
             </div>
             {user && (
+              <div className="flex shrink-0 flex-col items-end gap-1.5">
               <a
                 href={`/u/${user.userId}`}
                 target="_blank"
@@ -327,6 +328,15 @@ export default function VaultPage() {
               >
                 🔗 Share Profile
               </a>
+              <label className="flex cursor-pointer items-center gap-1.5 font-mono text-[10px] text-text-secondary">
+                <input
+                  type="checkbox"
+                  checked={user.shareResume ?? false}
+                  onChange={(e) => { updateShareResume(e.target.checked).catch(() => {}); }}
+                />
+                Show my resume + ATS view on the link
+              </label>
+              </div>
             )}
           </div>
 

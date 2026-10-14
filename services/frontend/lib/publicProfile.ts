@@ -31,7 +31,7 @@ export function sharedResumeUrl(userId: string): string {
 export async function fetchPublicProfile(userId: string): Promise<PublicProfile | null> {
   if (!UUID.test(userId)) return null;
   try {
-    const res = await fetch(`${API_BASE}/api/v1/public/profile/${userId}`, { next: { revalidate: 300 } });
+    const res = await fetch(`${API_BASE}/api/v1/public/profile/${userId}`, { next: { revalidate: 30 } });
     if (!res.ok) return null;
     return (await res.json()) as PublicProfile;
   } catch {

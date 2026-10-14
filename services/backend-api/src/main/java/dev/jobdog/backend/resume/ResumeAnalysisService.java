@@ -158,7 +158,9 @@ public class ResumeAnalysisService {
                     JsonNode val = e.getValue();
                     if (val.isArray()) {
                         List<String> items = new ArrayList<>();
-                        val.forEach(n -> items.add(n.asText()));
+                        val.forEach(n -> {
+                            if (!recommendsSummarySection(n.asText())) items.add(n.asText());
+                        });
                         parsedSections.put(e.getKey(), items);
                     } else {
                         parsedSections.put(e.getKey(), val.asText(""));
@@ -199,8 +201,21 @@ public class ResumeAnalysisService {
         JsonNode arr = node.path(field);
         if (!arr.isArray()) return Collections.emptyList();
         List<String> result = new ArrayList<>();
-        arr.forEach(n -> result.add(n.asText()));
+        arr.forEach(n -> {
+            if (!recommendsSummarySection(n.asText())) result.add(n.asText());
+        });
         return result;
+    }
+
+    // Summary/objective sections are not wanted in this grader's advice (the prompt says so;
+    // this is the backstop for when the model suggests one anyway).
+    private static final java.util.regex.Pattern SUMMARY_SECTION = java.util.regex.Pattern.compile(
+            "(?i)\\b(professional summary|career summary|summary (statement|section)|"
+                    + "objective( statement| section)?|personal statement|profile (statement|section|summary)|"
+                    + "add a (brief )?summary)\\b");
+
+    static boolean recommendsSummarySection(String text) {
+        return text != null && SUMMARY_SECTION.matcher(text).find();
     }
 
     private String stripCodeFences(String text) {
@@ -287,6 +302,19 @@ public class ResumeAnalysisService {
                 
                 A typical intern resume scores 40-60. Include up to 10 bullets in bullet_feedback.
                 For recruiter_take, cover every major section present in the resume.
+
+                Rules:
+                - NEVER recommend adding a summary, objective, profile or personal statement. Recruiters skip them and
+                  they waste space on a one-page resume. Do not list one in missing_sections, improvements or ats_issues,
+                  do not lower any score because one is absent, and do not give it credit if present.
+                - missing_sections may only name Education, Experience or Projects, and Skills, and only when truly absent.
+                  An intern with no work history but strong projects is not missing Experience.
+                - Judge on evidence: shipped projects with real users or scale, measurable results, depth and relevance of
+                  the tech stack to the target role, internships and the company's bar, GPA only if listed and notable.
+                - Penalize vague bullets, duplicated verbs, tutorial-clone projects with no differentiation, walls of
+                  text, skills lists padded with things never used in a project or job, and multi-page length for new grads.
+                - impact_language scores bullets for action verb, specific scope, and a metric or concrete outcome.
+                - Improvements must be concrete edits to this resume's own content, never generic resume advice.
                 """, userLevel, levelLabel, targetRole, resumeText, levelLabel, targetRole);
     }
 
