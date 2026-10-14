@@ -16,6 +16,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 @Component
@@ -59,6 +61,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
+        recordActivity(user.getId());
+
         AuthenticatedUser authenticatedUser = new AuthenticatedUser(user.getId(), user.getEmail(), user.getRole());
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 authenticatedUser,
@@ -68,5 +72,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         SecurityContextHolder.getContext().setAuthentication(authentication);
         filterChain.doFilter(request, response);
+    }
+
+    /** How often one user's "last seen" is rewritten: often enough to be useful, rarely enough to cost nothing. */
+    private static final Duration LAST_SEEN_THROTTLE = Duration.ofMinutes(10);
+
+    /** Never allowed to fail the request it is observing. */
+    private void recordActivity(UUID userId) {
+        try {
+            Instant now = Instant.now();
+            userRepository.touchLastSeen(userId, now, now.minus(LAST_SEEN_THROTTLE));
+        } catch (RuntimeException ignored) {
+            // Tracking is best-effort.
+        }
     }
 }

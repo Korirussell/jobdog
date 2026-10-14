@@ -97,7 +97,13 @@ func (r *JobRepository) UpsertJob(job *models.Job) (id string, descriptionAccept
 				WHEN length(EXCLUDED.description_text) >= length(jobs.description_text) THEN EXCLUDED.description_hash
 				ELSE jobs.description_hash
 			END,
-			status = 'ACTIVE',
+			-- A posting found dead (liveness check, or user reports) stays closed for 14
+			-- days. An aggregator README keeps linking to a dead job until someone edits
+			-- it, so reopening unconditionally made it flap open and closed every cycle.
+			status = CASE
+				WHEN jobs.dead_at IS NOT NULL AND jobs.dead_at > NOW() - INTERVAL '14 days' THEN jobs.status
+				ELSE 'ACTIVE'
+			END,
 			experience_level = CASE
 				WHEN length(EXCLUDED.description_text) >= length(jobs.description_text) THEN EXCLUDED.experience_level
 				ELSE jobs.experience_level
@@ -347,7 +353,10 @@ type ActiveJob struct {
 func (r *JobRepository) GetActiveJobURLs() ([]ActiveJob, error) {
 	query := `
 		SELECT id, source_url FROM jobs
-		WHERE status = 'ACTIVE' AND source LIKE 'github-%'
+		WHERE status = 'ACTIVE' AND (
+			source LIKE 'github-%'
+			OR id IN (SELECT job_id FROM job_reports WHERE verdict = 'DEAD')
+		)
 	`
 
 	rows, err := r.db.Query(query)
@@ -373,7 +382,7 @@ func (r *JobRepository) GetActiveJobURLs() ([]ActiveJob, error) {
 }
 
 func (r *JobRepository) MarkJobInactive(id string) error {
-	query := `UPDATE jobs SET status = 'CLOSED', updated_at = $1 WHERE id = $2`
+	query := `UPDATE jobs SET status = 'CLOSED', dead_at = $1, updated_at = $1 WHERE id = $2`
 
 	_, err := r.db.Exec(query, time.Now(), id)
 	if err != nil {

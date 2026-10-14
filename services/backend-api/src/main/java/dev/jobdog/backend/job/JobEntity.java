@@ -86,6 +86,10 @@ public class JobEntity extends BaseEntity {
     @Column(nullable = false)
     private Instant scrapedAt;
 
+    /** Set when the posting is found dead; scrapes won't reopen it for 14 days. */
+    @Column
+    private Instant deadAt;
+
     public String getSource() {
         return source;
     }
@@ -276,5 +280,13 @@ public class JobEntity extends BaseEntity {
 
     public void setScrapedAt(Instant scrapedAt) {
         this.scrapedAt = scrapedAt;
+    }
+
+    public Instant getDeadAt() {
+        return deadAt;
+    }
+
+    public void setDeadAt(Instant deadAt) {
+        this.deadAt = deadAt;
     }
 }

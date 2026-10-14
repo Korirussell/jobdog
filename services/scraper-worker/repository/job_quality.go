@@ -232,3 +232,44 @@ func (r *JobRepository) SetRoleCategory(category string, ids []string) (int64, e
 	}
 	return result.RowsAffected()
 }
+
+// ReportStat summarises user feedback on one company's listings from one source.
+type ReportStat struct {
+	Source  string
+	Company string
+	Dead    int
+	Works   int
+	// ClosedDead is how many of the company's listings are now closed as dead.
+	ClosedDead int
+}
+
+// ReportDigest ranks companies by how many dead-link reports their listings have
+// drawn. A source that keeps producing dead links is a scraper to fix, which is
+// the point of letting users tell us.
+func (r *JobRepository) ReportDigest(limit int) ([]ReportStat, error) {
+	rows, err := r.db.Query(`
+		SELECT j.source, j.company,
+			count(*) FILTER (WHERE r.verdict = 'DEAD'),
+			count(*) FILTER (WHERE r.verdict = 'WORKS'),
+			count(DISTINCT j.id) FILTER (WHERE j.status = 'CLOSED' AND j.dead_at IS NOT NULL)
+		FROM job_reports r
+		JOIN jobs j ON j.id = r.job_id
+		GROUP BY j.source, j.company
+		ORDER BY 3 DESC, 4 DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query report digest: %w", err)
+	}
+	defer rows.Close()
+
+	var out []ReportStat
+	for rows.Next() {
+		var s ReportStat
+		if err := rows.Scan(&s.Source, &s.Company, &s.Dead, &s.Works, &s.ClosedDead); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}

@@ -144,6 +144,14 @@ func main() {
 	for _, name := range silent {
 		fmt.Fprintln(w, name)
 	}
+	if reports, err := repository.NewJobRepository(db).ReportDigest(*top); err == nil && len(reports) > 0 {
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "USER REPORTS BY COMPANY — dead-link reports point at a scraper or source to fix")
+		fmt.Fprintln(w, "company\tsource\tdead\tworks\tclosed as dead")
+		for _, r := range reports {
+			fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%d\n", r.Company, r.Source, r.Dead, r.Works, r.ClosedDead)
+		}
+	}
 	w.Flush()
 }
 

@@ -79,6 +79,14 @@ public class ResumeService {
             throw new IllegalArgumentException("File does not appear to be a valid PDF");
         }
 
+        // Metered: parsing and analysis call an LLM. Spent only now, after the file has
+        // proven to be a PDF, so a bad upload doesn't cost anything; the update is
+        // atomic, so two simultaneous uploads can't both spend the last credit.
+        if (userRepository.consumeResumeCredit(user.getId()) == 0) {
+            throw new InsufficientCreditsException(
+                    "You're out of resume uploads. Confirm whether a few job links work to earn more.");
+        }
+
         String checksum = sha256(bytes);
         String storageKey = buildStorageKey(user.getId(), file.getOriginalFilename());
 

@@ -1,5 +1,6 @@
 package dev.jobdog.backend.common.api;
 
+import dev.jobdog.backend.resume.InsufficientCreditsException;
 import dev.jobdog.backend.resume.ResumeInUseException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -33,6 +34,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResumeInUseException.class)
     public ResponseEntity<ApiErrorResponse> handleResumeInUse(ResumeInUseException exception, HttpServletRequest request) {
         return buildResponse(HttpStatus.CONFLICT, exception.getMessage(), request.getRequestURI());
+    }
+
+    @ExceptionHandler(InsufficientCreditsException.class)
+    public ResponseEntity<ApiErrorResponse> handleInsufficientCredits(InsufficientCreditsException exception,
+                                                                      HttpServletRequest request) {
+        return buildResponse(HttpStatus.PAYMENT_REQUIRED, exception.getMessage(), request.getRequestURI());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

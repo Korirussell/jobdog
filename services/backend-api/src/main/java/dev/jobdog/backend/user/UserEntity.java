@@ -7,6 +7,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
+import java.time.Instant;
+
 @Entity
 @Table(name = "users")
 public class UserEntity extends BaseEntity {
@@ -26,6 +28,17 @@ public class UserEntity extends BaseEntity {
 
     @Column(nullable = false, length = 16)
     private String profileVisibility = "PRIVATE";
+
+    /** Resume uploads left. Metered because parsing and analysis call an LLM; earned back by confirming job links. */
+    @Column(nullable = false)
+    private int resumeCredits = 3;
+
+    /** Job-link confirmations counted toward the next credit. */
+    @Column(nullable = false)
+    private int reportCreditProgress = 0;
+
+    @Column
+    private Instant lastSeenAt;
 
     public String getEmail() {
         return email;
@@ -65,5 +78,17 @@ public class UserEntity extends BaseEntity {
 
     public void setProfileVisibility(String profileVisibility) {
         this.profileVisibility = profileVisibility;
+    }
+
+    public int getResumeCredits() {
+        return resumeCredits;
+    }
+
+    public int getReportCreditProgress() {
+        return reportCreditProgress;
+    }
+
+    public Instant getLastSeenAt() {
+        return lastSeenAt;
     }
 }

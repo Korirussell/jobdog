@@ -27,8 +27,28 @@ public final class CompanyTier {
             "twilio", "block", "square", "mongodb", "elastic", "hashicorp",
             "gitlab", "github", "reddit", "pinterest", "snap", "spotify",
             "roblox", "epic games", "unity", "bloomberg", "two sigma",
+            "tesla", "spacex", "anduril", "intel", "amd", "qualcomm", "broadcom", "cisco", "ibm",
+            "tiktok", "bytedance", "twitch", "autodesk", "electronic arts", "expedia group",
+            "shopify", "duolingo", "applied intuition", "cerebras", "shield ai", "verkada",
+            "klaviyo", "affirm", "astera labs", "cadence", "cadence design systems",
             "jane street", "citadel", "hudson river trading", "jump trading",
             "d.e. shaw", "sig", "susquehanna international group"
+    );
+
+    // Recognisable employers that aren't tech-first: chips, defense and aerospace, finance,
+    // industrial. Lowercased exact company names as scraped.
+    private static final Set<String> NOTABLE = Set.of(
+            "micron", "marvell", "applied materials", "kla", "globalfoundries", "garmin",
+            "hewlett packard enterprise", "hpe", "hp", "motorola", "honeywell", "rockwell automation",
+            "ge aerospace", "ge vernova", "general motors", "lockheed martin", "northrop grumman", "rtx",
+            "raytheon", "the boeing company", "boeing", "general dynamics",
+            "general dynamics information technology", "general dynamics mission systems", "leidos",
+            "l3harris technologies", "bae systems", "booz allen", "blue origin",
+            "johns hopkins applied physics laboratory", "the aerospace corporation",
+            "visa", "mastercard", "american express", "capital one", "jpmorgan chase", "jpmorgan chase & co.",
+            "goldman sachs", "morgan stanley", "citi", "citigroup", "fidelity investments", "vanguard",
+            "state street", "bny", "barclays", "td bank", "royal bank of canada", "wells fargo",
+            "bank of america", "paypal"
     );
 
     private CompanyTier() {
@@ -47,8 +67,22 @@ public final class CompanyTier {
         return switch (tier.trim().toUpperCase()) {
             case "FAANG" -> FAANG;
             case "UNICORN" -> UNICORN;
+            case "NOTABLE" -> NOTABLE;
+            case "ANY" -> ANY;
             default -> Set.of();
         };
+    }
+
+    // Every named company, any tier: the "well-known" filter.
+    private static final Set<String> ANY = unionOf(FAANG, UNICORN, NOTABLE);
+
+    @SafeVarargs
+    private static Set<String> unionOf(Set<String>... sets) {
+        java.util.HashSet<String> all = new java.util.HashSet<>();
+        for (Set<String> set : sets) {
+            all.addAll(set);
+        }
+        return Set.copyOf(all);
     }
 
     public static String lookup(String company) {
@@ -61,6 +95,9 @@ public final class CompanyTier {
         }
         if (UNICORN.contains(normalized)) {
             return "UNICORN";
+        }
+        if (NOTABLE.contains(normalized)) {
+            return "NOTABLE";
         }
         return null;
     }

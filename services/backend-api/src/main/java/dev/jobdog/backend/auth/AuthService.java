@@ -1,5 +1,6 @@
 package dev.jobdog.backend.auth;
 
+import dev.jobdog.backend.jobreport.JobReportService;
 import dev.jobdog.backend.user.UserEntity;
 import dev.jobdog.backend.user.UserRepository;
 import dev.jobdog.backend.user.UserRole;
@@ -79,6 +80,9 @@ public class AuthService {
         profile.put("email", user.getEmail());
         profile.put("displayName", user.getDisplayName());
         profile.put("profileVisibility", user.getProfileVisibility());
+        profile.put("role", user.getRole().name());
+        profile.put("resumeCredits", user.getResumeCredits());
+        profile.put("reportsToNextCredit", JobReportService.REPORTS_PER_CREDIT - user.getReportCreditProgress());
         return profile;
     }
 }
