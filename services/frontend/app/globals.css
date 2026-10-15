@@ -197,6 +197,8 @@
 
 html {
   scroll-behavior: smooth;
+  /* A stray wide element must never widen the page: iOS Safari would zoom the whole site out to fit it. */
+  overflow-x: clip;
 }
 
 body {

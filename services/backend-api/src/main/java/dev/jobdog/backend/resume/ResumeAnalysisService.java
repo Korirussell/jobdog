@@ -218,6 +218,28 @@ public class ResumeAnalysisService {
         return text != null && SUMMARY_SECTION.matcher(text).find();
     }
 
+    /** Drops summary-section advice from a stored list; used when serving analyses saved before the rule existed. */
+    public static List<String> withoutSummaryAdvice(List<String> items) {
+        if (items == null) return null;
+        List<String> kept = new ArrayList<>();
+        for (String item : items) {
+            if (!recommendsSummarySection(item)) kept.add(item);
+        }
+        return kept;
+    }
+
+    /** Same for a free-text verdict: drops only the sentences that push a summary section. */
+    public static String withoutSummaryAdvice(String verdict) {
+        if (verdict == null || !recommendsSummarySection(verdict)) return verdict;
+        StringBuilder kept = new StringBuilder();
+        for (String sentence : verdict.split("(?<=[.!?])\\s+")) {
+            if (recommendsSummarySection(sentence)) continue;
+            if (kept.length() > 0) kept.append(' ');
+            kept.append(sentence);
+        }
+        return kept.toString();
+    }
+
     private String stripCodeFences(String text) {
         if (text == null) return "{}";
         String trimmed = text.trim();

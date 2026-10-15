@@ -127,18 +127,18 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-3 sm:h-16 sm:gap-4 sm:px-6">
 
           {/* ── Left: Logo ── */}
-          <Link href="/" className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-80">
+          <Link href="/" className="flex min-w-0 items-center gap-2 transition-opacity hover:opacity-80 sm:shrink-0 sm:gap-2.5">
             <Image
               src="/assets/jobdog.png"
               alt="JobDog"
               width={40}
               height={40}
-              className="pixelated"
+              className="pixelated h-8 w-8 shrink-0 sm:h-10 sm:w-10"
               priority
             />
             <div className="flex flex-col leading-none">
-              <span className="font-mono text-base font-bold text-text-primary">jobdog.dev</span>
-              <span className="font-mono text-[10px] text-text-tertiary">intern jobs · new grad</span>
+              <span className="truncate font-mono text-sm font-bold text-text-primary sm:text-base">jobdog.dev</span>
+              <span className="hidden font-mono text-[10px] text-text-tertiary sm:block">intern jobs · new grad</span>
             </div>
           </Link>
 
@@ -174,7 +174,7 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
           </nav>
 
           {/* ── Right: Auth ── */}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
 
             {/* Dark mode toggle */}
             <button
@@ -239,7 +239,7 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
                     </Link>
                     <Link
                       href="/login"
-                      className="flex h-9 items-center justify-center border-2 border-black bg-primary px-3 font-mono text-xs font-bold text-text-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
+                      className="hidden h-9 items-center justify-center border-2 border-black bg-primary px-3 font-mono text-xs font-bold text-text-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:flex transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
                     >
                       Sign up →
                     </Link>
@@ -282,8 +282,24 @@ export default function TopBar({ onSearchFocus }: TopBarProps) {
                   </div>
                 );
               })}
+              {!loading && !isAuthenticated && (
+                <Link
+                  href="/login"
+                  className="mt-2 flex items-center justify-between border-2 border-black bg-primary px-4 py-3 font-mono text-sm font-bold text-text-primary"
+                >
+                  Log in / Sign up →
+                </Link>
+              )}
               {isAuthenticated && (
                 <>
+                  {user?.role === 'ADMIN' && (
+                    <Link
+                      href="/admin"
+                      className="flex items-center border-l-4 border-l-transparent px-4 py-3 font-mono text-sm font-bold text-text-secondary hover:bg-background-secondary hover:text-text-primary"
+                    >
+                      Users
+                    </Link>
+                  )}
                   <Link
                     href="/settings"
                     className={`flex items-center border-l-4 px-4 py-3 font-mono text-sm font-bold transition-colors ${

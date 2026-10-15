@@ -1,6 +1,7 @@
 package dev.jobdog.backend.user;
 
 import dev.jobdog.backend.resume.ResumeAnalysisRepository;
+import dev.jobdog.backend.resume.ResumeAnalysisService;
 import dev.jobdog.backend.resume.StorageService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
@@ -52,15 +53,15 @@ public class PublicProfileController {
             score.put("overallScore", analysis.getOverallScore());
             score.put("atsScore", analysis.getAtsScore());
             score.put("sectionScores", analysis.getSectionScores());
-            score.put("strengths", analysis.getStrengths());
-            score.put("summaryVerdict", analysis.getSummaryVerdict());
+            score.put("strengths", ResumeAnalysisService.withoutSummaryAdvice(analysis.getStrengths()));
+            score.put("summaryVerdict", ResumeAnalysisService.withoutSummaryAdvice(analysis.getSummaryVerdict()));
             score.put("userLevel", analysis.getUserLevel());
             score.put("targetRole", analysis.getTargetRole());
             score.put("analyzedAt", analysis.getAnalyzedAt());
             if (user.isShareResume()) {
                 // Same opt-in covers the ATS view, since it echoes the resume contents.
                 score.put("atsParsedSections", analysis.getAtsParsedSections());
-                score.put("atsIssues", analysis.getAtsIssues());
+                score.put("atsIssues", ResumeAnalysisService.withoutSummaryAdvice(analysis.getAtsIssues()));
                 profile.put("resumeShared", true);
             }
             profile.put("topScore", score);

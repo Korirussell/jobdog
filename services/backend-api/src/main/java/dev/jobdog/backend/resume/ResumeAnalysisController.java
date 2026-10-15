@@ -56,12 +56,12 @@ public class ResumeAnalysisController {
         m.put("targetRole", e.getTargetRole());
         m.put("overallScore", e.getOverallScore());
         m.put("atsScore", e.getAtsScore());
-        m.put("atsIssues", e.getAtsIssues());
+        m.put("atsIssues", ResumeAnalysisService.withoutSummaryAdvice(e.getAtsIssues()));
         m.put("sectionScores", e.getSectionScores());
         m.put("bulletFeedback", e.getBulletFeedback());
-        m.put("strengths", e.getStrengths());
-        m.put("improvements", e.getImprovements());
-        m.put("summaryVerdict", e.getSummaryVerdict());
+        m.put("strengths", ResumeAnalysisService.withoutSummaryAdvice(e.getStrengths()));
+        m.put("improvements", ResumeAnalysisService.withoutSummaryAdvice(e.getImprovements()));
+        m.put("summaryVerdict", ResumeAnalysisService.withoutSummaryAdvice(e.getSummaryVerdict()));
         m.put("atsParsedSections", e.getAtsParsedSections());
         m.put("recruiterTake", e.getRecruiterTake());
         m.put("analyzedAt", e.getAnalyzedAt());

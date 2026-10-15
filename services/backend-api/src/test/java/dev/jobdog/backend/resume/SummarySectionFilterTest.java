@@ -22,4 +22,11 @@ class SummarySectionFilterTest {
         assertFalse(ResumeAnalysisService.recommendsSummarySection("Your goal of reaching SWE roles is clear"));
         assertFalse(ResumeAnalysisService.recommendsSummarySection(null));
     }
+
+    @Test
+    void stripsOnlyTheSentenceThatPushesASummary() {
+        String verdict = "Strong resume. Adding a summary statement would also improve the presentation. Quantify the impact.";
+        org.junit.jupiter.api.Assertions.assertEquals("Strong resume. Quantify the impact.", ResumeAnalysisService.withoutSummaryAdvice(verdict));
+        org.junit.jupiter.api.Assertions.assertEquals("Fine as is.", ResumeAnalysisService.withoutSummaryAdvice("Fine as is."));
+    }
 }
