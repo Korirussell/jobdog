@@ -428,9 +428,6 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
                 isSaved={savedJobIds.has(job.jobId)}
                 onApply={handleApply}
                 onSave={isAuthenticated ? handleSaveJob : undefined}
-                onReport={isAuthenticated ? handleReport : undefined}
-                userVerdict={myReports[job.jobId] ?? null}
-                askFeedback={lastOpenedJobId === job.jobId}
                 detailHref={`/jobs/${job.jobId}`}
               />
             ))}

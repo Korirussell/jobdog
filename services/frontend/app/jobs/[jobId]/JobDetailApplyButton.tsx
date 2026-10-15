@@ -70,7 +70,7 @@ export default function JobDetailApplyButton({ jobId, applyUrl }: JobDetailApply
       >
         Apply ↗
       </a>
-      {isAuthenticated && (
+      {isAuthenticated && opened && (
         <div className="flex flex-col items-center gap-1">
           <ReportControls verdict={verdict} prompt={opened} onReport={handleReport} />
           {notice && <p className="font-mono text-[10px] text-text-secondary">{notice}</p>}
