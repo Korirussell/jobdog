@@ -160,7 +160,7 @@ export default function ProfileClient({ profile }: { profile: PublicProfile | nu
                     <button
                       key={id}
                       onClick={() => setTab(id)}
-                      className={`px-3 py-1.5 font-mono text-xs font-bold ${tab === id ? 'bg-black text-white' : 'bg-white text-text-secondary'}`}
+                      className={`px-3 py-1.5 font-mono text-xs font-bold ${tab === id ? 'bg-primary text-text-primary' : 'bg-white text-text-secondary hover:bg-black/5'}`}
                     >
                       {label}
                     </button>
