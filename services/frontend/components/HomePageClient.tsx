@@ -227,6 +227,29 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
     }
   }, [myReports, lastOpenedJobId, applyCredits]);
 
+  // The "did the link work?" popup. The person is on the other tab right after clicking Apply,
+  // so wait until they come back (tab visible/focused again), with a timer as the fallback for
+  // browsers that never blur this tab.
+  const [feedbackJobId, setFeedbackJobId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!lastOpenedJobId || !isAuthenticated || myReports[lastOpenedJobId]) {
+      setFeedbackJobId(null);
+      return;
+    }
+    const jobId = lastOpenedJobId;
+    const show = () => setFeedbackJobId(jobId);
+    const onVisible = () => { if (document.visibilityState === 'visible') show(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', show);
+    const timer = setTimeout(show, 8000);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', show);
+      clearTimeout(timer);
+    };
+  }, [lastOpenedJobId, isAuthenticated, myReports]);
+  const feedbackJob = feedbackJobId ? allJobs.find((j) => j.jobId === feedbackJobId) ?? null : null;
+
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(null), 4000);
@@ -265,6 +288,43 @@ export default function HomePageClient({ initialJobs, initialTotal, initialLastS
   return (
     <div className="min-h-screen bg-white">
       <TopBar onSearchFocus={focusSearch} />
+
+      {feedbackJob && (
+        <div
+          role="dialog"
+          aria-label="Did the link work?"
+          className="fixed bottom-6 right-4 z-[310] w-[calc(100vw-2rem)] max-w-sm border-2 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+        >
+          <p className="font-mono text-sm font-bold text-text-primary">Did the link work?</p>
+          <p className="mt-0.5 truncate font-mono text-xs text-text-secondary">
+            {feedbackJob.title} @ {feedbackJob.company}
+          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setFeedbackJobId(null); handleReport(feedbackJob.jobId, 'WORKS'); }}
+              className="border-2 border-emerald-600 bg-emerald-50 px-3 py-1.5 font-mono text-xs font-bold text-emerald-700 hover:bg-emerald-100"
+            >
+              ✓ Yes, it works
+            </button>
+            <button
+              type="button"
+              onClick={() => { setFeedbackJobId(null); handleReport(feedbackJob.jobId, 'DEAD'); }}
+              className="border-2 border-red-600 bg-red-50 px-3 py-1.5 font-mono text-xs font-bold text-red-700 hover:bg-red-100"
+            >
+              ✗ Dead link
+            </button>
+            <button
+              type="button"
+              onClick={() => { setFeedbackJobId(null); setLastOpenedJobId(null); }}
+              className="ml-auto font-mono text-[10px] text-text-tertiary underline hover:text-text-primary"
+            >
+              Skip
+            </button>
+          </div>
+          <p className="mt-2 font-mono text-[10px] text-text-tertiary">Every 3 answers earns a resume upload.</p>
+        </div>
+      )}
 
       {notice && (
         <div role="status" className="fixed bottom-6 left-1/2 z-[300] -translate-x-1/2 border-2 border-black bg-primary px-4 py-2 font-mono text-xs font-bold shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">

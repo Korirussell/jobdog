@@ -1,8 +1,8 @@
 package dev.jobdog.backend.user;
 
 import dev.jobdog.backend.resume.ResumeAnalysisRepository;
-import dev.jobdog.backend.resume.ResumeEntity;
 import dev.jobdog.backend.resume.StorageService;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -76,16 +76,13 @@ public class PublicProfileController {
         if (user == null || !user.isShareResume()) {
             return ResponseEntity.notFound().build();
         }
-        return analysisRepository.findTopByResume_User_IdOrderByOverallScoreDescAnalyzedAtDesc(userId)
-                .map(analysis -> {
-                    ResumeEntity resume = analysis.getResume();
-                    byte[] bytes = storageService.getObject(resume.getStorageKey());
-                    return ResponseEntity.ok()
-                            .contentType(MediaType.APPLICATION_PDF)
-                            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=resume.pdf")
-                            .header("X-Content-Type-Options", "nosniff")
-                            .body(bytes);
-                })
+        // open-in-view is off, so read the storage key directly instead of walking analysis.getResume().
+        return analysisRepository.findBestResumeStorageKeys(userId, PageRequest.of(0, 1)).stream().findFirst()
+                .map(key -> ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=resume.pdf")
+                        .header("X-Content-Type-Options", "nosniff")
+                        .body(storageService.getObject(key)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }
